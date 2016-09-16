@@ -10,7 +10,7 @@ import UIKit
 
 class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     
-    // MARK: Properties
+    // MARK: - Properties
     
     var stories = [Story]()
     var parser = NSXMLParser()
@@ -23,7 +23,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     var link = NSMutableString()
     var imagePath = NSMutableString()
 
-    // MARK: ViewController methods
+    // MARK: - ViewController methods
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -35,14 +35,19 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     }
     
     override func viewWillAppear(animated: Bool) {
+        loadData()
+    }
+    
+    func loadData() {
         if Reachability.isConnectedToNetwork() == true {
             // Parse the data from RSS Feed.
-            beginParsing()
+            beginParsing("http://feeds.reuters.com/reuters/MostRead?format=xml")
+            
         } else if let savedStories = loadStories() {
             // Load data from saved state.
             stories = savedStories
-         } else {
-            
+        } else {
+            // Show no internet connection image.
             if let resultController = storyboard!.instantiateViewControllerWithIdentifier("NoInternetFound") as? NoInternetFoundViewController {
                 presentViewController(resultController, animated: true, completion: nil)
             }
@@ -53,12 +58,12 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
         saveStories()
     }
     
-    // MARK: RSS Feed Parser
+    // MARK: - RSS Feed Parser
     
-    func beginParsing()
+    func beginParsing(url: String)
     {
         stories = []
-        parser = NSXMLParser(contentsOfURL:(NSURL(string:"http://feeds.reuters.com/reuters/MostRead?format=xml"))!)!
+        parser = NSXMLParser(contentsOfURL:(NSURL(string: url))!)!
         parser.delegate = self
         parser.parse()
         self.tableView.reloadData()
@@ -85,7 +90,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
             storyTitle.appendString(string)
         } else if element.isEqualToString("description") {
             storyDescription.appendString(string)
-        } else if element.isEqualToString("link"){
+        } else if element.isEqualToString("guid"){
             link.appendString(string)
         } else if element.isEqualToString("image") {
             imagePath.appendString(string)
@@ -94,7 +99,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     
     func parser(parser: NSXMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
     {
-        if (elementName as NSString).isEqualToString("item") {            
+        if (elementName as NSString).isEqualToString("guid") {            
             let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.componentsSeparatedByString("<div")[0], link: link.componentsSeparatedByString("\n")[0])
             stories.append(aStory!)
         }
@@ -147,7 +152,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
         }
     }
     
-    // MARK: NSCoding
+    // MARK: - NSCoding
     
     func saveStories() {
         let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(stories, toFile: Story.ArchiveURL.path!)

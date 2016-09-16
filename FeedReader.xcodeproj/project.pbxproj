@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		080127D11D8BF3CB00C291C0 /* storiesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = 08DF79BA1D8BE84500E0A17C /* storiesTest.xml */; };
 		080686AE1D89F2DA00C5E08B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080686AD1D89F2DA00C5E08B /* AppDelegate.swift */; };
 		080686B01D89F2DA00C5E08B /* StoryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080686AF1D89F2DA00C5E08B /* StoryViewController.swift */; };
 		080686B31D89F2DA00C5E08B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 080686B11D89F2DA00C5E08B /* Main.storyboard */; };
@@ -16,9 +17,10 @@
 		080686D01D89FDF300C5E08B /* StoryTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080686CF1D89FDF300C5E08B /* StoryTableViewCell.swift */; };
 		080686D21D8A03A300C5E08B /* StoryTableViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 080686D11D8A03A300C5E08B /* StoryTableViewController.swift */; };
 		083BD1BE1D8B884400F84AB8 /* StoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083BD1BD1D8B884400F84AB8 /* StoryTests.swift */; };
-		083BD1C01D8B88CB00F84AB8 /* DataPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083BD1BF1D8B88CB00F84AB8 /* DataPersistenceTests.swift */; };
+		083BD1C01D8B88CB00F84AB8 /* ViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 083BD1BF1D8B88CB00F84AB8 /* ViewControllerTests.swift */; };
 		0854AD221D8B4F670019D6F5 /* Reachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0854AD211D8B4F670019D6F5 /* Reachability.swift */; };
 		0854AD241D8B54290019D6F5 /* NoInternetFoundViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0854AD231D8B54290019D6F5 /* NoInternetFoundViewController.swift */; };
+		08DF79BB1D8BE84500E0A17C /* storiesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = 08DF79BA1D8BE84500E0A17C /* storiesTest.xml */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -45,9 +47,10 @@
 		080686CF1D89FDF300C5E08B /* StoryTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoryTableViewCell.swift; sourceTree = "<group>"; };
 		080686D11D8A03A300C5E08B /* StoryTableViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoryTableViewController.swift; sourceTree = "<group>"; };
 		083BD1BD1D8B884400F84AB8 /* StoryTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoryTests.swift; sourceTree = "<group>"; };
-		083BD1BF1D8B88CB00F84AB8 /* DataPersistenceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DataPersistenceTests.swift; sourceTree = "<group>"; };
+		083BD1BF1D8B88CB00F84AB8 /* ViewControllerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ViewControllerTests.swift; sourceTree = "<group>"; };
 		0854AD211D8B4F670019D6F5 /* Reachability.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Reachability.swift; sourceTree = "<group>"; };
 		0854AD231D8B54290019D6F5 /* NoInternetFoundViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NoInternetFoundViewController.swift; sourceTree = "<group>"; };
+		08DF79BA1D8BE84500E0A17C /* storiesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = storiesTest.xml; path = FeedReaderTests/storiesTest.xml; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +92,7 @@
 		080686AC1D89F2DA00C5E08B /* FeedReader */ = {
 			isa = PBXGroup;
 			children = (
+				08DF79BA1D8BE84500E0A17C /* storiesTest.xml */,
 				080686AD1D89F2DA00C5E08B /* AppDelegate.swift */,
 				080686AF1D89F2DA00C5E08B /* StoryViewController.swift */,
 				080686B11D89F2DA00C5E08B /* Main.storyboard */,
@@ -107,7 +111,7 @@
 		080686C11D89F2DA00C5E08B /* FeedReaderTests */ = {
 			isa = PBXGroup;
 			children = (
-				083BD1BF1D8B88CB00F84AB8 /* DataPersistenceTests.swift */,
+				083BD1BF1D8B88CB00F84AB8 /* ViewControllerTests.swift */,
 				083BD1BD1D8B884400F84AB8 /* StoryTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
@@ -195,6 +199,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				080127D11D8BF3CB00C291C0 /* storiesTest.xml in Resources */,
 				080686B81D89F2DA00C5E08B /* LaunchScreen.storyboard in Resources */,
 				080686B51D89F2DA00C5E08B /* Assets.xcassets in Resources */,
 				080686B31D89F2DA00C5E08B /* Main.storyboard in Resources */,
@@ -205,6 +210,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				08DF79BB1D8BE84500E0A17C /* storiesTest.xml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,7 +235,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				083BD1C01D8B88CB00F84AB8 /* DataPersistenceTests.swift in Sources */,
+				083BD1C01D8B88CB00F84AB8 /* ViewControllerTests.swift in Sources */,
 				083BD1BE1D8B884400F84AB8 /* StoryTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

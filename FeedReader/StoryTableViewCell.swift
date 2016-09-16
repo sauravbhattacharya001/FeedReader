@@ -9,7 +9,10 @@
 import UIKit
 
 class StoryTableViewCell: UITableViewCell {
-    // One story cell in the table view.
+    
+    // MARK: - Properties
+    
+    // One story cell in the table view.    
     @IBOutlet weak var titleLabel: UILabel!
     @IBOutlet weak var descriptionLabel: UILabel!
     @IBOutlet weak var photoImage: UIImageView!    

@@ -1,5 +1,5 @@
 //
-//  DataPersistenceTests.swift
+//  ViewControllerTests.swift
 //  FeedReader
 //
 //  Created by Saurav Bhattacharya on 9/15/16.
@@ -10,9 +10,11 @@ import XCTest
 import UIKit
 @testable import FeedReader
 
-class DataPersistenceTests: XCTestCase {
+class ViewControllerTests: XCTestCase {
     
     var viewController : StoryTableViewController!
+    
+    // MARK: - Setup/Teardown
     
     override func setUp() {
         super.setUp()
@@ -28,6 +30,8 @@ class DataPersistenceTests: XCTestCase {
     override func tearDown() {
         super.tearDown()
     }
+    
+    // MARK: - Data persistence
     
     // Test to confirm that a Story object is wrapped and unwrapped correctly
     func testDataPersistenceOnOneStory() {
@@ -79,4 +83,23 @@ class DataPersistenceTests: XCTestCase {
         XCTAssertEqual(aStory3?.link, savedStories[savedStories.count-1].link)
     }
     
+    // MARK: - XML parser
+    
+    // Test to confirm that a Story object is constructed correctly from XML through the parser.
+    func testXMLParser() {
+        var savedStories = [Story]()
+        let aStory  = Story(title: "HELLO\n", photo: UIImage(named: "sample"), description: "This is hello\n", link: "http://www.instaread.co")
+        let audioFilePath = NSBundle.mainBundle().pathForResource("storiesTest", ofType: "xml")
+        
+        viewController.beginParsing1(audioFilePath!)
+        viewController.saveStories()
+        
+        savedStories = [Story]()
+        savedStories = viewController.loadStories()!
+        
+        XCTAssertEqual(aStory?.title, savedStories[savedStories.count-1].title)
+        XCTAssertEqual(aStory?.photo, savedStories[savedStories.count-1].photo)
+        XCTAssertEqual(aStory?.body, savedStories[savedStories.count-1].body)
+        XCTAssertEqual(aStory?.link, savedStories[savedStories.count-1].link)
+    }    
 }

@@ -10,20 +10,20 @@ import UIKit
 
 class Story: NSObject, NSCoding {
     
-    // MARK: Properties
+    // MARK: - Properties
     
     var title: String
     var photo: UIImage?
     var body: String
     var link: String
     
-    // MARK: Archiving Paths
+    // MARK: - Archiving Paths
     
     static var DocumentsDirectory = NSFileManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first!
     static var ArchiveURL = DocumentsDirectory.URLByAppendingPathComponent("stories")
 
     
-    // MARK: Types
+    // MARK: - Types
     
     struct PropertyKey {
         static let titleKey = "title"
@@ -32,7 +32,7 @@ class Story: NSObject, NSCoding {
         static let linkKey = "link"
     }
     
-    // MARK: Initialization
+    // MARK: - Initialization
     
     init?(title: String, photo: UIImage?, description: String, link: String) {
         
@@ -62,7 +62,7 @@ class Story: NSObject, NSCoding {
         return false
     }
     
-    // MARK: NSCoding
+    // MARK: - NSCoding
     
     func encodeWithCoder(aCoder: NSCoder) {
         

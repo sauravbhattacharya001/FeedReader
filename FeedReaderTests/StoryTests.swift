@@ -10,6 +10,7 @@ import XCTest
 @testable import FeedReader
 
 class StoryTests: XCTestCase {
+    // MARK: - Correct tests
     
     // Test to confirm that a Story object is initialized with correct data.
     func testStoryInitCorrect() {
@@ -17,6 +18,8 @@ class StoryTests: XCTestCase {
         let potentialItem = Story(title: "A Title", photo: nil, description: "A Description", link: "http://www.instaread.co")
         XCTAssertNotNil(potentialItem)
     }
+    
+    // MARK: - Incorrect tests
     
     // Test to confirm that a Story object is not initialized with incorrect data.
     func testStoryInitIncorrect() {
