@@ -69,6 +69,16 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
         self.tableView.reloadData()
     }
     
+    func beginParsingTest(url: String)
+    {
+        stories = []
+        let data = NSData(contentsOfFile: url)
+        parser = NSXMLParser(data: data!)
+        parser.delegate = self
+        parser.parse()
+        self.tableView.reloadData()
+    }
+    
     func parser(parser: NSXMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String])
     {
         element = elementName

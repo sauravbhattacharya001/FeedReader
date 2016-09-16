@@ -89,9 +89,9 @@ class ViewControllerTests: XCTestCase {
     func testXMLParser() {
         var savedStories = [Story]()
         let aStory  = Story(title: "HELLO\n", photo: UIImage(named: "sample"), description: "This is hello\n", link: "http://www.instaread.co")
-        let audioFilePath = NSBundle.mainBundle().pathForResource("storiesTest", ofType: "xml")
+        let testFilePath = NSBundle.mainBundle().pathForResource("storiesTest", ofType: "xml")
         
-        viewController.beginParsing1(audioFilePath!)
+        viewController.beginParsingTest(testFilePath!)
         viewController.saveStories()
         
         savedStories = [Story]()
