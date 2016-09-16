@@ -3,7 +3,7 @@
 //  FeedReader
 //
 //  Created by Saurav Bhattacharya on 9/14/16.
-//  Copyright © 2016 Apple Inc. All rights reserved.
+//  Copyright © 2016 InstaRead Inc. All rights reserved.
 //
 
 import UIKit
