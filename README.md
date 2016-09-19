@@ -1,5 +1,5 @@
 # FeedReader
-An RSS Feed Reader for most read Reuters feeds.
+An RSS Feed Reader for most read Reuters feeds. Updated to Swift 3.
 
 ### To run the app:
 
@@ -20,4 +20,4 @@ An RSS Feed Reader for most read Reuters feeds.
 3.  Check the title and description on the app are same between the cell view and detailed view (on tapping the cell).
 4. Check that story link opens in browser on clicking the story link.
 
-Tested only on iPhone.
+Tested only on iPhone. Use Xcode 8.
