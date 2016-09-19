@@ -38,8 +38,8 @@ class StoryViewController: UIViewController {
     // MARK: - Actions
     
     // Called when open link is clicked.
-    @IBAction func clickedLink(sender: AnyObject) {
-        UIApplication.sharedApplication().openURL(NSURL(string: linkTarget)!)
+    @IBAction func clickedLink(_ sender: AnyObject) {
+        UIApplication.shared.openURL(URL(string: linkTarget)!)
     }
 }
 

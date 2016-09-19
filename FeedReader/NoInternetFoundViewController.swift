@@ -12,9 +12,9 @@ class NoInternetFoundViewController: UIViewController {
     // MARK: - Actions
     
     // Dismiss the no internet view controller once internet connection has been found.
-    @IBAction func retryInternetButton(sender: AnyObject) {
+    @IBAction func retryInternetButton(_ sender: AnyObject) {
         if Reachability.isConnectedToNetwork() == true {            
-            dismissViewControllerAnimated(true, completion: nil)
+            dismiss(animated: true, completion: nil)
         }
     }
 }

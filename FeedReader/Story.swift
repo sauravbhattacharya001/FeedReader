@@ -19,8 +19,8 @@ class Story: NSObject, NSCoding {
     
     // MARK: - Archiving Paths
     
-    static var DocumentsDirectory = NSFileManager().URLsForDirectory(.DocumentDirectory, inDomains: .UserDomainMask).first!
-    static var ArchiveURL = DocumentsDirectory.URLByAppendingPathComponent("stories")
+    static var DocumentsDirectory = FileManager().urls(for: .documentDirectory, in: .userDomainMask).first!
+    static var ArchiveURL = DocumentsDirectory.appendingPathComponent("stories")
 
     
     // MARK: - Types
@@ -50,13 +50,13 @@ class Story: NSObject, NSCoding {
         }
     }
     
-    func isValidLink(urlString: String?) -> Bool {
+    func isValidLink(_ urlString: String?) -> Bool {
         //Check for nil
         if let urlString = urlString {
             // create NSURL instance
-            if let url = NSURL(string: urlString) {
+            if let url = URL(string: urlString) {
                 // check if your application can open the NSURL instance
-                return UIApplication.sharedApplication().canOpenURL(url)
+                return UIApplication.shared.canOpenURL(url)
             }
         }
         return false
@@ -64,24 +64,24 @@ class Story: NSObject, NSCoding {
     
     // MARK: - NSCoding
     
-    func encodeWithCoder(aCoder: NSCoder) {
+    func encode(with aCoder: NSCoder) {
         
-        aCoder.encodeObject(title, forKey: PropertyKey.titleKey)
-        aCoder.encodeObject(photo, forKey: PropertyKey.photoKey)
-        aCoder.encodeObject(body, forKey: PropertyKey.descriptionKey)
-        aCoder.encodeObject(link, forKey: PropertyKey.linkKey)
+        aCoder.encode(title, forKey: PropertyKey.titleKey)
+        aCoder.encode(photo, forKey: PropertyKey.photoKey)
+        aCoder.encode(body, forKey: PropertyKey.descriptionKey)
+        aCoder.encode(link, forKey: PropertyKey.linkKey)
     }
     
     required convenience init?(coder aDecoder: NSCoder) {
         
-        let title = aDecoder.decodeObjectForKey(PropertyKey.titleKey) as! String
+        let title = aDecoder.decodeObject(forKey: PropertyKey.titleKey) as! String
         
         // Because photo is an optional property of Meal, use conditional cast.
-        let photo = aDecoder.decodeObjectForKey(PropertyKey.photoKey) as? UIImage
+        let photo = aDecoder.decodeObject(forKey: PropertyKey.photoKey) as? UIImage
         
-        let description = aDecoder.decodeObjectForKey(PropertyKey.descriptionKey) as! String
+        let description = aDecoder.decodeObject(forKey: PropertyKey.descriptionKey) as! String
         
-        let link = aDecoder.decodeObjectForKey(PropertyKey.linkKey) as! String
+        let link = aDecoder.decodeObject(forKey: PropertyKey.linkKey) as! String
         
         // Must call designated initializer.
         self.init(title: title, photo: photo, description: description, link: link)

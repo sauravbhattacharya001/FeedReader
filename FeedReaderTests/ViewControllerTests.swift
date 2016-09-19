@@ -20,9 +20,9 @@ class ViewControllerTests: XCTestCase {
         super.setUp()
         
         // Using this view controller to test data persistence after wrapping and unwrapping Story objects.s
-        let storyboard = UIStoryboard(name: "Main", bundle: NSBundle.mainBundle())
-        viewController = storyboard.instantiateViewControllerWithIdentifier("StoryTable") as! StoryTableViewController
-        UIApplication.sharedApplication().keyWindow!.rootViewController = viewController
+        let storyboard = UIStoryboard(name: "Main", bundle: Bundle.main)
+        viewController = storyboard.instantiateViewController(withIdentifier: "StoryTable") as! StoryTableViewController
+        UIApplication.shared.keyWindow!.rootViewController = viewController
         
         let _ = viewController.view
     }
@@ -89,7 +89,7 @@ class ViewControllerTests: XCTestCase {
     func testXMLParser() {
         var savedStories = [Story]()
         let aStory  = Story(title: "HELLO\n", photo: UIImage(named: "sample"), description: "This is hello\n", link: "http://www.instaread.co")
-        let testFilePath = NSBundle.mainBundle().pathForResource("storiesTest", ofType: "xml")
+        let testFilePath = Bundle.main.path(forResource: "storiesTest", ofType: "xml")
         
         viewController.beginParsingTest(testFilePath!)
         viewController.saveStories()

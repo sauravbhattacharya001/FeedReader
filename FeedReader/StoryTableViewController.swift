@@ -8,12 +8,12 @@
 
 import UIKit
 
-class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
+class StoryTableViewController: UITableViewController, XMLParserDelegate {
     
     // MARK: - Properties
     
     var stories = [Story]()
-    var parser = NSXMLParser()
+    var parser = XMLParser()
     
     var elements = NSMutableDictionary()
     var element = NSString()
@@ -34,7 +34,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
         // Dispose of any resources that can be recreated.
     }
     
-    override func viewWillAppear(animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         loadData()
     }
     
@@ -48,41 +48,41 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
             stories = savedStories
         } else {
             // Show no internet connection image.
-            if let resultController = storyboard!.instantiateViewControllerWithIdentifier("NoInternetFound") as? NoInternetFoundViewController {
-                presentViewController(resultController, animated: true, completion: nil)
+            if let resultController = storyboard!.instantiateViewController(withIdentifier: "NoInternetFound") as? NoInternetFoundViewController {
+                present(resultController, animated: true, completion: nil)
             }
         }
     }
     
-    override func viewWillDisappear(animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         saveStories()
     }
     
     // MARK: - RSS Feed Parser
     
-    func beginParsing(url: String)
+    func beginParsing(_ url: String)
     {
         stories = []
-        parser = NSXMLParser(contentsOfURL:(NSURL(string: url))!)!
+        parser = XMLParser(contentsOf:(URL(string: url))!)!
         parser.delegate = self
         parser.parse()
         self.tableView.reloadData()
     }
     
-    func beginParsingTest(url: String)
+    func beginParsingTest(_ url: String)
     {
         stories = []
-        let data = NSData(contentsOfFile: url)
-        parser = NSXMLParser(data: data!)
+        let data = try? Data(contentsOf: URL(fileURLWithPath: url))
+        parser = XMLParser(data: data!)
         parser.delegate = self
         parser.parse()
         self.tableView.reloadData()
     }
     
-    func parser(parser: NSXMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String])
+    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String])
     {
-        element = elementName
-        if (elementName as NSString).isEqualToString("item")
+        element = elementName as NSString
+        if (elementName as NSString).isEqual(to: "item")
         {
             elements = NSMutableDictionary()
             elements = [:]
@@ -94,50 +94,50 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
         }
     }
     
-    func parser(parser: NSXMLParser, foundCharacters string: String)
+    func parser(_ parser: XMLParser, foundCharacters string: String)
     {
-        if element.isEqualToString("title") {
-            storyTitle.appendString(string)
-        } else if element.isEqualToString("description") {
-            storyDescription.appendString(string)
-        } else if element.isEqualToString("guid"){
-            link.appendString(string)
-        } else if element.isEqualToString("image") {
-            imagePath.appendString(string)
+        if element.isEqual(to: "title") {
+            storyTitle.append(string)
+        } else if element.isEqual(to: "description") {
+            storyDescription.append(string)
+        } else if element.isEqual(to: "guid"){
+            link.append(string)
+        } else if element.isEqual(to: "image") {
+            imagePath.append(string)
         }
     }
     
-    func parser(parser: NSXMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
+    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
     {
-        if (elementName as NSString).isEqualToString("guid") {            
-            let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.componentsSeparatedByString("<div")[0], link: link.componentsSeparatedByString("\n")[0])
+        if (elementName as NSString).isEqual(to: "guid") {            
+            let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.components(separatedBy: "<div")[0], link: link.components(separatedBy: "\n")[0])
             stories.append(aStory!)
         }
     }
 
     // MARK: - Table view data source
 
-    override func numberOfSectionsInTableView(tableView: UITableView) -> Int {
+    override func numberOfSections(in tableView: UITableView) -> Int {
         return 1
     }
 
-    override func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return stories.count
     }
     
-    override func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         // Table view cells are reused and should be dequeued using a cell identifier.
         let cellIndentifier = "StoryTableViewCell"
-        let cell = tableView.dequeueReusableCellWithIdentifier(cellIndentifier, forIndexPath: indexPath) as! StoryTableViewCell
+        let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as! StoryTableViewCell
         
-        cell.titleLabel.text = stories[indexPath.row].title
-        cell.descriptionLabel.text = stories[indexPath.row].body
+        cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
+        cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
         
         let tmp = ""
         if !(tmp.isEmpty) {
-            let url = NSURL(string: tmp as String)!
-            let data = NSData(contentsOfURL: url)!
+            let url = URL(string: tmp as String)!
+            let data = try! Data(contentsOf: url)
             cell.photoImage.image = UIImage(data: data)
         } else {
             cell.photoImage.image = UIImage(named: "sample")
@@ -149,14 +149,14 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     // MARK: - Navigation
 
     // Prepare segue for showing one story detail view.
-    override func prepareForSegue(segue: UIStoryboardSegue, sender: AnyObject?) {
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowDetail" {
-            let storyDetailViewController = segue.destinationViewController as! StoryViewController
+            let storyDetailViewController = segue.destination as! StoryViewController
             
             // Get the cell that generated this segue.
             if let selectedStoryCell = sender as? StoryTableViewCell {
-                let indexPath = tableView.indexPathForCell(selectedStoryCell)!
-                let selectedStory = stories[indexPath.row]
+                let indexPath = tableView.indexPath(for: selectedStoryCell)!
+                let selectedStory = stories[(indexPath as NSIndexPath).row]
                 storyDetailViewController.story = selectedStory as Story
             }
         }
@@ -165,7 +165,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     // MARK: - NSCoding
     
     func saveStories() {
-        let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(stories, toFile: Story.ArchiveURL.path!)
+        let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(stories, toFile: Story.ArchiveURL.path)
         
         if !isSuccessfulSave {
             print("Failed to save stories...")
@@ -173,7 +173,7 @@ class StoryTableViewController: UITableViewController, NSXMLParserDelegate {
     }
     
     func loadStories() -> [Story]? {
-        print(Story.ArchiveURL.path!)
-        return NSKeyedUnarchiver.unarchiveObjectWithFile(Story.ArchiveURL.path!) as? [Story]
+        print(Story.ArchiveURL.path)
+        return NSKeyedUnarchiver.unarchiveObject(withFile: Story.ArchiveURL.path) as? [Story]
     }
 }
