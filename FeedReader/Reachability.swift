@@ -19,14 +19,16 @@ open class Reachability {
         zeroAddress.sin_len = UInt8(MemoryLayout.size(ofValue: zeroAddress))
         zeroAddress.sin_family = sa_family_t(AF_INET)
         
-        let defaultRouteReachability = withUnsafePointer(to: &zeroAddress) {
+        guard let defaultRouteReachability = withUnsafePointer(to: &zeroAddress, {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
                 SCNetworkReachabilityCreateWithAddress(kCFAllocatorDefault, UnsafePointer($0))
             }
+        }) else {
+            return false
         }
         
         var flags: SCNetworkReachabilityFlags = SCNetworkReachabilityFlags(rawValue: 0)
-        if SCNetworkReachabilityGetFlags(defaultRouteReachability!, &flags) == false {
+        if SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags) == false {
             return false
         }
         
