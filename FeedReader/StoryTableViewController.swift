@@ -15,7 +15,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     var stories = [Story]()
     var parser = XMLParser()
     
-    var elements = NSMutableDictionary()
     var element = NSString()
     
     var storyTitle = NSMutableString()
@@ -41,7 +40,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         super.viewDidLoad()
         
         // Set up loading indicator
-        activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
+        activityIndicator = UIActivityIndicatorView(style: .medium)
         activityIndicator.center = view.center
         activityIndicator.hidesWhenStopped = true
         view.addSubview(activityIndicator)
@@ -150,8 +149,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         element = elementName as NSString
         if (elementName as NSString).isEqual(to: "item")
         {
-            elements = NSMutableDictionary()
-            elements = [:]
             
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
@@ -199,13 +196,13 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         let cellIndentifier = "StoryTableViewCell"
         let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as! StoryTableViewCell
         
-        cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
-        cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
+        cell.titleLabel.text = stories[indexPath.row].title
+        cell.descriptionLabel.text = stories[indexPath.row].body
         
         // Load thumbnail with in-memory cache to avoid redundant network
         // requests when cells are reused during scrolling. (fixes #7)
         cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
-        if let imagePathString = stories[(indexPath as NSIndexPath).row].imagePath,
+        if let imagePathString = stories[indexPath.row].imagePath,
            let url = URL(string: imagePathString) {
             let cacheKey = imagePathString as NSString
             if let cachedImage = imageCache.object(forKey: cacheKey) {
@@ -239,7 +236,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
             // Get the cell that generated this segue.
             if let selectedStoryCell = sender as? StoryTableViewCell {
                 let indexPath = tableView.indexPath(for: selectedStoryCell)!
-                let selectedStory = stories[(indexPath as NSIndexPath).row]
+                let selectedStory = stories[indexPath.row]
                 storyDetailViewController.story = selectedStory as Story
             }
         }
@@ -257,7 +254,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     }
     
     func loadStories() -> [Story]? {
-        print(Story.ArchiveURL.path)
         guard let data = try? Data(contentsOf: Story.ArchiveURL) else {
             return nil
         }
