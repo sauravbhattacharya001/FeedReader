@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Xcode-8+-blue?logo=xcode" alt="Xcode">
   <img src="https://img.shields.io/github/languages/code-size/sauravbhattacharya001/FeedReader" alt="Code Size">
   <img src="https://img.shields.io/github/last-commit/sauravbhattacharya001/FeedReader" alt="Last Commit">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
 </p>
 
 ---
@@ -143,7 +144,7 @@ beginParsing("https://feeds.bbci.co.uk/news/world/rss.xml")
 
 ## License
 
-This project is available for use under the terms specified by the repository owner. See the repository for details.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
