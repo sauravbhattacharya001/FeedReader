@@ -178,14 +178,23 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
         cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
         
-        // Load thumbnail from the story's image URL if available,
-        // otherwise fall back to the placeholder (fixes #5)
+        // Load thumbnail asynchronously to avoid blocking the main thread.
+        // Synchronous Data(contentsOf:) on the main thread causes UI freezes
+        // and choppy scrolling, especially on slow networks.
+        cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
         if let imagePathString = stories[(indexPath as NSIndexPath).row].imagePath,
-           let url = URL(string: imagePathString),
-           let data = try? Data(contentsOf: url) {
-            cell.photoImage.image = UIImage(data: data)
-        } else {
-            cell.photoImage.image = UIImage(named: "sample")
+           let url = URL(string: imagePathString) {
+            let currentIndexPath = indexPath
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data = data, let image = UIImage(data: data) else { return }
+                DispatchQueue.main.async {
+                    // Only update if the cell is still showing the same row
+                    // (guards against cell reuse during fast scrolling)
+                    if let visibleCell = self?.tableView.cellForRow(at: currentIndexPath) as? StoryTableViewCell {
+                        visibleCell.photoImage.image = image
+                    }
+                }
+            }.resume()
         }
         
         return cell
