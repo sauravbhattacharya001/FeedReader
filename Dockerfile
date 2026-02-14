@@ -10,7 +10,7 @@
 #   docker run --rm feedreader-lint
 
 # ---------- Stage 1: lint ----------
-FROM swift:5.10-jammy AS lint
+FROM swift:6.2-jammy AS lint
 
 # Install SwiftLint
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -44,7 +44,7 @@ RUN echo "=== Syntax checking Swift sources ===" && \
       'echo "  Checking: {}" && swiftc -parse "{}" 2>&1 || true'
 
 # ---------- Stage 2: final ----------
-FROM swift:5.10-jammy-slim AS final
+FROM swift:6.2-jammy-slim AS final
 
 WORKDIR /app
 COPY --from=lint /app /app
