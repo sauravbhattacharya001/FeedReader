@@ -24,6 +24,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     var imagePath = NSMutableString()
     
     var activityIndicator = UIActivityIndicatorView()
+    
+    /// In-memory image cache to avoid redundant network requests when
+    /// cells are reused during scrolling. NSCache automatically evicts
+    /// entries under memory pressure. (fixes #7)
+    private let imageCache = NSCache<NSString, UIImage>()
 
     // MARK: - ViewController methods
     
@@ -39,7 +44,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+        imageCache.removeAllObjects()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -189,23 +194,28 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
         cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
         
-        // Load thumbnail asynchronously to avoid blocking the main thread.
-        // Synchronous Data(contentsOf:) on the main thread causes UI freezes
-        // and choppy scrolling, especially on slow networks.
+        // Load thumbnail with in-memory cache to avoid redundant network
+        // requests when cells are reused during scrolling. (fixes #7)
         cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
         if let imagePathString = stories[(indexPath as NSIndexPath).row].imagePath,
            let url = URL(string: imagePathString) {
-            let currentIndexPath = indexPath
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let data = data, let image = UIImage(data: data) else { return }
-                DispatchQueue.main.async {
-                    // Only update if the cell is still showing the same row
-                    // (guards against cell reuse during fast scrolling)
-                    if let visibleCell = self?.tableView.cellForRow(at: currentIndexPath) as? StoryTableViewCell {
-                        visibleCell.photoImage.image = image
+            let cacheKey = imagePathString as NSString
+            if let cachedImage = imageCache.object(forKey: cacheKey) {
+                cell.photoImage.image = cachedImage
+            } else {
+                let currentIndexPath = indexPath
+                URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                    guard let data = data, let image = UIImage(data: data) else { return }
+                    self?.imageCache.setObject(image, forKey: cacheKey)
+                    DispatchQueue.main.async {
+                        // Only update if the cell is still showing the same row
+                        // (guards against cell reuse during fast scrolling)
+                        if let visibleCell = self?.tableView.cellForRow(at: currentIndexPath) as? StoryTableViewCell {
+                            visibleCell.photoImage.image = image
+                        }
                     }
-                }
-            }.resume()
+                }.resume()
+            }
         }
         
         return cell
