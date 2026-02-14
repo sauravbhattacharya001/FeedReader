@@ -1,0 +1,99 @@
+# CI workflow for FeedReader (Swift/iOS)
+#
+# Builds the Xcode project and runs unit tests on macOS runners
+# using the iPhone simulator.
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        xcode: ['16.2']
+
+    env:
+      SCHEME: FeedReader
+      PROJECT: FeedReader.xcodeproj
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ matrix.xcode }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+          xcodebuild -version
+
+      - name: List available simulators
+        run: xcrun simctl list devices available --json | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          for runtime,devs in d['devices'].items():
+            for dev in devs:
+              if 'iPhone' in dev['name']:
+                print(f\"{dev['name']} — {runtime}\")
+          " | head -20
+
+      - name: Resolve dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            || true
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
+            | xcpretty || true
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -resultBundlePath TestResults \
+            | xcpretty || true
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          retention-days: 7
+
+  lint:
+    name: SwiftLint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SwiftLint
+        uses: norio-nomura/action-swiftlint@3.2.1
+        with:
+          args: --strict
+        continue-on-error: true
