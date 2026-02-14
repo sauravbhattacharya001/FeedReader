@@ -1,0 +1,57 @@
+# Copilot Setup Steps for FeedReader
+#
+# Prepares the environment so GitHub Copilot coding agents (Claude, Codex)
+# can build, test, and work on this iOS/Swift project autonomously.
+
+name: Copilot Setup
+
+on: workflow_dispatch
+
+jobs:
+  setup:
+    runs-on: macos-latest
+
+    env:
+      SCHEME: FeedReader
+      PROJECT: FeedReader.xcodeproj
+      DESTINATION: "platform=iOS Simulator,name=iPhone 16,OS=latest"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve package dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            || true
+
+      - name: Build project
+        run: |
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            SWIFT_TREAT_WARNINGS_AS_ERRORS=NO
+
+      - name: Run tests
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
