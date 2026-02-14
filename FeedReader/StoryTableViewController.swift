@@ -41,7 +41,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func loadData() {
         if Reachability.isConnectedToNetwork() == true {
             // Parse the data from RSS Feed.
-            beginParsing("http://feeds.reuters.com/reuters/MostRead?format=xml")
+            beginParsing("https://feeds.reuters.com/reuters/MostRead?format=xml")
             
         } else if let savedStories = loadStories() {
             // Load data from saved state.
@@ -174,15 +174,19 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     // MARK: - NSCoding
     
     func saveStories() {
-        let isSuccessfulSave = NSKeyedArchiver.archiveRootObject(stories, toFile: Story.ArchiveURL.path)
-        
-        if !isSuccessfulSave {
-            print("Failed to save stories...")
+        do {
+            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: false)
+            try data.write(to: Story.ArchiveURL)
+        } catch {
+            print("Failed to save stories: \(error)")
         }
     }
     
     func loadStories() -> [Story]? {
         print(Story.ArchiveURL.path)
-        return NSKeyedUnarchiver.unarchiveObject(withFile: Story.ArchiveURL.path) as? [Story]
+        guard let data = try? Data(contentsOf: Story.ArchiveURL) else {
+            return nil
+        }
+        return (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story]
     }
 }

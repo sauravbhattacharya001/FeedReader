@@ -39,7 +39,11 @@ class StoryViewController: UIViewController {
     
     // Called when open link is clicked.
     @IBAction func clickedLink(_ sender: AnyObject) {
-        UIApplication.shared.openURL(URL(string: linkTarget)!)
+        guard let url = URL(string: linkTarget) else {
+            print("Invalid URL: \(linkTarget)")
+            return
+        }
+        UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 }
 
