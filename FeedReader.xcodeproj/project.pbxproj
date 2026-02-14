@@ -27,6 +27,7 @@
 		AA000001AAAA000100000004 /* malformedStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000040 /* malformedStoriesTest.xml */; };
 		AA000001AAAA000100000005 /* multiStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000030 /* multiStoriesTest.xml */; };
 		AA000001AAAA000100000006 /* malformedStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000040 /* malformedStoriesTest.xml */; };
+		BB000001BBBB000100000001 /* SearchFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001BBBB000100000010 /* SearchFilterTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,6 +62,7 @@
 		AA000001AAAA000100000020 /* XMLParserTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = XMLParserTests.swift; sourceTree = "<group>"; };
 		AA000001AAAA000100000030 /* multiStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = multiStoriesTest.xml; path = FeedReaderTests/multiStoriesTest.xml; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA000100000040 /* malformedStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = malformedStoriesTest.xml; path = FeedReaderTests/malformedStoriesTest.xml; sourceTree = SOURCE_ROOT; };
+		BB000001BBBB000100000010 /* SearchFilterTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchFilterTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +129,7 @@
 				083BD1BD1D8B884400F84AB8 /* StoryTests.swift */,
 				AA000001AAAA000100000010 /* StoryModelTests.swift */,
 				AA000001AAAA000100000020 /* XMLParserTests.swift */,
+				BB000001BBBB000100000010 /* SearchFilterTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -259,6 +262,7 @@
 				083BD1BE1D8B884400F84AB8 /* StoryTests.swift in Sources */,
 				AA000001AAAA000100000001 /* StoryModelTests.swift in Sources */,
 				AA000001AAAA000100000002 /* XMLParserTests.swift in Sources */,
+				BB000001BBBB000100000001 /* SearchFilterTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

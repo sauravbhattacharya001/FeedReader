@@ -8,11 +8,15 @@
 
 import UIKit
 
-class StoryTableViewController: UITableViewController, XMLParserDelegate {
+class StoryTableViewController: UITableViewController, XMLParserDelegate, UISearchResultsUpdating {
     
     // MARK: - Properties
     
     var stories = [Story]()
+    
+    /// Filtered stories shown when the search bar is active.
+    private var filteredStories = [Story]()
+    
     var parser = XMLParser()
     
     var element = NSString()
@@ -24,6 +28,9 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     
     var activityIndicator = UIActivityIndicatorView()
     
+    /// Search controller for filtering stories by title or description.
+    private let searchController = UISearchController(searchResultsController: nil)
+    
     /// In-memory image cache to avoid redundant network requests when
     /// cells are reused during scrolling. NSCache automatically evicts
     /// entries under memory pressure. (fixes #7)
@@ -33,6 +40,16 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     /// back-navigation from story detail does not trigger a redundant
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
     private var hasLoadedData = false
+    
+    /// Returns true when the search bar is active and has text.
+    private var isFiltering: Bool {
+        return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
+    }
+    
+    /// Returns the appropriate stories array based on search state.
+    private var displayedStories: [Story] {
+        return isFiltering ? filteredStories : stories
+    }
 
     // MARK: - ViewController methods
     
@@ -44,6 +61,46 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         activityIndicator.center = view.center
         activityIndicator.hidesWhenStopped = true
         view.addSubview(activityIndicator)
+        
+        // Set up pull-to-refresh
+        refreshControl = UIRefreshControl()
+        refreshControl?.attributedTitle = NSAttributedString(string: "Pull to refresh feed")
+        refreshControl?.addTarget(self, action: #selector(refreshFeed), for: .valueChanged)
+        
+        // Set up search controller
+        searchController.searchResultsUpdater = self
+        searchController.obscuresBackgroundDuringPresentation = false
+        searchController.searchBar.placeholder = "Search stories..."
+        navigationItem.searchController = searchController
+        definesPresentationContext = true
+    }
+    
+    /// Pull-to-refresh handler — reloads the RSS feed.
+    @objc private func refreshFeed() {
+        hasLoadedData = false
+        loadData()
+        // End refreshing after a short delay to let the feed load
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.refreshControl?.endRefreshing()
+            self?.hasLoadedData = true
+        }
+    }
+    
+    // MARK: - UISearchResultsUpdating
+    
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchText = searchController.searchBar.text ?? ""
+        filterStories(for: searchText)
+    }
+    
+    /// Filters stories by matching the search text against title and description.
+    private func filterStories(for searchText: String) {
+        let lowercasedSearch = searchText.lowercased()
+        filteredStories = stories.filter { story in
+            story.title.lowercased().contains(lowercasedSearch) ||
+            story.body.lowercased().contains(lowercasedSearch)
+        }
+        tableView.reloadData()
     }
     
     override func didReceiveMemoryWarning() {
@@ -187,7 +244,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return stories.count
+        return displayedStories.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -196,13 +253,13 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         let cellIndentifier = "StoryTableViewCell"
         let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as! StoryTableViewCell
         
-        cell.titleLabel.text = stories[indexPath.row].title
-        cell.descriptionLabel.text = stories[indexPath.row].body
+        cell.titleLabel.text = displayedStories[indexPath.row].title
+        cell.descriptionLabel.text = displayedStories[indexPath.row].body
         
         // Load thumbnail with in-memory cache to avoid redundant network
         // requests when cells are reused during scrolling. (fixes #7)
         cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
-        if let imagePathString = stories[indexPath.row].imagePath,
+        if let imagePathString = displayedStories[indexPath.row].imagePath,
            let url = URL(string: imagePathString) {
             let cacheKey = imagePathString as NSString
             if let cachedImage = imageCache.object(forKey: cacheKey) {
@@ -236,7 +293,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
             // Get the cell that generated this segue.
             if let selectedStoryCell = sender as? StoryTableViewCell {
                 let indexPath = tableView.indexPath(for: selectedStoryCell)!
-                let selectedStory = stories[indexPath.row]
+                let selectedStory = displayedStories[indexPath.row]
                 storyDetailViewController.story = selectedStory as Story
             }
         }

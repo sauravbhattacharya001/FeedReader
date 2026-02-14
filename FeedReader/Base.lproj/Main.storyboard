@@ -72,7 +72,7 @@
                             <outlet property="delegate" destination="QWS-yT-DKH" id="6lS-Ol-0T3"/>
                         </connections>
                     </tableView>
-                    <navigationItem key="navigationItem" title="Reuters" id="YcM-bq-gvO"/>
+                    <navigationItem key="navigationItem" title="FeedReader" id="YcM-bq-gvO"/>
                 </tableViewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="BRu-cX-dq0" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
