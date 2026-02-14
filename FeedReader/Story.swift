@@ -74,14 +74,14 @@ class Story: NSObject, NSCoding {
     
     required convenience init?(coder aDecoder: NSCoder) {
         
-        let title = aDecoder.decodeObject(forKey: PropertyKey.titleKey) as! String
+        guard let title = aDecoder.decodeObject(forKey: PropertyKey.titleKey) as? String,
+              let description = aDecoder.decodeObject(forKey: PropertyKey.descriptionKey) as? String,
+              let link = aDecoder.decodeObject(forKey: PropertyKey.linkKey) as? String else {
+            return nil
+        }
         
-        // Because photo is an optional property of Meal, use conditional cast.
+        // Because photo is an optional property of Story, use conditional cast.
         let photo = aDecoder.decodeObject(forKey: PropertyKey.photoKey) as? UIImage
-        
-        let description = aDecoder.decodeObject(forKey: PropertyKey.descriptionKey) as! String
-        
-        let link = aDecoder.decodeObject(forKey: PropertyKey.linkKey) as! String
         
         // Must call designated initializer.
         self.init(title: title, photo: photo, description: description, link: link)
