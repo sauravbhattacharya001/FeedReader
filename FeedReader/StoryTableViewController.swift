@@ -50,7 +50,8 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func loadData() {
         if Reachability.isConnectedToNetwork() == true {
             // Parse the data from RSS Feed asynchronously to avoid blocking the UI.
-            beginParsing("https://feeds.reuters.com/reuters/MostRead?format=xml")
+            // Reuters discontinued public RSS feeds (~2020); use BBC News as default (fixes #6)
+            beginParsing("https://feeds.bbci.co.uk/news/world/rss.xml")
             
         } else if let savedStories = loadStories() {
             // Load data from saved state.
@@ -88,6 +89,16 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
             
             guard let data = data, error == nil else {
                 print("Failed to fetch RSS feed: \(error?.localizedDescription ?? "Unknown error")")
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                }
+                return
+            }
+            
+            // Validate HTTP response status before parsing (fixes #6)
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                print("RSS feed returned HTTP \(httpResponse.statusCode)")
                 DispatchQueue.main.async {
                     self.activityIndicator.stopAnimating()
                 }
