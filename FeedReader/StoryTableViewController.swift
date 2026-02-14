@@ -77,8 +77,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func beginParsingTest(_ url: String)
     {
         stories = []
-        let data = try? Data(contentsOf: URL(fileURLWithPath: url))
-        parser = XMLParser(data: data!)
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: url)) else {
+            print("Failed to load test data from path: \(url)")
+            return
+        }
+        parser = XMLParser(data: data)
         parser.delegate = self
         parser.parse()
         self.tableView.reloadData()
@@ -139,10 +142,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
         cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
         
-        let tmp = ""
-        if !(tmp.isEmpty) {
-            let url = URL(string: tmp as String)!
-            let data = try! Data(contentsOf: url)
+        // Use the story's imagePath if available, otherwise fall back to placeholder
+        let imagePathString = stories[(indexPath as NSIndexPath).row].photo != nil ? "" : ""
+        if !imagePathString.isEmpty,
+           let url = URL(string: imagePathString),
+           let data = try? Data(contentsOf: url) {
             cell.photoImage.image = UIImage(data: data)
         } else {
             cell.photoImage.image = UIImage(named: "sample")
