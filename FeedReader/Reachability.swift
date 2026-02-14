@@ -30,8 +30,13 @@ open class Reachability {
             return false
         }
         
-        let isReachable = flags == .reachable
-        let needsConnection = flags == .connectionRequired
+        // Use .contains() instead of == for bitmask flags.
+        // SCNetworkReachabilityFlags is an OptionSet — multiple bits
+        // can be set simultaneously (e.g. .reachable + .isWWAN).
+        // Exact equality (==) would return false when extra bits are set,
+        // incorrectly reporting no connectivity on cellular networks.
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
         
         return isReachable && !needsConnection
         
