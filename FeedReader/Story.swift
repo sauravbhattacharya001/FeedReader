@@ -16,6 +16,7 @@ class Story: NSObject, NSCoding {
     var photo: UIImage?
     var body: String
     var link: String
+    var imagePath: String?
     
     // MARK: - Archiving Paths
     
@@ -30,17 +31,19 @@ class Story: NSObject, NSCoding {
         static let photoKey = "photo"
         static let descriptionKey = "description"
         static let linkKey = "link"
+        static let imagePathKey = "imagePath"
     }
     
     // MARK: - Initialization
     
-    init?(title: String, photo: UIImage?, description: String, link: String) {
+    init?(title: String, photo: UIImage?, description: String, link: String, imagePath: String? = nil) {
         
         // Initialize stored properties.
         self.title = title
         self.photo = photo
         self.body = description
         self.link = link
+        self.imagePath = imagePath
         
         super.init()
         
@@ -70,6 +73,7 @@ class Story: NSObject, NSCoding {
         aCoder.encode(photo, forKey: PropertyKey.photoKey)
         aCoder.encode(body, forKey: PropertyKey.descriptionKey)
         aCoder.encode(link, forKey: PropertyKey.linkKey)
+        aCoder.encode(imagePath, forKey: PropertyKey.imagePathKey)
     }
     
     required convenience init?(coder aDecoder: NSCoder) {
@@ -82,9 +86,10 @@ class Story: NSObject, NSCoding {
         
         // Because photo is an optional property of Story, use conditional cast.
         let photo = aDecoder.decodeObject(forKey: PropertyKey.photoKey) as? UIImage
+        let imagePath = aDecoder.decodeObject(forKey: PropertyKey.imagePathKey) as? String
         
         // Must call designated initializer.
-        self.init(title: title, photo: photo, description: description, link: link)
+        self.init(title: title, photo: photo, description: description, link: link, imagePath: imagePath)
     }
 }
 

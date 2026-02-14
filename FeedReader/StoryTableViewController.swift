@@ -152,7 +152,8 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
     {
         if (elementName as NSString).isEqual(to: "guid") {            
-            if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.components(separatedBy: "<div")[0], link: link.components(separatedBy: "\n")[0]) {
+            let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.components(separatedBy: "<div")[0], link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
                 stories.append(aStory)
             }
         }
@@ -177,9 +178,9 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
         cell.titleLabel.text = stories[(indexPath as NSIndexPath).row].title
         cell.descriptionLabel.text = stories[(indexPath as NSIndexPath).row].body
         
-        // Use the story's imagePath if available, otherwise fall back to placeholder
-        let imagePathString = stories[(indexPath as NSIndexPath).row].photo != nil ? "" : ""
-        if !imagePathString.isEmpty,
+        // Load thumbnail from the story's image URL if available,
+        // otherwise fall back to the placeholder (fixes #5)
+        if let imagePathString = stories[(indexPath as NSIndexPath).row].imagePath,
            let url = URL(string: imagePathString),
            let data = try? Data(contentsOf: url) {
             cell.photoImage.image = UIImage(data: data)
