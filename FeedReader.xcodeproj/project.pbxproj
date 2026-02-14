@@ -21,6 +21,12 @@
 		0854AD221D8B4F670019D6F5 /* Reachability.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0854AD211D8B4F670019D6F5 /* Reachability.swift */; };
 		0854AD241D8B54290019D6F5 /* NoInternetFoundViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0854AD231D8B54290019D6F5 /* NoInternetFoundViewController.swift */; };
 		08DF79BB1D8BE84500E0A17C /* storiesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = 08DF79BA1D8BE84500E0A17C /* storiesTest.xml */; };
+		AA000001AAAA000100000001 /* StoryModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000010 /* StoryModelTests.swift */; };
+		AA000001AAAA000100000002 /* XMLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000020 /* XMLParserTests.swift */; };
+		AA000001AAAA000100000003 /* multiStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000030 /* multiStoriesTest.xml */; };
+		AA000001AAAA000100000004 /* malformedStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000040 /* malformedStoriesTest.xml */; };
+		AA000001AAAA000100000005 /* multiStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000030 /* multiStoriesTest.xml */; };
+		AA000001AAAA000100000006 /* malformedStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000040 /* malformedStoriesTest.xml */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,6 +57,10 @@
 		0854AD211D8B4F670019D6F5 /* Reachability.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Reachability.swift; sourceTree = "<group>"; };
 		0854AD231D8B54290019D6F5 /* NoInternetFoundViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NoInternetFoundViewController.swift; sourceTree = "<group>"; };
 		08DF79BA1D8BE84500E0A17C /* storiesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = storiesTest.xml; path = FeedReaderTests/storiesTest.xml; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000100000010 /* StoryModelTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = StoryModelTests.swift; sourceTree = "<group>"; };
+		AA000001AAAA000100000020 /* XMLParserTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = XMLParserTests.swift; sourceTree = "<group>"; };
+		AA000001AAAA000100000030 /* multiStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = multiStoriesTest.xml; path = FeedReaderTests/multiStoriesTest.xml; sourceTree = SOURCE_ROOT; };
+		AA000001AAAA000100000040 /* malformedStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = malformedStoriesTest.xml; path = FeedReaderTests/malformedStoriesTest.xml; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,6 +103,8 @@
 			isa = PBXGroup;
 			children = (
 				08DF79BA1D8BE84500E0A17C /* storiesTest.xml */,
+				AA000001AAAA000100000030 /* multiStoriesTest.xml */,
+				AA000001AAAA000100000040 /* malformedStoriesTest.xml */,
 				080686AD1D89F2DA00C5E08B /* AppDelegate.swift */,
 				080686AF1D89F2DA00C5E08B /* StoryViewController.swift */,
 				080686B11D89F2DA00C5E08B /* Main.storyboard */,
@@ -113,6 +125,8 @@
 			children = (
 				083BD1BF1D8B88CB00F84AB8 /* ViewControllerTests.swift */,
 				083BD1BD1D8B884400F84AB8 /* StoryTests.swift */,
+				AA000001AAAA000100000010 /* StoryModelTests.swift */,
+				AA000001AAAA000100000020 /* XMLParserTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -202,6 +216,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				080127D11D8BF3CB00C291C0 /* storiesTest.xml in Resources */,
+				AA000001AAAA000100000005 /* multiStoriesTest.xml in Resources */,
+				AA000001AAAA000100000006 /* malformedStoriesTest.xml in Resources */,
 				080686B81D89F2DA00C5E08B /* LaunchScreen.storyboard in Resources */,
 				080686B51D89F2DA00C5E08B /* Assets.xcassets in Resources */,
 				080686B31D89F2DA00C5E08B /* Main.storyboard in Resources */,
@@ -213,6 +229,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				08DF79BB1D8BE84500E0A17C /* storiesTest.xml in Resources */,
+				AA000001AAAA000100000003 /* multiStoriesTest.xml in Resources */,
+				AA000001AAAA000100000004 /* malformedStoriesTest.xml in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,6 +257,8 @@
 			files = (
 				083BD1C01D8B88CB00F84AB8 /* ViewControllerTests.swift in Sources */,
 				083BD1BE1D8B884400F84AB8 /* StoryTests.swift in Sources */,
+				AA000001AAAA000100000001 /* StoryModelTests.swift in Sources */,
+				AA000001AAAA000100000002 /* XMLParserTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

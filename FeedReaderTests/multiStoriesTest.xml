@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss>
+    <channel>
+        <item>
+            <title>First Story</title>
+            <description>Description of first story</description>
+            <guid>http://example.com/story1</guid>
+        </item>
+        <item>
+            <title>Second Story</title>
+            <description>Description of second story</description>
+            <guid>http://example.com/story2</guid>
+            <image>http://example.com/image2.jpg</image>
+        </item>
+        <item>
+            <title>Third Story</title>
+            <description>Description with &lt;div class="extra"&gt;HTML content&lt;/div&gt;</description>
+            <guid>http://example.com/story3</guid>
+        </item>
+    </channel>
+</rss>

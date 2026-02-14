@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss>
+    <channel>
+        <item>
+            <title></title>
+            <description>No title story</description>
+            <guid>http://example.com/notitle</guid>
+        </item>
+        <item>
+            <title>Valid Story</title>
+            <description>Has all fields</description>
+            <guid>http://example.com/valid</guid>
+        </item>
+        <item>
+            <title>No Description</title>
+            <description></description>
+            <guid>http://example.com/nodesc</guid>
+        </item>
+    </channel>
+</rss>
