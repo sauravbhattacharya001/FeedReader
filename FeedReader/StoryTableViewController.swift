@@ -63,7 +63,12 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func beginParsing(_ url: String)
     {
         stories = []
-        parser = XMLParser(contentsOf:(URL(string: url))!)!
+        guard let feedURL = URL(string: url),
+              let xmlParser = XMLParser(contentsOf: feedURL) else {
+            print("Failed to create XML parser for URL: \(url)")
+            return
+        }
+        parser = xmlParser
         parser.delegate = self
         parser.parse()
         self.tableView.reloadData()
