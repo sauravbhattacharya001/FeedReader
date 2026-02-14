@@ -22,11 +22,19 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     var storyDescription = NSMutableString()
     var link = NSMutableString()
     var imagePath = NSMutableString()
+    
+    var activityIndicator = UIActivityIndicatorView()
 
     // MARK: - ViewController methods
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        // Set up loading indicator
+        activityIndicator = UIActivityIndicatorView(activityIndicatorStyle: .gray)
+        activityIndicator.center = view.center
+        activityIndicator.hidesWhenStopped = true
+        view.addSubview(activityIndicator)
     }
     
     override func didReceiveMemoryWarning() {
@@ -35,17 +43,19 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     }
     
     override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
         loadData()
     }
     
     func loadData() {
         if Reachability.isConnectedToNetwork() == true {
-            // Parse the data from RSS Feed.
+            // Parse the data from RSS Feed asynchronously to avoid blocking the UI.
             beginParsing("https://feeds.reuters.com/reuters/MostRead?format=xml")
             
         } else if let savedStories = loadStories() {
             // Load data from saved state.
             stories = savedStories
+            self.tableView.reloadData()
         } else {
             // Show no internet connection image.
             if let resultController = storyboard!.instantiateViewController(withIdentifier: "NoInternetFound") as? NoInternetFoundViewController {
@@ -55,6 +65,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     }
     
     override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
         saveStories()
     }
     
@@ -63,15 +74,38 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     func beginParsing(_ url: String)
     {
         stories = []
-        guard let feedURL = URL(string: url),
-              let xmlParser = XMLParser(contentsOf: feedURL) else {
-            print("Failed to create XML parser for URL: \(url)")
+        guard let feedURL = URL(string: url) else {
+            print("Failed to create URL from string: \(url)")
             return
         }
-        parser = xmlParser
-        parser.delegate = self
-        parser.parse()
-        self.tableView.reloadData()
+        
+        // Show loading indicator while fetching data
+        activityIndicator.startAnimating()
+        
+        // Fetch RSS data asynchronously to avoid blocking the main thread (fixes #4)
+        let task = URLSession.shared.dataTask(with: feedURL) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            guard let data = data, error == nil else {
+                print("Failed to fetch RSS feed: \(error?.localizedDescription ?? "Unknown error")")
+                DispatchQueue.main.async {
+                    self.activityIndicator.stopAnimating()
+                }
+                return
+            }
+            
+            // Parse XML on background thread
+            self.parser = XMLParser(data: data)
+            self.parser.delegate = self
+            self.parser.parse()
+            
+            // Update UI on main thread
+            DispatchQueue.main.async {
+                self.activityIndicator.stopAnimating()
+                self.tableView.reloadData()
+            }
+        }
+        task.resume()
     }
     
     func beginParsingTest(_ url: String)
