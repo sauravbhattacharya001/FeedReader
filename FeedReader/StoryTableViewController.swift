@@ -30,6 +30,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     /// entries under memory pressure. (fixes #7)
     private let imageCache = NSCache<NSString, UIImage>()
 
+    /// Tracks whether the feed has been loaded at least once so that
+    /// back-navigation from story detail does not trigger a redundant
+    /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
+    private var hasLoadedData = false
+
     // MARK: - ViewController methods
     
     override func viewDidLoad() {
@@ -49,7 +54,10 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        loadData()
+        if !hasLoadedData {
+            loadData()
+            hasLoadedData = true
+        }
     }
     
     func loadData() {
