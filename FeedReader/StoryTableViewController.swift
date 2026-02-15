@@ -36,6 +36,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     /// entries under memory pressure. (fixes #7)
     private let imageCache = NSCache<NSString, UIImage>()
 
+    /// Tracks whether we are inside an <item> element so we only capture
+    /// per-item data (title, description, guid) and ignore channel-level
+    /// elements with the same names.
+    private var insideItem = false
+    
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
@@ -93,13 +98,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     /// Pull-to-refresh handler — reloads the RSS feed.
     @objc private func refreshFeed() {
-        hasLoadedData = false
+        // Force a fresh load — beginParsing will call endRefreshing
+        // on completion instead of using a hardcoded delay. (fixes race
+        // condition where the 1-second timer fired before the async
+        // fetch completed, leaving stale data visible.)
         loadData()
-        // End refreshing after a short delay to let the feed load
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.refreshControl?.endRefreshing()
-            self?.hasLoadedData = true
-        }
     }
     
     // MARK: - UISearchResultsUpdating
@@ -176,6 +179,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
                 print("Failed to fetch RSS feed: \(error?.localizedDescription ?? "Unknown error")")
                 DispatchQueue.main.async {
                     self.activityIndicator.stopAnimating()
+                    self.refreshControl?.endRefreshing()
                 }
                 return
             }
@@ -186,11 +190,14 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
                 print("RSS feed returned HTTP \(httpResponse.statusCode)")
                 DispatchQueue.main.async {
                     self.activityIndicator.stopAnimating()
+                    self.refreshControl?.endRefreshing()
                 }
                 return
             }
             
-            // Parse XML on background thread
+            // Parse XML on the URLSession callback thread — safe because
+            // the delegate methods only touch instance vars that are not
+            // accessed from any other thread during parsing.
             self.parser = XMLParser(data: data)
             self.parser.delegate = self
             self.parser.parse()
@@ -198,6 +205,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             // Update UI on main thread
             DispatchQueue.main.async {
                 self.activityIndicator.stopAnimating()
+                self.refreshControl?.endRefreshing()
                 self.tableView.reloadData()
             }
         }
@@ -222,34 +230,52 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         element = elementName as NSString
         if (elementName as NSString).isEqual(to: "item")
         {
-            
+            insideItem = true
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
             link = NSMutableString()
             imagePath = NSMutableString()
         }
+        
+        // BBC RSS feeds use <media:thumbnail url="..."/> for per-item images.
+        // The colon-prefixed element arrives as "media:thumbnail" in the
+        // non-namespace-aware parser. Extract the URL from the attribute.
+        if insideItem && (elementName == "media:thumbnail" || elementName == "enclosure") {
+            if let urlAttr = attributeDict["url"], !urlAttr.isEmpty {
+                // Only set if we haven't already found a thumbnail for this item
+                if imagePath.length == 0 {
+                    imagePath.setString(urlAttr)
+                }
+            }
+        }
     }
     
     func parser(_ parser: XMLParser, foundCharacters string: String)
     {
+        // Only capture text content when inside an <item> element to avoid
+        // mixing channel-level title/description with per-item data.
+        guard insideItem else { return }
+        
         if element.isEqual(to: "title") {
             storyTitle.append(string)
         } else if element.isEqual(to: "description") {
             storyDescription.append(string)
         } else if element.isEqual(to: "guid"){
             link.append(string)
-        } else if element.isEqual(to: "image") {
-            imagePath.append(string)
         }
+        // Note: per-item image URLs are extracted from <media:thumbnail>
+        // attributes in didStartElement, not from character data.
     }
     
     func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
     {
-        if (elementName as NSString).isEqual(to: "guid") {            
+        if (elementName as NSString).isEqual(to: "item") {
+            // End of item — create the Story object
             let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
             if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription as String, link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
                 stories.append(aStory)
             }
+            insideItem = false
         }
     }
 
