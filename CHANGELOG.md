@@ -2,7 +2,24 @@
 
 All notable changes to FeedReader are documented in this file.
 
-## [v1.0.0] — 2026-02-14
+## [v1.2.0] — 2026-02-15
+
+### Multi-Feed Support
+
+- **Feed Manager** — New feed management screen accessible via 📡 antenna icon in the navigation bar
+- **10 built-in presets** — BBC World News, BBC Technology, BBC Science, BBC Business, NPR News, Reuters World, TechCrunch, Ars Technica, Hacker News, The Verge
+- **Custom feeds** — Add any RSS/Atom feed by URL with validation
+- **Feed toggling** — Enable/disable individual feeds without removing them
+- **Feed reordering** — Drag-to-reorder feeds in edit mode
+- **Swipe to remove** — Remove feeds with swipe-to-delete
+- **Multi-feed aggregation** — Stories from all enabled feeds are merged with duplicate detection (by link URL)
+- **Persistent storage** — Feed configuration persisted via NSSecureCoding
+- **Dynamic title** — Navigation bar shows active/total feed count
+- **35 new tests** — Feed model (NSCoding, equality, presets) and FeedManager (CRUD, toggle, reorder, custom URL validation, reset)
+
+## [v1.1.0] — 2026-02-14
+
+### Bookmarks & Search
 
 ### Initial stable release
 

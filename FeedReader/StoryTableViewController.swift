@@ -46,6 +46,13 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
     private var hasLoadedData = false
     
+    /// Tracks the number of feed fetch operations pending so we know
+    /// when all enabled feeds have finished loading.
+    private var pendingFeedCount = 0
+    
+    /// Temporary accumulator for stories from all feeds during multi-feed loading.
+    private var accumulatedStories = [Story]()
+    
     /// Returns true when the search bar is active and has text.
     private var isFiltering: Bool {
         return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
@@ -88,12 +95,62 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         )
         bookmarksButton.tintColor = .systemOrange
         navigationItem.rightBarButtonItem = bookmarksButton
+        
+        // Add feeds manager button to navigation bar (left side)
+        let feedsButton = UIBarButtonItem(
+            image: UIImage(systemName: "antenna.radiowaves.left.and.right"),
+            style: .plain,
+            target: self,
+            action: #selector(showFeedManager)
+        )
+        feedsButton.tintColor = .systemBlue
+        navigationItem.leftBarButtonItem = feedsButton
+        
+        // Listen for feed changes to reload data
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(feedsChanged),
+            name: .feedsDidChange,
+            object: nil
+        )
+        
+        // Update title with feed count
+        updateTitle()
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+    
+    /// Update the navigation title to show active feed count.
+    private func updateTitle() {
+        let enabledCount = FeedManager.shared.enabledFeeds.count
+        let totalCount = FeedManager.shared.count
+        if totalCount <= 1 {
+            navigationItem.title = "FeedReader"
+        } else {
+            navigationItem.title = "FeedReader (\(enabledCount)/\(totalCount) feeds)"
+        }
+    }
+    
+    /// Called when feed configuration changes — reload all data.
+    @objc private func feedsChanged() {
+        hasLoadedData = false
+        updateTitle()
+        loadData()
+        hasLoadedData = true
     }
     
     /// Present the bookmarks view controller.
     @objc private func showBookmarks() {
         let bookmarksVC = BookmarksViewController()
         navigationController?.pushViewController(bookmarksVC, animated: true)
+    }
+    
+    /// Present the feed manager view controller.
+    @objc private func showFeedManager() {
+        let feedListVC = FeedListViewController()
+        navigationController?.pushViewController(feedListVC, animated: true)
     }
     
     /// Pull-to-refresh handler — reloads the RSS feed.
@@ -137,9 +194,22 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     func loadData() {
         if Reachability.isConnectedToNetwork() == true {
-            // Parse the data from RSS Feed asynchronously to avoid blocking the UI.
-            // Reuters discontinued public RSS feeds (~2020); use BBC News as default (fixes #6)
-            beginParsing("https://feeds.bbci.co.uk/news/world/rss.xml")
+            // Load stories from all enabled feeds
+            let enabledFeeds = FeedManager.shared.enabledFeeds
+            if enabledFeeds.isEmpty {
+                // No feeds enabled — show empty state
+                stories = []
+                self.tableView.reloadData()
+                return
+            }
+            
+            // Reset accumulator and start loading all feeds
+            accumulatedStories = []
+            pendingFeedCount = enabledFeeds.count
+            
+            for feed in enabledFeeds {
+                beginParsing(feed.url)
+            }
             
         } else if let savedStories = loadStories() {
             // Load data from saved state.
@@ -162,9 +232,10 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     func beginParsing(_ url: String)
     {
-        stories = []
+        // Don't clear stories here — we accumulate from multiple feeds
         guard let feedURL = URL(string: url) else {
             print("Failed to create URL from string: \(url)")
+            feedLoadCompleted()
             return
         }
         
@@ -178,8 +249,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             guard let data = data, error == nil else {
                 print("Failed to fetch RSS feed: \(error?.localizedDescription ?? "Unknown error")")
                 DispatchQueue.main.async {
-                    self.activityIndicator.stopAnimating()
-                    self.refreshControl?.endRefreshing()
+                    self.feedLoadCompleted()
                 }
                 return
             }
@@ -189,8 +259,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
                !(200...299).contains(httpResponse.statusCode) {
                 print("RSS feed returned HTTP \(httpResponse.statusCode)")
                 DispatchQueue.main.async {
-                    self.activityIndicator.stopAnimating()
-                    self.refreshControl?.endRefreshing()
+                    self.feedLoadCompleted()
                 }
                 return
             }
@@ -198,23 +267,41 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             // Parse XML on the URLSession callback thread — safe because
             // the delegate methods only touch instance vars that are not
             // accessed from any other thread during parsing.
-            self.parser = XMLParser(data: data)
-            self.parser.delegate = self
-            self.parser.parse()
+            // Note: for multi-feed, we collect into accumulatedStories
+            // and merge into stories when all feeds complete.
+            let feedParser = XMLParser(data: data)
+            feedParser.delegate = self
+            feedParser.parse()
             
-            // Update UI on main thread
+            // This feed is done — check if all feeds are loaded
             DispatchQueue.main.async {
-                self.activityIndicator.stopAnimating()
-                self.refreshControl?.endRefreshing()
-                self.tableView.reloadData()
+                self.feedLoadCompleted()
             }
         }
         task.resume()
     }
     
+    /// Called when a single feed finishes loading. When all feeds are done,
+    /// merges accumulated stories and refreshes the UI.
+    private func feedLoadCompleted() {
+        pendingFeedCount -= 1
+        
+        if pendingFeedCount <= 0 {
+            // All feeds loaded — merge accumulated stories
+            stories = accumulatedStories
+            accumulatedStories = []
+            
+            activityIndicator.stopAnimating()
+            refreshControl?.endRefreshing()
+            tableView.reloadData()
+        }
+    }
+    
     func beginParsingTest(_ url: String)
     {
         stories = []
+        accumulatedStories = []
+        pendingFeedCount = 1
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: url)) else {
             print("Failed to load test data from path: \(url)")
             return
@@ -222,6 +309,9 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         parser = XMLParser(data: data)
         parser.delegate = self
         parser.parse()
+        stories = accumulatedStories
+        accumulatedStories = []
+        pendingFeedCount = 0
         self.tableView.reloadData()
     }
     
@@ -273,7 +363,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             // End of item — create the Story object
             let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
             if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription as String, link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
-                stories.append(aStory)
+                // Avoid duplicate stories (same link) when loading from multiple feeds
+                let isDuplicate = accumulatedStories.contains { $0.link == aStory.link }
+                if !isDuplicate {
+                    accumulatedStories.append(aStory)
+                }
             }
             insideItem = false
         }

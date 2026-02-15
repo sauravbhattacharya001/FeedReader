@@ -35,6 +35,7 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 🔗 **External Links** — Open full articles in Safari from the detail view
 - ♻️ **Smart Refresh** — Avoids redundant network fetches on back-navigation
 - 🔖 **Bookmarks** — Save stories for later reading with persistent storage, swipe-to-bookmark, and a dedicated bookmarks screen
+- 📡 **Multi-Feed Support** — Add, remove, and toggle multiple RSS feed sources. 10 built-in presets (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, etc.) plus custom URL support
 - 🔍 **Search & Filter** — Real-time search across story titles and descriptions
 - 📤 **Share** — Share stories via the system share sheet
 
@@ -45,6 +46,9 @@ FeedReader/
 ├── FeedReader/
 │   ├── AppDelegate.swift                # App lifecycle
 │   ├── Story.swift                      # Data model (NSCoding-conformant)
+│   ├── Feed.swift                       # RSS feed source model (name, URL, enabled)
+│   ├── FeedManager.swift                # Feed source management singleton (CRUD + persistence)
+│   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
 │   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
 │   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
 │   ├── StoryTableViewController.swift   # Main feed list + XML parsing
@@ -59,6 +63,7 @@ FeedReader/
 ├── FeedReader.xcodeproj/                # Xcode project
 └── FeedReaderTests/
     ├── BookmarkTests.swift              # Bookmark manager tests (20 cases)
+    ├── FeedManagerTests.swift           # Feed model + manager tests (35 cases)
     ├── StoryTests.swift                 # Model unit tests
     ├── StoryModelTests.swift            # Extended model tests
     ├── SearchFilterTests.swift          # Search/filter tests
@@ -125,6 +130,13 @@ open FeedReader.xcodeproj
 | Tap ★ in story detail | Toggles bookmark with haptic feedback and toast |
 | Swipe to delete in bookmarks | Removes individual bookmark |
 | Clear All in bookmarks | Removes all bookmarks after confirmation |
+| Tap 📡 antenna icon in nav bar | Opens feed manager with your feeds and available presets |
+| Tap a feed in "Your Feeds" | Toggles feed on/off (green checkmark = active) |
+| Swipe to delete a feed | Removes feed from your list |
+| Tap a feed in "Available Feeds" | Adds preset feed to your list |
+| Tap + button in feed manager | Opens dialog to add custom RSS feed URL |
+| Tap Edit in feed manager | Enables drag-to-reorder for feed priority |
+| Enable multiple feeds | Stories from all active feeds are merged (duplicates removed) |
 
 ## Tech Stack
 
@@ -138,15 +150,29 @@ open FeedReader.xcodeproj
 | **Image Caching** | `NSCache` |
 | **Network Detection** | `SystemConfiguration` / `SCNetworkReachability` |
 
-## Customizing the Feed Source
+## Customizing Feed Sources
 
-To point FeedReader at a different RSS feed, edit the URL in `StoryTableViewController.swift`:
+### In-App (Recommended)
+
+Tap the 📡 antenna icon in the navigation bar to open the Feed Manager, where you can:
+
+- **Toggle** feeds on/off by tapping them
+- **Add presets** from 10 built-in feeds (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, Reuters)
+- **Add custom feeds** by tapping + and entering any RSS/Atom feed URL
+- **Remove** feeds by swiping left
+- **Reorder** feeds by tapping Edit and dragging
+
+### Programmatically
+
+To change the default first-launch feed, edit the presets in `Feed.swift`:
 
 ```swift
-// In loadData(), change the feed URL:
-beginParsing("https://feeds.bbci.co.uk/news/world/rss.xml")
-// Replace with any RSS 2.0 feed URL, e.g.:
-// beginParsing("https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml")
+// In Feed.swift, modify the presets array:
+static let presets: [Feed] = [
+    Feed(name: "BBC World News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", isEnabled: true),
+    Feed(name: "Your Custom Feed", url: "https://yoursite.com/rss.xml", isEnabled: false),
+    // ...
+]
 ```
 
 ## Contributing
