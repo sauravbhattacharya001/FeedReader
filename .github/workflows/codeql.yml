@@ -1,0 +1,53 @@
+# CodeQL Security Analysis
+#
+# Runs GitHub CodeQL static analysis on the Swift codebase to detect
+# security vulnerabilities, code quality issues, and potential bugs.
+# Swift analysis uses the CodeQL CLI extractor (no build required for
+# interpreted analysis; build-mode: none lets CodeQL handle it).
+
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  schedule:
+    # Run weekly on Monday at 08:00 UTC to catch new vulnerability patterns
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze Swift
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['swift']
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # Use the extended query suite for deeper analysis including
+          # security, correctness, and maintainability queries
+          queries: security-and-quality
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
