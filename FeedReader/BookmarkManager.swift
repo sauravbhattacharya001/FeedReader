@@ -92,7 +92,7 @@ class BookmarkManager {
     
     private func saveBookmarks() {
         do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: bookmarks, requiringSecureCoding: false)
+            let data = try NSKeyedArchiver.archivedData(withRootObject: bookmarks, requiringSecureCoding: true)
             try data.write(to: BookmarkManager.archiveURL)
         } catch {
             print("Failed to save bookmarks: \(error)")

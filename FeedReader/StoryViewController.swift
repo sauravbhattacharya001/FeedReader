@@ -155,8 +155,11 @@ class StoryViewController: UIViewController {
     
     // Called when open link is clicked.
     @IBAction func clickedLink(_ sender: AnyObject) {
-        guard let url = URL(string: linkTarget) else {
-            print("Invalid URL: \(linkTarget)")
+        // Validate URL scheme before opening to prevent javascript: or custom
+        // scheme injection from malicious RSS feed data.
+        guard Story.isSafeURL(linkTarget),
+              let url = URL(string: linkTarget) else {
+            print("Blocked unsafe URL: \(linkTarget)")
             return
         }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)

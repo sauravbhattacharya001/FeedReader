@@ -124,10 +124,10 @@ class StoryModelTests: XCTestCase {
             imagePath: "http://example.com/thumb.png"
         )!
 
-        // Archive
+        // Archive with secure coding enabled
         guard let data = try? NSKeyedArchiver.archivedData(
             withRootObject: original,
-            requiringSecureCoding: false
+            requiringSecureCoding: true
         ) else {
             XCTFail("Failed to archive Story")
             return
@@ -159,7 +159,7 @@ class StoryModelTests: XCTestCase {
 
         guard let data = try? NSKeyedArchiver.archivedData(
             withRootObject: original,
-            requiringSecureCoding: false
+            requiringSecureCoding: true
         ) else {
             XCTFail("Failed to archive Story with nil optionals")
             return
@@ -187,7 +187,7 @@ class StoryModelTests: XCTestCase {
 
         guard let data = try? NSKeyedArchiver.archivedData(
             withRootObject: stories,
-            requiringSecureCoding: false
+            requiringSecureCoding: true
         ) else {
             XCTFail("Failed to archive Story array")
             return
@@ -233,8 +233,7 @@ class StoryModelTests: XCTestCase {
     }
 
     func testStoryWithHTMLInDescription() {
-        // The parser strips HTML by splitting on "<div", but the model
-        // itself should accept HTML in description.
+        // Story now strips HTML tags for security (prevents XSS/injection)
         let story = Story(
             title: "HTML Test",
             photo: nil,
@@ -242,7 +241,7 @@ class StoryModelTests: XCTestCase {
             link: "http://example.com"
         )
         XCTAssertNotNil(story)
-        XCTAssertEqual(story?.body, "<p>Bold <b>text</b></p>")
+        XCTAssertEqual(story?.body, "Bold text", "HTML tags should be stripped from description")
     }
 
     func testStoryWithNewlinesInTitle() {
@@ -254,5 +253,138 @@ class StoryModelTests: XCTestCase {
             link: "http://example.com"
         )
         XCTAssertNotNil(story)
+    }
+
+    // MARK: - Security: URL Scheme Validation
+
+    func testIsSafeURLAcceptsHTTP() {
+        XCTAssertTrue(Story.isSafeURL("http://example.com"))
+    }
+
+    func testIsSafeURLAcceptsHTTPS() {
+        XCTAssertTrue(Story.isSafeURL("https://example.com"))
+    }
+
+    func testIsSafeURLRejectsJavascript() {
+        XCTAssertFalse(Story.isSafeURL("javascript:alert(1)"), "javascript: scheme must be blocked")
+    }
+
+    func testIsSafeURLRejectsFileScheme() {
+        XCTAssertFalse(Story.isSafeURL("file:///etc/passwd"), "file: scheme must be blocked")
+    }
+
+    func testIsSafeURLRejectsDataScheme() {
+        XCTAssertFalse(Story.isSafeURL("data:text/html,<script>alert(1)</script>"), "data: scheme must be blocked")
+    }
+
+    func testIsSafeURLRejectsTelScheme() {
+        XCTAssertFalse(Story.isSafeURL("tel:+1234567890"), "tel: scheme must be blocked")
+    }
+
+    func testIsSafeURLRejectsCustomScheme() {
+        XCTAssertFalse(Story.isSafeURL("myapp://callback"), "Custom schemes must be blocked")
+    }
+
+    func testIsSafeURLRejectsNil() {
+        XCTAssertFalse(Story.isSafeURL(nil))
+    }
+
+    func testIsSafeURLRejectsEmptyString() {
+        XCTAssertFalse(Story.isSafeURL(""))
+    }
+
+    func testIsSafeURLRejectsNoScheme() {
+        XCTAssertFalse(Story.isSafeURL("example.com"))
+    }
+
+    func testStoryRejectsJavascriptLink() {
+        let story = Story(
+            title: "XSS",
+            photo: nil,
+            description: "Test",
+            link: "javascript:alert(document.cookie)"
+        )
+        XCTAssertNil(story, "Story with javascript: link must fail initialization")
+    }
+
+    func testStoryRejectsFileLink() {
+        let story = Story(
+            title: "File Access",
+            photo: nil,
+            description: "Test",
+            link: "file:///etc/passwd"
+        )
+        XCTAssertNil(story, "Story with file: link must fail initialization")
+    }
+
+    // MARK: - Security: Image Path Validation
+
+    func testStoryRejectsFileImagePath() {
+        let story = Story(
+            title: "Test",
+            photo: nil,
+            description: "Desc",
+            link: "http://example.com",
+            imagePath: "file:///etc/passwd"
+        )
+        XCTAssertNotNil(story, "Story should still init")
+        XCTAssertNil(story?.imagePath, "file: image path must be rejected")
+    }
+
+    func testStoryRejectsJavascriptImagePath() {
+        let story = Story(
+            title: "Test",
+            photo: nil,
+            description: "Desc",
+            link: "http://example.com",
+            imagePath: "javascript:alert(1)"
+        )
+        XCTAssertNotNil(story)
+        XCTAssertNil(story?.imagePath, "javascript: image path must be rejected")
+    }
+
+    func testStoryAcceptsHTTPSImagePath() {
+        let story = Story(
+            title: "Test",
+            photo: nil,
+            description: "Desc",
+            link: "http://example.com",
+            imagePath: "https://cdn.example.com/img.jpg"
+        )
+        XCTAssertNotNil(story)
+        XCTAssertEqual(story?.imagePath, "https://cdn.example.com/img.jpg")
+    }
+
+    // MARK: - Security: HTML Stripping
+
+    func testStripHTMLRemovesTags() {
+        let result = Story.stripHTML("<p>Hello <b>world</b></p>")
+        XCTAssertEqual(result, "Hello world")
+    }
+
+    func testStripHTMLDecodesEntities() {
+        let result = Story.stripHTML("Tom &amp; Jerry &lt;3&gt;")
+        XCTAssertEqual(result, "Tom & Jerry <3>")
+    }
+
+    func testStripHTMLRemovesScriptTags() {
+        let result = Story.stripHTML("Safe<script>alert('xss')</script> content")
+        XCTAssertEqual(result, "Safealert('xss') content")
+    }
+
+    func testStripHTMLHandlesNestedTags() {
+        let result = Story.stripHTML("<div><span class=\"cls\">Text</span></div>")
+        XCTAssertEqual(result, "Text")
+    }
+
+    func testStripHTMLPreservesPlainText() {
+        let result = Story.stripHTML("No HTML here")
+        XCTAssertEqual(result, "No HTML here")
+    }
+
+    // MARK: - Security: NSSecureCoding
+
+    func testSupportsSecureCoding() {
+        XCTAssertTrue(Story.supportsSecureCoding, "Story must support NSSecureCoding")
     }
 }

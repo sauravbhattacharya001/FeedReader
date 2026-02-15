@@ -247,7 +247,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     {
         if (elementName as NSString).isEqual(to: "guid") {            
             let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription.components(separatedBy: "<div")[0], link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
+            if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription as String, link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
                 stories.append(aStory)
             }
         }
@@ -274,8 +274,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         
         // Load thumbnail with in-memory cache to avoid redundant network
         // requests when cells are reused during scrolling. (fixes #7)
+        // Only load images from safe URL schemes (https/http) to prevent
+        // file:// or other scheme-based attacks from malicious RSS feeds.
         cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
         if let imagePathString = displayedStories[indexPath.row].imagePath,
+           Story.isSafeURL(imagePathString),
            let url = URL(string: imagePathString) {
             let cacheKey = imagePathString as NSString
             if let cachedImage = imageCache.object(forKey: cacheKey) {
@@ -336,7 +339,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     func saveStories() {
         do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: false)
+            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: true)
             try data.write(to: Story.ArchiveURL)
         } catch {
             print("Failed to save stories: \(error)")

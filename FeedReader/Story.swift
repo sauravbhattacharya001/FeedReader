@@ -8,7 +8,12 @@
 
 import UIKit
 
-class Story: NSObject, NSCoding {
+class Story: NSObject, NSSecureCoding {
+    
+    // MARK: - NSSecureCoding
+    
+    /// Required for NSSecureCoding — prevents deserialization of unexpected classes.
+    static var supportsSecureCoding: Bool { return true }
     
     // MARK: - Properties
     
@@ -17,6 +22,10 @@ class Story: NSObject, NSCoding {
     var body: String
     var link: String
     var imagePath: String?
+    
+    /// Allowed URL schemes for links and images. Restricts to safe web protocols
+    /// to prevent javascript:, file:, data:, or custom scheme injection.
+    private static let allowedSchemes: Set<String> = ["https", "http"]
     
     // MARK: - Archiving Paths
     
@@ -38,31 +47,61 @@ class Story: NSObject, NSCoding {
     
     init?(title: String, photo: UIImage?, description: String, link: String, imagePath: String? = nil) {
         
+        // Sanitize HTML from description before storing
+        let sanitized = Story.stripHTML(description)
+        
         // Initialize stored properties.
         self.title = title
         self.photo = photo
-        self.body = description
+        self.body = sanitized
         self.link = link
-        self.imagePath = imagePath
+        
+        // Only accept image paths with safe URL schemes (https/http)
+        if let path = imagePath, Story.isSafeURL(path) {
+            self.imagePath = path
+        } else {
+            self.imagePath = nil
+        }
         
         super.init()
         
-        // Initialization should fail if there is no name or if the rating is negative.
-        if title.isEmpty || body.isEmpty || !isValidLink(link){
+        // Initialization should fail if there is no name or if the link is invalid.
+        if title.isEmpty || body.isEmpty || !Story.isSafeURL(link) {
             return nil
         }
     }
     
-    func isValidLink(_ urlString: String?) -> Bool {
-        //Check for nil
-        if let urlString = urlString {
-            // create NSURL instance
-            if let url = URL(string: urlString) {
-                // check if your application can open the NSURL instance
-                return UIApplication.shared.canOpenURL(url)
-            }
+    /// Validates that a URL string uses only allowed schemes (https/http).
+    /// Rejects javascript:, file:, data:, tel:, and custom URL schemes
+    /// to prevent injection and redirect attacks.
+    static func isSafeURL(_ urlString: String?) -> Bool {
+        guard let urlString = urlString,
+              let url = URL(string: urlString),
+              let scheme = url.scheme?.lowercased() else {
+            return false
         }
-        return false
+        return allowedSchemes.contains(scheme)
+    }
+    
+    /// Strips HTML tags from a string to prevent rendering of injected markup.
+    /// Uses a simple regex approach suitable for RSS description sanitization.
+    static func stripHTML(_ html: String) -> String {
+        // Remove HTML tags
+        let stripped = html.replacingOccurrences(
+            of: "<[^>]+>",
+            with: "",
+            options: .regularExpression,
+            range: nil
+        )
+        // Decode common HTML entities
+        return stripped
+            .replacingOccurrences(of: "&amp;", with: "&")
+            .replacingOccurrences(of: "&lt;", with: "<")
+            .replacingOccurrences(of: "&gt;", with: ">")
+            .replacingOccurrences(of: "&quot;", with: "\"")
+            .replacingOccurrences(of: "&#39;", with: "'")
+            .replacingOccurrences(of: "&nbsp;", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
     // MARK: - NSCoding
@@ -78,15 +117,15 @@ class Story: NSObject, NSCoding {
     
     required convenience init?(coder aDecoder: NSCoder) {
         
-        guard let title = aDecoder.decodeObject(forKey: PropertyKey.titleKey) as? String,
-              let description = aDecoder.decodeObject(forKey: PropertyKey.descriptionKey) as? String,
-              let link = aDecoder.decodeObject(forKey: PropertyKey.linkKey) as? String else {
+        guard let title = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.titleKey) as String?,
+              let description = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.descriptionKey) as String?,
+              let link = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.linkKey) as String? else {
             return nil
         }
         
         // Because photo is an optional property of Story, use conditional cast.
-        let photo = aDecoder.decodeObject(forKey: PropertyKey.photoKey) as? UIImage
-        let imagePath = aDecoder.decodeObject(forKey: PropertyKey.imagePathKey) as? String
+        let photo = aDecoder.decodeObject(of: UIImage.self, forKey: PropertyKey.photoKey)
+        let imagePath = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.imagePathKey) as String?
         
         // Must call designated initializer.
         self.init(title: title, photo: photo, description: description, link: link, imagePath: imagePath)
