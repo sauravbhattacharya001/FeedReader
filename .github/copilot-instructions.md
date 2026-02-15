@@ -17,9 +17,12 @@ FeedReader is an iOS RSS feed reader app built with Swift and UIKit. It fetches 
 |------|---------|
 | `FeedReader/Story.swift` | Data model — `NSObject` + `NSCoding` for archiving |
 | `FeedReader/StoryTableViewController.swift` | Main feed list — RSS parsing, image caching, table view |
-| `FeedReader/StoryViewController.swift` | Story detail view — loads article in `WKWebView` |
+| `FeedReader/StoryViewController.swift` | Story detail view — shows title, description, bookmark/share, and Safari link |
 | `FeedReader/StoryTableViewCell.swift` | Custom table cell with title, description, thumbnail |
 | `FeedReader/Reachability.swift` | Network connectivity check |
+| `FeedReader/BookmarkManager.swift` | Singleton bookmark persistence — add/remove/toggle with `NSSecureCoding` |
+| `FeedReader/BookmarksViewController.swift` | Bookmarks list — swipe-to-delete, empty state, clear all |
+| `FeedReader/NoInternetFoundViewController.swift` | Offline fallback screen with retry button |
 | `FeedReader/AppDelegate.swift` | App lifecycle (minimal) |
 | `FeedReader/Base.lproj/Main.storyboard` | UI layout |
 
@@ -52,6 +55,8 @@ xcodebuild test \
 ```
 
 Test files are in `FeedReaderTests/`:
+- `BookmarkTests.swift` — Bookmark manager tests (20 cases: add, remove, toggle, persistence, clear)
+- `SearchFilterTests.swift` — Search and filter tests
 - `StoryTests.swift` — Story model initialization tests
 - `StoryModelTests.swift` — Extended model tests (edge cases, encoding, equality)
 - `XMLParserTests.swift` — RSS XML parsing tests with fixture files
@@ -80,3 +85,14 @@ Test fixtures: `storiesTest.xml`, `multiStoriesTest.xml`, `malformedStoriesTest.
 - Storyboard segues use identifier `"ShowDetail"` — don't change without updating `prepare(for:sender:)`
 - The `Reachability` class uses low-level C interop (`SCNetworkReachability`) — be careful with pointer/memory operations
 - `NSCoding` is used for persistence — adding new properties to `Story` requires updating both `encode(with:)` and `init?(coder:)`
+
+## Security Considerations
+
+This app processes untrusted RSS feed data. Key security measures to maintain:
+
+- **URL scheme validation**: `Story.isSafeURL()` only allows `https`/`http` — never bypass this for links or images
+- **HTML sanitization**: `Story.stripHTML()` removes all HTML from descriptions — keep this in the init path
+- **NSSecureCoding**: `Story` uses secure deserialization — always use typed `decodeObject(of:forKey:)` methods
+- **Failable init**: `Story.init?()` rejects empty titles, empty bodies, and unsafe link URLs — don't make it non-failable
+
+See `SECURITY.md` for the full threat model and security policy.
