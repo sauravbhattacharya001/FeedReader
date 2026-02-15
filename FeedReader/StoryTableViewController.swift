@@ -73,6 +73,22 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         searchController.searchBar.placeholder = "Search stories..."
         navigationItem.searchController = searchController
         definesPresentationContext = true
+        
+        // Add bookmarks button to navigation bar
+        let bookmarksButton = UIBarButtonItem(
+            image: UIImage(systemName: "bookmark"),
+            style: .plain,
+            target: self,
+            action: #selector(showBookmarks)
+        )
+        bookmarksButton.tintColor = .systemOrange
+        navigationItem.rightBarButtonItem = bookmarksButton
+    }
+    
+    /// Present the bookmarks view controller.
+    @objc private func showBookmarks() {
+        let bookmarksVC = BookmarksViewController()
+        navigationController?.pushViewController(bookmarksVC, animated: true)
     }
     
     /// Pull-to-refresh handler — reloads the RSS feed.
@@ -281,6 +297,23 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         }
         
         return cell
+    }
+    
+    // MARK: - Swipe Actions
+    
+    override func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let story = displayedStories[indexPath.row]
+        let isBookmarked = BookmarkManager.shared.isBookmarked(story)
+        
+        let bookmarkAction = UIContextualAction(style: .normal, title: nil) { _, _, completionHandler in
+            BookmarkManager.shared.toggleBookmark(story)
+            completionHandler(true)
+        }
+        
+        bookmarkAction.image = UIImage(systemName: isBookmarked ? "bookmark.slash" : "bookmark.fill")
+        bookmarkAction.backgroundColor = isBookmarked ? .systemGray : .systemOrange
+        
+        return UISwipeActionsConfiguration(actions: [bookmarkAction])
     }
     
     // MARK: - Navigation

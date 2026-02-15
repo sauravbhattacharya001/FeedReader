@@ -34,6 +34,9 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 📱 **Detail View** — Tap any story to see full description with link to original article
 - 🔗 **External Links** — Open full articles in Safari from the detail view
 - ♻️ **Smart Refresh** — Avoids redundant network fetches on back-navigation
+- 🔖 **Bookmarks** — Save stories for later reading with persistent storage, swipe-to-bookmark, and a dedicated bookmarks screen
+- 🔍 **Search & Filter** — Real-time search across story titles and descriptions
+- 📤 **Share** — Share stories via the system share sheet
 
 ## Architecture
 
@@ -42,9 +45,11 @@ FeedReader/
 ├── FeedReader/
 │   ├── AppDelegate.swift                # App lifecycle
 │   ├── Story.swift                      # Data model (NSCoding-conformant)
+│   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
+│   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
 │   ├── StoryTableViewController.swift   # Main feed list + XML parsing
 │   ├── StoryTableViewCell.swift         # Custom table view cell
-│   ├── StoryViewController.swift        # Story detail view
+│   ├── StoryViewController.swift        # Story detail view + bookmark/share
 │   ├── NoInternetFoundViewController.swift  # Offline fallback UI
 │   ├── Reachability.swift               # Network connectivity checker
 │   ├── Assets.xcassets/                 # App icons and images
@@ -53,10 +58,15 @@ FeedReader/
 │       └── LaunchScreen.storyboard      # Launch screen
 ├── FeedReader.xcodeproj/                # Xcode project
 └── FeedReaderTests/
+    ├── BookmarkTests.swift              # Bookmark manager tests (20 cases)
     ├── StoryTests.swift                 # Model unit tests
+    ├── StoryModelTests.swift            # Extended model tests
+    ├── SearchFilterTests.swift          # Search/filter tests
+    ├── XMLParserTests.swift             # XML parser tests
     ├── ViewControllerTests.swift        # View controller tests
     ├── storiesTest.xml                  # Test fixture XML
-    └── storiesTest.plist                # Test fixture plist
+    ├── multiStoriesTest.xml             # Multi-story test fixture
+    └── malformedStoriesTest.xml         # Malformed XML test fixture
 ```
 
 ## How It Works
@@ -110,6 +120,11 @@ open FeedReader.xcodeproj
 | Tap a story | Shows detail view with title, description, and link |
 | Tap "Open Link" in detail view | Opens full article in Safari |
 | Retry button (connection restored) | Dismisses offline screen, loads feed |
+| Swipe right on a story | Adds/removes bookmark with orange indicator |
+| Tap bookmark icon in nav bar | Opens bookmarks screen with saved stories |
+| Tap ★ in story detail | Toggles bookmark with haptic feedback and toast |
+| Swipe to delete in bookmarks | Removes individual bookmark |
+| Clear All in bookmarks | Removes all bookmarks after confirmation |
 
 ## Tech Stack
 

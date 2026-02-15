@@ -28,6 +28,9 @@
 		AA000001AAAA000100000005 /* multiStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000030 /* multiStoriesTest.xml */; };
 		AA000001AAAA000100000006 /* malformedStoriesTest.xml in Resources */ = {isa = PBXBuildFile; fileRef = AA000001AAAA000100000040 /* malformedStoriesTest.xml */; };
 		BB000001BBBB000100000001 /* SearchFilterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001BBBB000100000010 /* SearchFilterTests.swift */; };
+		CC000001CCCC000100000001 /* BookmarkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001CCCC000100000010 /* BookmarkManager.swift */; };
+		CC000001CCCC000100000002 /* BookmarksViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001CCCC000100000020 /* BookmarksViewController.swift */; };
+		CC000001CCCC000100000003 /* BookmarkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000001CCCC000100000030 /* BookmarkTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +66,9 @@
 		AA000001AAAA000100000030 /* multiStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = multiStoriesTest.xml; path = FeedReaderTests/multiStoriesTest.xml; sourceTree = SOURCE_ROOT; };
 		AA000001AAAA000100000040 /* malformedStoriesTest.xml */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; name = malformedStoriesTest.xml; path = FeedReaderTests/malformedStoriesTest.xml; sourceTree = SOURCE_ROOT; };
 		BB000001BBBB000100000010 /* SearchFilterTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SearchFilterTests.swift; sourceTree = "<group>"; };
+		CC000001CCCC000100000010 /* BookmarkManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BookmarkManager.swift; sourceTree = "<group>"; };
+		CC000001CCCC000100000020 /* BookmarksViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BookmarksViewController.swift; sourceTree = "<group>"; };
+		CC000001CCCC000100000030 /* BookmarkTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BookmarkTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -115,6 +121,8 @@
 				080686D11D8A03A300C5E08B /* StoryTableViewController.swift */,
 				0854AD211D8B4F670019D6F5 /* Reachability.swift */,
 				080686CD1D89FBBA00C5E08B /* Story.swift */,
+				CC000001CCCC000100000010 /* BookmarkManager.swift */,
+				CC000001CCCC000100000020 /* BookmarksViewController.swift */,
 				080686B41D89F2DA00C5E08B /* Assets.xcassets */,
 				080686B61D89F2DA00C5E08B /* LaunchScreen.storyboard */,
 				080686B91D89F2DA00C5E08B /* Info.plist */,
@@ -130,6 +138,7 @@
 				AA000001AAAA000100000010 /* StoryModelTests.swift */,
 				AA000001AAAA000100000020 /* XMLParserTests.swift */,
 				BB000001BBBB000100000010 /* SearchFilterTests.swift */,
+				CC000001CCCC000100000030 /* BookmarkTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -251,6 +260,8 @@
 				080686AE1D89F2DA00C5E08B /* AppDelegate.swift in Sources */,
 				080686CE1D89FBBA00C5E08B /* Story.swift in Sources */,
 				080686D01D89FDF300C5E08B /* StoryTableViewCell.swift in Sources */,
+				CC000001CCCC000100000001 /* BookmarkManager.swift in Sources */,
+				CC000001CCCC000100000002 /* BookmarksViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -263,6 +274,7 @@
 				AA000001AAAA000100000001 /* StoryModelTests.swift in Sources */,
 				AA000001AAAA000100000002 /* XMLParserTests.swift in Sources */,
 				BB000001BBBB000100000001 /* SearchFilterTests.swift in Sources */,
+				CC000001CCCC000100000003 /* BookmarkTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -21,11 +21,13 @@ class StoryViewController: UIViewController {
     // This value is passed by `StoryTableViewController` in `prepareForSegue(_:sender:)`
     var story: Story?
     
+    /// Bookmark bar button for toggling bookmark state.
+    private var bookmarkButton: UIBarButtonItem!
+    
     // MARK: - ViewController methods
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view, typically from a nib.
         
         if let story = story {
             titleLabel.text   = story.title
@@ -34,15 +36,92 @@ class StoryViewController: UIViewController {
             linkTarget = story.link
         }
         
-        // Add share button to navigation bar
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
+        // Create bookmark and share buttons for the navigation bar
+        bookmarkButton = UIBarButtonItem(
+            image: bookmarkIcon(),
+            style: .plain,
+            target: self,
+            action: #selector(toggleBookmark)
+        )
+        bookmarkButton.tintColor = .systemOrange
+        
+        let shareButton = UIBarButtonItem(
             barButtonSystemItem: .action,
             target: self,
             action: #selector(shareStory)
         )
+        
+        navigationItem.rightBarButtonItems = [shareButton, bookmarkButton]
     }
     
-    // MARK: - Actions
+    // MARK: - Bookmark
+    
+    /// Returns the appropriate bookmark icon based on current state.
+    private func bookmarkIcon() -> UIImage? {
+        guard let story = story else {
+            return UIImage(systemName: "bookmark")
+        }
+        let name = BookmarkManager.shared.isBookmarked(story) ? "bookmark.fill" : "bookmark"
+        return UIImage(systemName: name)
+    }
+    
+    /// Updates the bookmark button icon to reflect current state.
+    private func updateBookmarkIcon() {
+        bookmarkButton.image = bookmarkIcon()
+    }
+    
+    /// Toggle bookmark state for the current story.
+    @objc private func toggleBookmark() {
+        guard let story = story else { return }
+        
+        let isNowBookmarked = BookmarkManager.shared.toggleBookmark(story)
+        updateBookmarkIcon()
+        
+        // Brief haptic feedback
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        // Show a brief toast-style notification
+        let message = isNowBookmarked ? "Bookmarked ★" : "Removed from bookmarks"
+        showToast(message)
+    }
+    
+    /// Display a brief toast message at the bottom of the screen.
+    private func showToast(_ message: String) {
+        let toastLabel = UILabel()
+        toastLabel.text = message
+        toastLabel.textAlignment = .center
+        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textColor = .white
+        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastLabel.layer.cornerRadius = 16
+        toastLabel.clipsToBounds = true
+        toastLabel.alpha = 0
+        
+        let textSize = toastLabel.intrinsicContentSize
+        let width = textSize.width + 40
+        let height: CGFloat = 36
+        toastLabel.frame = CGRect(
+            x: (view.frame.width - width) / 2,
+            y: view.frame.height - 120,
+            width: width,
+            height: height
+        )
+        
+        view.addSubview(toastLabel)
+        
+        UIView.animate(withDuration: 0.3, animations: {
+            toastLabel.alpha = 1
+        }) { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.2, options: [], animations: {
+                toastLabel.alpha = 0
+            }) { _ in
+                toastLabel.removeFromSuperview()
+            }
+        }
+    }
+    
+    // MARK: - Share
     
     /// Share the current story via the system share sheet.
     @objc private func shareStory() {
@@ -68,7 +147,7 @@ class StoryViewController: UIViewController {
         
         // iPad requires a popover source
         if let popover = activityVC.popoverPresentationController {
-            popover.barButtonItem = navigationItem.rightBarButtonItem
+            popover.barButtonItem = navigationItem.rightBarButtonItems?.first
         }
         
         present(activityVC, animated: true, completion: nil)
@@ -83,4 +162,3 @@ class StoryViewController: UIViewController {
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }
 }
-
