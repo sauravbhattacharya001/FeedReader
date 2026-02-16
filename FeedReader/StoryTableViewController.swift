@@ -8,7 +8,7 @@
 
 import UIKit
 
-class StoryTableViewController: UITableViewController, XMLParserDelegate, UISearchResultsUpdating {
+class StoryTableViewController: UITableViewController, XMLParserDelegate, UISearchResultsUpdating, UITableViewDataSourcePrefetching {
     
     // MARK: - Properties
     
@@ -53,6 +53,15 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     /// Temporary accumulator for stories from all feeds during multi-feed loading.
     private var accumulatedStories = [Story]()
     
+    /// O(1) lookup set for duplicate detection during multi-feed loading.
+    /// Tracks story links already added to accumulatedStories to avoid
+    /// the previous O(n) linear scan on every new story.
+    private var accumulatedLinks = Set<String>()
+    
+    /// Debounce timer for search filtering. Prevents re-filtering on every
+    /// keystroke during rapid typing, reducing unnecessary work.
+    private var searchDebounceTimer: Timer?
+    
     /// Returns true when the search bar is active and has text.
     private var isFiltering: Bool {
         return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
@@ -85,6 +94,11 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         searchController.searchBar.placeholder = "Search stories..."
         navigationItem.searchController = searchController
         definesPresentationContext = true
+        
+        // Enable image prefetching for smoother scrolling.
+        // The prefetch data source pre-loads images for upcoming cells
+        // before they become visible, reducing visual stutter.
+        tableView.prefetchDataSource = self
         
         // Add bookmarks button to navigation bar
         let bookmarksButton = UIBarButtonItem(
@@ -120,6 +134,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     deinit {
         NotificationCenter.default.removeObserver(self)
+        searchDebounceTimer?.invalidate()
     }
     
     /// Update the navigation title to show active feed count.
@@ -166,7 +181,14 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     func updateSearchResults(for searchController: UISearchController) {
         let searchText = searchController.searchBar.text ?? ""
-        filterStories(for: searchText)
+        
+        // Debounce search to avoid re-filtering on every keystroke.
+        // 200ms delay is fast enough to feel instant while preventing
+        // redundant work during rapid typing.
+        searchDebounceTimer?.invalidate()
+        searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
+            self?.filterStories(for: searchText)
+        }
     }
     
     /// Filters stories by matching the search text against title and description.
@@ -205,6 +227,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             
             // Reset accumulator and start loading all feeds
             accumulatedStories = []
+            accumulatedLinks = Set<String>()
             pendingFeedCount = enabledFeeds.count
             
             for feed in enabledFeeds {
@@ -290,6 +313,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             // All feeds loaded — merge accumulated stories
             stories = accumulatedStories
             accumulatedStories = []
+            accumulatedLinks = Set<String>()
             
             activityIndicator.stopAnimating()
             refreshControl?.endRefreshing()
@@ -301,6 +325,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     {
         stories = []
         accumulatedStories = []
+        accumulatedLinks = Set<String>()
         pendingFeedCount = 1
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: url)) else {
             print("Failed to load test data from path: \(url)")
@@ -363,9 +388,10 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
             // End of item — create the Story object
             let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
             if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription as String, link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
-                // Avoid duplicate stories (same link) when loading from multiple feeds
-                let isDuplicate = accumulatedStories.contains { $0.link == aStory.link }
-                if !isDuplicate {
+                // O(1) duplicate detection using a Set instead of the
+                // previous O(n) linear scan over accumulatedStories.
+                if !accumulatedLinks.contains(aStory.link) {
+                    accumulatedLinks.insert(aStory.link)
                     accumulatedStories.append(aStory)
                 }
             }
@@ -437,6 +463,32 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         bookmarkAction.backgroundColor = isBookmarked ? .systemGray : .systemOrange
         
         return UISwipeActionsConfiguration(actions: [bookmarkAction])
+    }
+    
+    // MARK: - Prefetching
+    
+    /// Pre-load images for cells that are about to scroll into view.
+    /// This eliminates the flash of placeholder images by fetching
+    /// thumbnails before the cell is actually requested.
+    func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
+        for indexPath in indexPaths {
+            guard indexPath.row < displayedStories.count else { continue }
+            let story = displayedStories[indexPath.row]
+            
+            guard let imagePathString = story.imagePath,
+                  Story.isSafeURL(imagePathString),
+                  let url = URL(string: imagePathString) else { continue }
+            
+            let cacheKey = imagePathString as NSString
+            // Skip if already cached
+            if imageCache.object(forKey: cacheKey) != nil { continue }
+            
+            // Fire off a background fetch to warm the cache
+            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data = data, let image = UIImage(data: data) else { return }
+                self?.imageCache.setObject(image, forKey: cacheKey)
+            }.resume()
+        }
     }
     
     // MARK: - Navigation

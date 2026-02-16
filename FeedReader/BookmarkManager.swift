@@ -23,6 +23,11 @@ class BookmarkManager {
     
     private(set) var bookmarks: [Story] = []
     
+    /// O(1) lookup index for bookmark checks. Stores the link strings
+    /// of all bookmarked stories, eliminating the previous O(n) scan
+    /// in isBookmarked() which was called per-cell during table rendering.
+    private var bookmarkIndex = Set<String>()
+    
     private static let archiveURL: URL = {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documentsDirectory.appendingPathComponent("bookmarks")
@@ -36,15 +41,16 @@ class BookmarkManager {
     
     // MARK: - Public Methods
     
-    /// Check if a story is bookmarked (matched by link URL).
+    /// Check if a story is bookmarked (O(1) lookup via index set).
     func isBookmarked(_ story: Story) -> Bool {
-        return bookmarks.contains { $0.link == story.link }
+        return bookmarkIndex.contains(story.link)
     }
     
     /// Add a story to bookmarks. No-op if already bookmarked.
     func addBookmark(_ story: Story) {
         guard !isBookmarked(story) else { return }
         bookmarks.insert(story, at: 0) // newest first
+        bookmarkIndex.insert(story.link)
         saveBookmarks()
         NotificationCenter.default.post(name: .bookmarksDidChange, object: nil)
     }
@@ -52,6 +58,7 @@ class BookmarkManager {
     /// Remove a story from bookmarks (matched by link URL).
     func removeBookmark(_ story: Story) {
         bookmarks.removeAll { $0.link == story.link }
+        bookmarkIndex.remove(story.link)
         saveBookmarks()
         NotificationCenter.default.post(name: .bookmarksDidChange, object: nil)
     }
@@ -71,7 +78,8 @@ class BookmarkManager {
     /// Remove a bookmark at a specific index.
     func removeBookmark(at index: Int) {
         guard index >= 0 && index < bookmarks.count else { return }
-        bookmarks.remove(at: index)
+        let removed = bookmarks.remove(at: index)
+        bookmarkIndex.remove(removed.link)
         saveBookmarks()
         NotificationCenter.default.post(name: .bookmarksDidChange, object: nil)
     }
@@ -84,6 +92,7 @@ class BookmarkManager {
     /// Remove all bookmarks.
     func clearAll() {
         bookmarks.removeAll()
+        bookmarkIndex.removeAll()
         saveBookmarks()
         NotificationCenter.default.post(name: .bookmarksDidChange, object: nil)
     }
@@ -102,12 +111,15 @@ class BookmarkManager {
     private func loadBookmarks() {
         guard let data = try? Data(contentsOf: BookmarkManager.archiveURL) else {
             bookmarks = []
+            bookmarkIndex = Set<String>()
             return
         }
         if let loaded = (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story] {
             bookmarks = loaded
+            bookmarkIndex = Set(loaded.map { $0.link })
         } else {
             bookmarks = []
+            bookmarkIndex = Set<String>()
         }
     }
     

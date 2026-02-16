@@ -85,6 +85,9 @@ class Story: NSObject, NSSecureCoding {
     
     /// Strips HTML tags from a string to prevent rendering of injected markup.
     /// Uses a simple regex approach suitable for RSS description sanitization.
+    /// Entity decoding is done in a single pass for efficiency instead of
+    /// chaining multiple replacingOccurrences calls (which each allocate a
+    /// new intermediate string).
     static func stripHTML(_ html: String) -> String {
         // Remove HTML tags
         let stripped = html.replacingOccurrences(
@@ -93,15 +96,54 @@ class Story: NSObject, NSSecureCoding {
             options: .regularExpression,
             range: nil
         )
-        // Decode common HTML entities
-        return stripped
-            .replacingOccurrences(of: "&amp;", with: "&")
-            .replacingOccurrences(of: "&lt;", with: "<")
-            .replacingOccurrences(of: "&gt;", with: ">")
-            .replacingOccurrences(of: "&quot;", with: "\"")
-            .replacingOccurrences(of: "&#39;", with: "'")
-            .replacingOccurrences(of: "&nbsp;", with: " ")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        // Single-pass entity decoding — scan for '&' and replace known entities
+        // in one traversal instead of 6 separate string scans.
+        return decodeHTMLEntities(stripped).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    /// Decodes common HTML entities in a single pass through the string.
+    /// Avoids creating 6 intermediate String copies from chained
+    /// replacingOccurrences calls.
+    private static let entityMap: [(entity: String, replacement: Character)] = [
+        ("&amp;", "&"),
+        ("&lt;", "<"),
+        ("&gt;", ">"),
+        ("&quot;", "\""),
+        ("&#39;", "'"),
+        ("&nbsp;", " "),
+    ]
+    
+    private static func decodeHTMLEntities(_ input: String) -> String {
+        // Fast path: if no ampersand, nothing to decode
+        guard input.contains("&") else { return input }
+        
+        var result = ""
+        result.reserveCapacity(input.count)
+        var i = input.startIndex
+        
+        while i < input.endIndex {
+            if input[i] == "&" {
+                var matched = false
+                let remaining = input[i...]
+                for (entity, replacement) in entityMap {
+                    if remaining.hasPrefix(entity) {
+                        result.append(replacement)
+                        i = input.index(i, offsetBy: entity.count)
+                        matched = true
+                        break
+                    }
+                }
+                if !matched {
+                    result.append(input[i])
+                    i = input.index(after: i)
+                }
+            } else {
+                result.append(input[i])
+                i = input.index(after: i)
+            }
+        }
+        
+        return result
     }
     
     // MARK: - NSCoding
