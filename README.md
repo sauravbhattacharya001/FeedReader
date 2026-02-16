@@ -83,6 +83,61 @@ FeedReader/
 5. **Browsing** — Stories displayed in a `UITableView` with title, description, and thumbnail
 6. **Detail** — Tapping a story shows full description with a link to the original article
 
+## Swift Package
+
+FeedReader's core RSS parsing and feed management functionality is available as a Swift Package (`FeedReaderCore`). Use it in your own iOS apps to add RSS reading capabilities without the UI layer.
+
+### Installation via Swift Package Manager
+
+Add FeedReader to your project's `Package.swift`:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/sauravbhattacharya001/FeedReader.git", from: "2.0.0")
+]
+```
+
+Or in Xcode: **File → Add Package Dependencies → Enter the repository URL.**
+
+### Package API
+
+```swift
+import FeedReaderCore
+
+// Parse an RSS feed
+let parser = RSSParser()
+let stories = parser.parseData(xmlData)  // [RSSStory]
+
+// Check story properties
+for story in stories {
+    print(story.title)      // Story title
+    print(story.body)       // HTML-stripped description
+    print(story.link)       // Story URL
+    print(story.imagePath)  // Optional thumbnail URL
+}
+
+// Use built-in feed presets
+let feeds = FeedItem.presets  // BBC, NPR, TechCrunch, etc.
+
+// Check network reachability
+if NetworkReachability.isConnected() {
+    // Fetch feeds
+}
+
+// Validate URLs safely
+RSSStory.isSafeURL("https://example.com")  // true
+RSSStory.isSafeURL("javascript:alert(1)")  // false
+```
+
+### Package Components
+
+| Type | Description |
+|---|---|
+| `RSSParser` | XML-based RSS feed parser with concurrent multi-feed support and deduplication |
+| `RSSStory` | Parsed story model with URL validation and HTML sanitization |
+| `FeedItem` | Feed source model with 10 built-in presets |
+| `NetworkReachability` | Network connectivity check via SystemConfiguration |
+
 ## Getting Started
 
 ### Prerequisites
