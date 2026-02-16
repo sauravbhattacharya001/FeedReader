@@ -6,6 +6,11 @@
 //  concerns from the view controller. Handles XML parsing for
 //  individual feeds and multi-feed aggregation with deduplication.
 //
+//  Fix: Each feed is now parsed using an isolated FeedParseContext that
+//  owns its own XMLParser delegate state. A serial queue serializes all
+//  mutations to the shared `stories` / `seenLinks` / `pendingFeedCount`
+//  properties, eliminating the race condition described in issue #10.
+//
 
 import UIKit
 
@@ -15,22 +20,18 @@ protocol RSSFeedParserDelegate: AnyObject {
     func parserDidFailWithError(_ error: Error?)
 }
 
-class RSSFeedParser: NSObject, XMLParserDelegate {
+// MARK: - Per-Feed Parse Context
 
-    // MARK: - Properties
+/// Isolates XML parsing state for a single feed so that concurrent
+/// feeds never share mutable parsing buffers. Each context acts as its
+/// own XMLParserDelegate, collecting stories into a local array that is
+/// merged into the parent RSSFeedParser on the serial queue.
+private class FeedParseContext: NSObject, XMLParserDelegate {
 
-    weak var delegate: RSSFeedParserDelegate?
+    /// Stories parsed from this single feed.
+    private(set) var parsedStories: [Story] = []
 
-    /// Accumulated stories from all feeds being parsed.
-    private(set) var stories: [Story] = []
-
-    /// O(1) duplicate detection by link during multi-feed loading.
-    private var seenLinks = Set<String>()
-
-    /// Number of feeds still loading.
-    private var pendingFeedCount = 0
-
-    // XML parsing state
+    // Per-item XML parsing state — fully isolated per feed.
     private var currentElement: NSString = ""
     private var insideItem = false
     private var storyTitle = NSMutableString()
@@ -38,71 +39,14 @@ class RSSFeedParser: NSObject, XMLParserDelegate {
     private var link = NSMutableString()
     private var imagePath = NSMutableString()
 
-    // MARK: - Public API
-
-    /// Parse stories from multiple feed URLs concurrently.
-    /// Calls delegate when all feeds have completed.
-    func loadFeeds(_ urls: [String]) {
-        guard !urls.isEmpty else {
-            delegate?.parserDidFinishLoading(stories: [])
-            return
-        }
-
-        stories = []
-        seenLinks = Set<String>()
-        pendingFeedCount = urls.count
-
-        for url in urls {
-            parseFeed(url)
-        }
-    }
-
-    /// Parse stories from a single feed URL.
-    func parseFeed(_ url: String) {
-        guard let feedURL = URL(string: url) else {
-            print("RSSFeedParser: invalid URL — \(url)")
-            feedCompleted()
-            return
-        }
-
-        let task = URLSession.shared.dataTask(with: feedURL) { [weak self] data, response, error in
-            guard let self = self else { return }
-
-            guard let data = data, error == nil else {
-                print("RSSFeedParser: fetch failed — \(error?.localizedDescription ?? "unknown")")
-                DispatchQueue.main.async { self.feedCompleted() }
-                return
-            }
-
-            // Validate HTTP status
-            if let httpResponse = response as? HTTPURLResponse,
-               !(200...299).contains(httpResponse.statusCode) {
-                print("RSSFeedParser: HTTP \(httpResponse.statusCode)")
-                DispatchQueue.main.async { self.feedCompleted() }
-                return
-            }
-
-            let xmlParser = XMLParser(data: data)
-            xmlParser.delegate = self
-            xmlParser.parse()
-
-            DispatchQueue.main.async { self.feedCompleted() }
-        }
-        task.resume()
-    }
-
-    /// Parse stories from local file data (for unit testing).
-    func parseData(_ data: Data) -> [Story] {
-        stories = []
-        seenLinks = Set<String>()
-        pendingFeedCount = 1
-
+    /// Parse the given data synchronously on the calling thread.
+    /// Returns the stories extracted from the feed.
+    func parse(data: Data) -> [Story] {
+        parsedStories = []
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = self
         xmlParser.parse()
-
-        pendingFeedCount = 0
-        return stories
+        return parsedStories
     }
 
     // MARK: - XMLParserDelegate
@@ -152,20 +96,135 @@ class RSSFeedParser: NSObject, XMLParserDelegate {
             link: link.components(separatedBy: "\n")[0],
             imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath
         ) {
-            if !seenLinks.contains(story.link) {
-                seenLinks.insert(story.link)
-                stories.append(story)
-            }
+            parsedStories.append(story)
         }
         insideItem = false
+    }
+}
+
+// MARK: - RSSFeedParser
+
+class RSSFeedParser: NSObject {
+
+    // MARK: - Properties
+
+    weak var delegate: RSSFeedParserDelegate?
+
+    /// Accumulated stories from all feeds being parsed.
+    private(set) var stories: [Story] = []
+
+    /// O(1) duplicate detection by link during multi-feed loading.
+    private var seenLinks = Set<String>()
+
+    /// Number of feeds still loading.
+    private var pendingFeedCount = 0
+
+    /// Serial queue that protects all mutable shared state (`stories`,
+    /// `seenLinks`, `pendingFeedCount`). Network fetches and XML parsing
+    /// still happen concurrently on URLSession threads; only the merge
+    /// step is serialized.
+    private let parseQueue = DispatchQueue(label: "com.feedreader.parseQueue")
+
+    /// Cancels any in-progress load when a new one starts, so stale
+    /// results from an old refresh don't overwrite a newer one.
+    private var currentSession: URLSession?
+
+    // MARK: - Public API
+
+    /// Parse stories from multiple feed URLs concurrently.
+    /// Calls delegate on the main thread when all feeds have completed.
+    ///
+    /// If a previous load is still in flight it is cancelled first,
+    /// preventing stale data from arriving after the new request.
+    func loadFeeds(_ urls: [String]) {
+        guard !urls.isEmpty else {
+            delegate?.parserDidFinishLoading(stories: [])
+            return
+        }
+
+        // Cancel any in-progress load to avoid stale results.
+        currentSession?.invalidateAndCancel()
+
+        let session = URLSession(configuration: .default)
+        currentSession = session
+
+        parseQueue.sync {
+            stories = []
+            seenLinks = Set<String>()
+            pendingFeedCount = urls.count
+        }
+
+        for url in urls {
+            parseFeed(url, session: session)
+        }
+    }
+
+    /// Parse stories from a single feed URL using the given session.
+    private func parseFeed(_ url: String, session: URLSession) {
+        guard let feedURL = URL(string: url) else {
+            print("RSSFeedParser: invalid URL — \(url)")
+            feedCompleted()
+            return
+        }
+
+        let task = session.dataTask(with: feedURL) { [weak self] data, response, error in
+            guard let self = self else { return }
+
+            guard let data = data, error == nil else {
+                if (error as? URLError)?.code == .cancelled { return }
+                print("RSSFeedParser: fetch failed — \(error?.localizedDescription ?? "unknown")")
+                self.feedCompleted()
+                return
+            }
+
+            // Validate HTTP status
+            if let httpResponse = response as? HTTPURLResponse,
+               !(200...299).contains(httpResponse.statusCode) {
+                print("RSSFeedParser: HTTP \(httpResponse.statusCode)")
+                self.feedCompleted()
+                return
+            }
+
+            // Parse in an isolated context — no shared mutable state.
+            let context = FeedParseContext()
+            let feedStories = context.parse(data: data)
+
+            // Merge results on the serial queue.
+            self.parseQueue.async {
+                for story in feedStories {
+                    if !self.seenLinks.contains(story.link) {
+                        self.seenLinks.insert(story.link)
+                        self.stories.append(story)
+                    }
+                }
+                self.feedCompletedOnQueue()
+            }
+        }
+        task.resume()
+    }
+
+    /// Parse stories from local file data (for unit testing).
+    /// Runs synchronously on the calling thread.
+    func parseData(_ data: Data) -> [Story] {
+        let context = FeedParseContext()
+        return context.parse(data: data)
     }
 
     // MARK: - Private
 
+    /// Called from arbitrary threads — bounces to the serial queue.
     private func feedCompleted() {
+        parseQueue.async { self.feedCompletedOnQueue() }
+    }
+
+    /// Must be called on `parseQueue`.
+    private func feedCompletedOnQueue() {
         pendingFeedCount -= 1
         if pendingFeedCount <= 0 {
-            delegate?.parserDidFinishLoading(stories: stories)
+            let finalStories = stories
+            DispatchQueue.main.async {
+                self.delegate?.parserDidFinishLoading(stories: finalStories)
+            }
         }
     }
 }
