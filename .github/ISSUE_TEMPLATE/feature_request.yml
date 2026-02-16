@@ -1,0 +1,81 @@
+name: ✨ Feature Request
+description: Suggest a new feature or enhancement for FeedReader
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea for FeedReader? We'd love to hear it! Please describe the feature below.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this feature solve? Is it related to a frustration?
+      placeholder: "I'm always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature or behavior you'd like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative approaches you've considered?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature Area
+      description: Which area of the app does this relate to?
+      options:
+        - Feed Parsing / Loading
+        - Offline Caching
+        - Bookmarks
+        - Search / Filtering
+        - Image Loading
+        - Multi-Feed Management
+        - UI / Design
+        - Share / Export
+        - Settings / Preferences
+        - Accessibility
+        - New Feature
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How important is this to you?
+      options:
+        - Nice to have
+        - Would significantly improve my experience
+        - Blocking my use of the app
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Mockups, screenshots, links, or any other context.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true

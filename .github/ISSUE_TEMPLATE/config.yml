@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/sauravbhattacharya001/FeedReader/tree/master/docs
+    about: Check the project documentation before opening an issue.
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/sauravbhattacharya001/FeedReader/blob/master/SECURITY.md
+    about: Report security vulnerabilities privately via SECURITY.md.
