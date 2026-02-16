@@ -35,6 +35,8 @@
 		DD000001DDDD000100000002 /* FeedManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001DDDD000100000020 /* FeedManager.swift */; };
 		DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001DDDD000100000030 /* FeedListViewController.swift */; };
 		DD000001DDDD000100000004 /* FeedManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001DDDD000100000040 /* FeedManagerTests.swift */; };
+		EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001EEEE000100000010 /* RSSFeedParser.swift */; };
+		EE000001EEEE000100000002 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001EEEE000100000020 /* ImageCache.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +79,8 @@
 		DD000001DDDD000100000020 /* FeedManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FeedManager.swift; sourceTree = "<group>"; };
 		DD000001DDDD000100000030 /* FeedListViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FeedListViewController.swift; sourceTree = "<group>"; };
 		DD000001DDDD000100000040 /* FeedManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FeedManagerTests.swift; sourceTree = "<group>"; };
+		EE000001EEEE000100000010 /* RSSFeedParser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RSSFeedParser.swift; sourceTree = "<group>"; };
+		EE000001EEEE000100000020 /* ImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +138,8 @@
 				DD000001DDDD000100000010 /* Feed.swift */,
 				DD000001DDDD000100000020 /* FeedManager.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
+				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
+				EE000001EEEE000100000020 /* ImageCache.swift */,
 				080686B41D89F2DA00C5E08B /* Assets.xcassets */,
 				080686B61D89F2DA00C5E08B /* LaunchScreen.storyboard */,
 				080686B91D89F2DA00C5E08B /* Info.plist */,
@@ -277,6 +283,8 @@
 				DD000001DDDD000100000001 /* Feed.swift in Sources */,
 				DD000001DDDD000100000002 /* FeedManager.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
+				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
+				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

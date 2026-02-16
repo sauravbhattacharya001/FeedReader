@@ -8,7 +8,7 @@
 
 import UIKit
 
-class StoryTableViewController: UITableViewController, XMLParserDelegate, UISearchResultsUpdating, UITableViewDataSourcePrefetching {
+class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UISearchResultsUpdating, UITableViewDataSourcePrefetching {
     
     // MARK: - Properties
     
@@ -17,49 +17,20 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     /// Filtered stories shown when the search bar is active.
     private var filteredStories = [Story]()
     
-    var parser = XMLParser()
-    
-    var element = NSString()
-    
-    var storyTitle = NSMutableString()
-    var storyDescription = NSMutableString()
-    var link = NSMutableString()
-    var imagePath = NSMutableString()
-    
     var activityIndicator = UIActivityIndicatorView()
     
     /// Search controller for filtering stories by title or description.
     private let searchController = UISearchController(searchResultsController: nil)
     
-    /// In-memory image cache to avoid redundant network requests when
-    /// cells are reused during scrolling. NSCache automatically evicts
-    /// entries under memory pressure. (fixes #7)
-    private let imageCache = NSCache<NSString, UIImage>()
+    /// RSS feed parser — handles XML parsing and multi-feed aggregation.
+    private let feedParser = RSSFeedParser()
 
-    /// Tracks whether we are inside an <item> element so we only capture
-    /// per-item data (title, description, guid) and ignore channel-level
-    /// elements with the same names.
-    private var insideItem = false
-    
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
     private var hasLoadedData = false
     
-    /// Tracks the number of feed fetch operations pending so we know
-    /// when all enabled feeds have finished loading.
-    private var pendingFeedCount = 0
-    
-    /// Temporary accumulator for stories from all feeds during multi-feed loading.
-    private var accumulatedStories = [Story]()
-    
-    /// O(1) lookup set for duplicate detection during multi-feed loading.
-    /// Tracks story links already added to accumulatedStories to avoid
-    /// the previous O(n) linear scan on every new story.
-    private var accumulatedLinks = Set<String>()
-    
-    /// Debounce timer for search filtering. Prevents re-filtering on every
-    /// keystroke during rapid typing, reducing unnecessary work.
+    /// Debounce timer for search filtering.
     private var searchDebounceTimer: Timer?
     
     /// Returns true when the search bar is active and has text.
@@ -76,6 +47,8 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        feedParser.delegate = self
         
         // Set up loading indicator
         activityIndicator = UIActivityIndicatorView(style: .medium)
@@ -96,8 +69,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         definesPresentationContext = true
         
         // Enable image prefetching for smoother scrolling.
-        // The prefetch data source pre-loads images for upcoming cells
-        // before they become visible, reducing visual stutter.
         tableView.prefetchDataSource = self
         
         // Add bookmarks button to navigation bar
@@ -170,10 +141,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     /// Pull-to-refresh handler — reloads the RSS feed.
     @objc private func refreshFeed() {
-        // Force a fresh load — beginParsing will call endRefreshing
-        // on completion instead of using a hardcoded delay. (fixes race
-        // condition where the 1-second timer fired before the async
-        // fetch completed, leaving stale data visible.)
         loadData()
     }
     
@@ -182,9 +149,6 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     func updateSearchResults(for searchController: UISearchController) {
         let searchText = searchController.searchBar.text ?? ""
         
-        // Debounce search to avoid re-filtering on every keystroke.
-        // 200ms delay is fast enough to feel instant while preventing
-        // redundant work during rapid typing.
         searchDebounceTimer?.invalidate()
         searchDebounceTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: false) { [weak self] _ in
             self?.filterStories(for: searchText)
@@ -203,7 +167,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        imageCache.removeAllObjects()
+        ImageCache.shared.clearCache()
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -216,34 +180,39 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     func loadData() {
         if Reachability.isConnectedToNetwork() == true {
-            // Load stories from all enabled feeds
             let enabledFeeds = FeedManager.shared.enabledFeeds
             if enabledFeeds.isEmpty {
-                // No feeds enabled — show empty state
                 stories = []
-                self.tableView.reloadData()
+                tableView.reloadData()
                 return
             }
             
-            // Reset accumulator and start loading all feeds
-            accumulatedStories = []
-            accumulatedLinks = Set<String>()
-            pendingFeedCount = enabledFeeds.count
-            
-            for feed in enabledFeeds {
-                beginParsing(feed.url)
-            }
+            activityIndicator.startAnimating()
+            feedParser.loadFeeds(enabledFeeds.map { $0.url })
             
         } else if let savedStories = loadStories() {
-            // Load data from saved state.
             stories = savedStories
-            self.tableView.reloadData()
+            tableView.reloadData()
         } else {
-            // Show no internet connection image.
             if let resultController = storyboard!.instantiateViewController(withIdentifier: "NoInternetFound") as? NoInternetFoundViewController {
                 present(resultController, animated: true, completion: nil)
             }
         }
+    }
+    
+    // MARK: - RSSFeedParserDelegate
+    
+    func parserDidFinishLoading(stories: [Story]) {
+        self.stories = stories
+        activityIndicator.stopAnimating()
+        refreshControl?.endRefreshing()
+        tableView.reloadData()
+    }
+    
+    func parserDidFailWithError(_ error: Error?) {
+        print("Feed parsing error: \(error?.localizedDescription ?? "unknown")")
+        activityIndicator.stopAnimating()
+        refreshControl?.endRefreshing()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -251,152 +220,16 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         saveStories()
     }
     
-    // MARK: - RSS Feed Parser
+    // MARK: - Test Support
     
-    func beginParsing(_ url: String)
-    {
-        // Don't clear stories here — we accumulate from multiple feeds
-        guard let feedURL = URL(string: url) else {
-            print("Failed to create URL from string: \(url)")
-            feedLoadCompleted()
+    /// Parse stories from a local file path (for unit testing).
+    func beginParsingTest(_ path: String) {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
+            print("Failed to load test data from path: \(path)")
             return
         }
-        
-        // Show loading indicator while fetching data
-        activityIndicator.startAnimating()
-        
-        // Fetch RSS data asynchronously to avoid blocking the main thread (fixes #4)
-        let task = URLSession.shared.dataTask(with: feedURL) { [weak self] data, response, error in
-            guard let self = self else { return }
-            
-            guard let data = data, error == nil else {
-                print("Failed to fetch RSS feed: \(error?.localizedDescription ?? "Unknown error")")
-                DispatchQueue.main.async {
-                    self.feedLoadCompleted()
-                }
-                return
-            }
-            
-            // Validate HTTP response status before parsing (fixes #6)
-            if let httpResponse = response as? HTTPURLResponse,
-               !(200...299).contains(httpResponse.statusCode) {
-                print("RSS feed returned HTTP \(httpResponse.statusCode)")
-                DispatchQueue.main.async {
-                    self.feedLoadCompleted()
-                }
-                return
-            }
-            
-            // Parse XML on the URLSession callback thread — safe because
-            // the delegate methods only touch instance vars that are not
-            // accessed from any other thread during parsing.
-            // Note: for multi-feed, we collect into accumulatedStories
-            // and merge into stories when all feeds complete.
-            let feedParser = XMLParser(data: data)
-            feedParser.delegate = self
-            feedParser.parse()
-            
-            // This feed is done — check if all feeds are loaded
-            DispatchQueue.main.async {
-                self.feedLoadCompleted()
-            }
-        }
-        task.resume()
-    }
-    
-    /// Called when a single feed finishes loading. When all feeds are done,
-    /// merges accumulated stories and refreshes the UI.
-    private func feedLoadCompleted() {
-        pendingFeedCount -= 1
-        
-        if pendingFeedCount <= 0 {
-            // All feeds loaded — merge accumulated stories
-            stories = accumulatedStories
-            accumulatedStories = []
-            accumulatedLinks = Set<String>()
-            
-            activityIndicator.stopAnimating()
-            refreshControl?.endRefreshing()
-            tableView.reloadData()
-        }
-    }
-    
-    func beginParsingTest(_ url: String)
-    {
-        stories = []
-        accumulatedStories = []
-        accumulatedLinks = Set<String>()
-        pendingFeedCount = 1
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: url)) else {
-            print("Failed to load test data from path: \(url)")
-            return
-        }
-        parser = XMLParser(data: data)
-        parser.delegate = self
-        parser.parse()
-        stories = accumulatedStories
-        accumulatedStories = []
-        pendingFeedCount = 0
-        self.tableView.reloadData()
-    }
-    
-    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?, qualifiedName qName: String?, attributes attributeDict: [String : String])
-    {
-        element = elementName as NSString
-        if (elementName as NSString).isEqual(to: "item")
-        {
-            insideItem = true
-            storyTitle = NSMutableString()
-            storyDescription = NSMutableString()
-            link = NSMutableString()
-            imagePath = NSMutableString()
-        }
-        
-        // BBC RSS feeds use <media:thumbnail url="..."/> for per-item images.
-        // The colon-prefixed element arrives as "media:thumbnail" in the
-        // non-namespace-aware parser. Extract the URL from the attribute.
-        if insideItem && (elementName == "media:thumbnail" || elementName == "enclosure") {
-            if let urlAttr = attributeDict["url"], !urlAttr.isEmpty {
-                // Only set if we haven't already found a thumbnail for this item
-                if imagePath.length == 0 {
-                    imagePath.setString(urlAttr)
-                }
-            }
-        }
-    }
-    
-    func parser(_ parser: XMLParser, foundCharacters string: String)
-    {
-        // Only capture text content when inside an <item> element to avoid
-        // mixing channel-level title/description with per-item data.
-        guard insideItem else { return }
-        
-        if element.isEqual(to: "title") {
-            storyTitle.append(string)
-        } else if element.isEqual(to: "description") {
-            storyDescription.append(string)
-        } else if element.isEqual(to: "guid"){
-            link.append(string)
-        }
-        // Note: per-item image URLs are extracted from <media:thumbnail>
-        // attributes in didStartElement, not from character data.
-    }
-    
-    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?)
-    {
-        if (elementName as NSString).isEqual(to: "item") {
-            // End of item — create the Story object
-            let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
-            if let aStory = Story(title: storyTitle as String, photo: UIImage(named: "sample")!, description: storyDescription as String, link: link.components(separatedBy: "\n")[0], imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath) {
-                // O(1) duplicate detection using a Set instead of the
-                // previous O(n) linear scan over accumulatedStories.
-                if !accumulatedLinks.contains(aStory.link) {
-                    accumulatedLinks.insert(aStory.link)
-                    accumulatedStories.append(aStory)
-                }
-            }
-            insideItem = false
-        }
+        stories = feedParser.parseData(data)
+        tableView.reloadData()
     }
 
     // MARK: - Table view data source
@@ -410,38 +243,23 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        // Table view cells are reused and should be dequeued using a cell identifier.
         let cellIndentifier = "StoryTableViewCell"
         let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as! StoryTableViewCell
         
-        cell.titleLabel.text = displayedStories[indexPath.row].title
-        cell.descriptionLabel.text = displayedStories[indexPath.row].body
+        let story = displayedStories[indexPath.row]
+        cell.titleLabel.text = story.title
+        cell.descriptionLabel.text = story.body
         
-        // Load thumbnail with in-memory cache to avoid redundant network
-        // requests when cells are reused during scrolling. (fixes #7)
-        // Only load images from safe URL schemes (https/http) to prevent
-        // file:// or other scheme-based attacks from malicious RSS feeds.
-        cell.photoImage.image = UIImage(named: "sample") // placeholder while loading
-        if let imagePathString = displayedStories[indexPath.row].imagePath,
-           Story.isSafeURL(imagePathString),
-           let url = URL(string: imagePathString) {
-            let cacheKey = imagePathString as NSString
-            if let cachedImage = imageCache.object(forKey: cacheKey) {
-                cell.photoImage.image = cachedImage
-            } else {
-                let currentIndexPath = indexPath
-                URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                    guard let data = data, let image = UIImage(data: data) else { return }
-                    self?.imageCache.setObject(image, forKey: cacheKey)
-                    DispatchQueue.main.async {
-                        // Only update if the cell is still showing the same row
-                        // (guards against cell reuse during fast scrolling)
-                        if let visibleCell = self?.tableView.cellForRow(at: currentIndexPath) as? StoryTableViewCell {
-                            visibleCell.photoImage.image = image
-                        }
-                    }
-                }.resume()
+        // Load thumbnail via shared ImageCache
+        cell.photoImage.image = UIImage(named: "sample") // placeholder
+        if let imagePathString = story.imagePath {
+            let currentIndexPath = indexPath
+            ImageCache.shared.loadImage(from: imagePathString) { [weak self] image in
+                guard let image = image else { return }
+                // Only update if the cell is still showing the same row
+                if let visibleCell = self?.tableView.cellForRow(at: currentIndexPath) as? StoryTableViewCell {
+                    visibleCell.photoImage.image = image
+                }
             }
         }
         
@@ -467,38 +285,20 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
     
     // MARK: - Prefetching
     
-    /// Pre-load images for cells that are about to scroll into view.
-    /// This eliminates the flash of placeholder images by fetching
-    /// thumbnails before the cell is actually requested.
     func tableView(_ tableView: UITableView, prefetchRowsAt indexPaths: [IndexPath]) {
-        for indexPath in indexPaths {
-            guard indexPath.row < displayedStories.count else { continue }
-            let story = displayedStories[indexPath.row]
-            
-            guard let imagePathString = story.imagePath,
-                  Story.isSafeURL(imagePathString),
-                  let url = URL(string: imagePathString) else { continue }
-            
-            let cacheKey = imagePathString as NSString
-            // Skip if already cached
-            if imageCache.object(forKey: cacheKey) != nil { continue }
-            
-            // Fire off a background fetch to warm the cache
-            URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
-                guard let data = data, let image = UIImage(data: data) else { return }
-                self?.imageCache.setObject(image, forKey: cacheKey)
-            }.resume()
+        let urls = indexPaths.compactMap { indexPath -> String? in
+            guard indexPath.row < displayedStories.count else { return nil }
+            return displayedStories[indexPath.row].imagePath
         }
+        ImageCache.shared.prefetch(urls: urls)
     }
     
     // MARK: - Navigation
 
-    // Prepare segue for showing one story detail view.
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowDetail" {
             let storyDetailViewController = segue.destination as! StoryViewController
             
-            // Get the cell that generated this segue.
             if let selectedStoryCell = sender as? StoryTableViewCell {
                 let indexPath = tableView.indexPath(for: selectedStoryCell)!
                 let selectedStory = displayedStories[indexPath.row]
@@ -507,7 +307,7 @@ class StoryTableViewController: UITableViewController, XMLParserDelegate, UISear
         }
     }
     
-    // MARK: - NSCoding
+    // MARK: - Persistence
     
     func saveStories() {
         do {
