@@ -1,0 +1,68 @@
+# Configuration for the auto-labeler GitHub Action.
+# Labels are applied to PRs based on which files are modified.
+# See: https://github.com/actions/labeler
+
+# Core RSS parsing and data models
+"core":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "FeedReader/RSSFeedParser.swift"
+          - "FeedReader/Story.swift"
+          - "FeedReader/Feed.swift"
+          - "FeedReader/FeedManager.swift"
+          - "FeedReader/BookmarkManager.swift"
+          - "FeedReader/ImageCache.swift"
+          - "FeedReader/Reachability.swift"
+
+# UI / View Controllers
+"ui":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "FeedReader/*ViewController.swift"
+          - "FeedReader/*ViewCell.swift"
+          - "FeedReader/Base.lproj/**"
+          - "FeedReader/Assets.xcassets/**"
+
+# Swift Package (SPM library)
+"swift-package":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Package.swift"
+          - "Sources/**"
+
+# Tests
+"tests":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "FeedReaderTests/**"
+          - "Tests/**"
+
+# CI/CD and GitHub config
+"ci/cd":
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**"
+          - ".github/dependabot.yml"
+          - ".github/labeler.yml"
+
+# Documentation
+"documentation":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "*.md"
+          - "docs/**"
+          - "LICENSE"
+
+# Docker
+"docker":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Dockerfile"
+          - ".dockerignore"
+
+# Xcode project configuration
+"xcode":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "FeedReader.xcodeproj/**"
+          - "FeedReader/Info.plist"

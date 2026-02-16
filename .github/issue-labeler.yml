@@ -1,0 +1,30 @@
+# Configuration for the issue auto-labeler.
+# Labels are applied to issues based on title/body regex matches.
+# See: https://github.com/github/issue-labeler
+
+"bug":
+  - "(bug|crash|error|exception|fail|broken|not working|regression)"
+
+"enhancement":
+  - "(feature|enhancement|improve|request|add support|wish|would be nice)"
+
+"documentation":
+  - "(doc|documentation|readme|typo|spelling)"
+
+"question":
+  - "(question|how to|how do|what is|help|confused)"
+
+"ui":
+  - "(ui|layout|storyboard|view|screen|display|visual|design)"
+
+"core":
+  - "(rss|parser|parsing|xml|feed|story|cache|network|reachability)"
+
+"swift-package":
+  - "(swift package|spm|package\\.swift|FeedReaderCore)"
+
+"performance":
+  - "(perf|performance|slow|memory|leak|optimize|optimization)"
+
+"security":
+  - "(security|vulnerability|cve|injection|xss|unsafe)"
