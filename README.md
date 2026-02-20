@@ -9,12 +9,28 @@
 </p>
 
 <p align="center">
+  <!-- CI / Quality -->
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/ci.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml/badge.svg" alt="Pages"></a>
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
+  <br>
+  <!-- Platform / Language -->
   <img src="https://img.shields.io/badge/platform-iOS-blue?logo=apple" alt="Platform">
   <img src="https://img.shields.io/badge/swift-3.0-orange?logo=swift" alt="Swift">
   <img src="https://img.shields.io/badge/Xcode-8+-blue?logo=xcode" alt="Xcode">
+  <br>
+  <!-- Repo metadata -->
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/releases/latest"><img src="https://img.shields.io/github/v/release/sauravbhattacharya001/FeedReader?include_prereleases&sort=semver" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/sauravbhattacharya001/FeedReader" alt="License"></a>
   <img src="https://img.shields.io/github/languages/code-size/sauravbhattacharya001/FeedReader" alt="Code Size">
   <img src="https://img.shields.io/github/last-commit/sauravbhattacharya001/FeedReader" alt="Last Commit">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="License"></a>
+  <img src="https://img.shields.io/github/commit-activity/m/sauravbhattacharya001/FeedReader" alt="Commit Activity">
+  <br>
+  <!-- Community -->
+  <img src="https://img.shields.io/github/issues/sauravbhattacharya001/FeedReader" alt="Open Issues">
+  <img src="https://img.shields.io/github/issues-pr/sauravbhattacharya001/FeedReader" alt="Open PRs">
+  <img src="https://img.shields.io/github/stars/sauravbhattacharya001/FeedReader?style=social" alt="Stars">
 </p>
 
 ---
