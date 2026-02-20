@@ -1,7 +1,8 @@
 # CI workflow for FeedReader (Swift/iOS)
 #
 # Builds the Xcode project and runs unit tests on macOS runners
-# using the iPhone simulator.
+# using the iPhone simulator. Collects code coverage via xccov
+# and generates a coverage report artifact.
 
 name: CI
 
@@ -63,18 +64,109 @@ jobs:
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
             | xcpretty || true
 
-      - name: Run tests
+      - name: Run tests with code coverage
         run: |
           xcodebuild test \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
             -configuration Debug \
+            -enableCodeCoverage YES \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath TestResults \
             | xcpretty || true
+
+      - name: Extract code coverage report
+        if: always()
+        run: |
+          echo "=== Code Coverage Report ==="
+
+          # Find the xccovreport inside the result bundle
+          REPORT=$(find TestResults -name '*.xccovreport' 2>/dev/null | head -1)
+          ARCHIVE=$(find TestResults -name '*.xccovarchive' 2>/dev/null | head -1)
+
+          if [ -n "$ARCHIVE" ]; then
+            echo "--- Per-file coverage ---"
+            xcrun xccov view --report --json "$ARCHIVE" > coverage.json 2>/dev/null || true
+
+            if [ -f coverage.json ]; then
+              # Generate human-readable summary
+              python3 << 'PYEOF'
+          import json, sys
+
+          try:
+              with open("coverage.json") as f:
+                  data = json.load(f)
+
+              targets = data.get("targets", [])
+              total_covered = 0
+              total_executable = 0
+
+              print(f"{'File':<50} {'Lines':>8} {'Covered':>8} {'Coverage':>10}")
+              print("-" * 80)
+
+              for target in targets:
+                  tname = target.get("name", "Unknown")
+                  # Skip test targets
+                  if "Test" in tname:
+                      continue
+                  for src_file in target.get("files", []):
+                      fname = src_file.get("name", "?")
+                      cov = src_file.get("lineCoverage", 0)
+                      executable = src_file.get("executableLines", 0)
+                      covered = src_file.get("coveredLines", 0)
+                      total_covered += covered
+                      total_executable += executable
+                      pct = f"{cov * 100:.1f}%"
+                      print(f"{fname:<50} {executable:>8} {covered:>8} {pct:>10}")
+
+              if total_executable > 0:
+                  overall = total_covered / total_executable * 100
+                  print("-" * 80)
+                  print(f"{'TOTAL':<50} {total_executable:>8} {total_covered:>8} {overall:>9.1f}%")
+                  print(f"\n✅ Overall code coverage: {overall:.1f}%")
+
+                  # Write coverage percentage to file for badge generation
+                  with open("coverage-percent.txt", "w") as pf:
+                      pf.write(f"{overall:.1f}")
+              else:
+                  print("No executable lines found in coverage data.")
+          except Exception as e:
+              print(f"Warning: Could not parse coverage JSON: {e}", file=sys.stderr)
+          PYEOF
+            fi
+          elif [ -n "$REPORT" ]; then
+            echo "Found xccovreport but no archive. Listing report:"
+            xcrun xccov view --report "$REPORT" 2>/dev/null || echo "(could not read report)"
+          else
+            echo "No coverage data found in TestResults bundle."
+            echo "Contents of TestResults:"
+            find TestResults -type f 2>/dev/null | head -30
+          fi
+
+      - name: Generate coverage badge
+        if: always()
+        run: |
+          if [ -f coverage-percent.txt ]; then
+            PCT=$(cat coverage-percent.txt)
+            # Determine badge color
+            COLOR="red"
+            if (( $(echo "$PCT >= 80" | bc -l) )); then
+              COLOR="brightgreen"
+            elif (( $(echo "$PCT >= 60" | bc -l) )); then
+              COLOR="green"
+            elif (( $(echo "$PCT >= 40" | bc -l) )); then
+              COLOR="yellow"
+            elif (( $(echo "$PCT >= 20" | bc -l) )); then
+              COLOR="orange"
+            fi
+            echo "Coverage: ${PCT}% (color: $COLOR)"
+            echo "Badge URL: https://img.shields.io/badge/coverage-${PCT}%25-${COLOR}"
+          else
+            echo "No coverage data available for badge."
+          fi
 
       - name: Upload test results
         if: always()
@@ -82,7 +174,58 @@ jobs:
         with:
           name: test-results
           path: TestResults
-          retention-days: 7
+          retention-days: 14
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.json
+            coverage-percent.txt
+          retention-days: 14
+
+  spm-test:
+    name: SPM Test (FeedReaderCore)
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        xcode: ['16.2']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ matrix.xcode }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
+          swift --version
+
+      - name: Run SPM tests with coverage
+        run: |
+          swift test --enable-code-coverage 2>&1 || true
+
+      - name: Extract SPM coverage
+        run: |
+          PROFDATA=$(find .build -name 'default.profdata' 2>/dev/null | head -1)
+          BIN=$(find .build -name 'FeedReaderCorePackageTests.xctest' -o -name '*PackageTests' -type f 2>/dev/null | head -1)
+
+          if [ -n "$PROFDATA" ] && [ -n "$BIN" ]; then
+            echo "=== SPM Code Coverage (FeedReaderCore) ==="
+            xcrun llvm-cov report "$BIN" -instr-profile="$PROFDATA" \
+              --ignore-filename-regex='Tests/' 2>/dev/null || true
+            echo ""
+            echo "--- Detailed per-file coverage ---"
+            xcrun llvm-cov report "$BIN" -instr-profile="$PROFDATA" \
+              --ignore-filename-regex='Tests/' --show-functions=false 2>/dev/null || true
+          else
+            echo "SPM coverage data not found."
+            echo "PROFDATA: $PROFDATA"
+            echo "BIN: $BIN"
+            find .build -name '*.profdata' 2>/dev/null || true
+          fi
 
   lint:
     name: SwiftLint

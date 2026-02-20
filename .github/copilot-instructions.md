@@ -49,9 +49,26 @@ xcodebuild test \
   -scheme FeedReader \
   -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
   -configuration Debug \
+  -enableCodeCoverage YES \
   CODE_SIGN_IDENTITY="" \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGNING_ALLOWED=NO
+```
+
+### Code Coverage
+
+Code coverage is enabled in the Xcode scheme and CI workflow:
+
+- **Xcode scheme**: `codeCoverageEnabled = "YES"` in `FeedReader.xcscheme`
+- **CI**: The `build-and-test` job passes `-enableCodeCoverage YES` to `xcodebuild test`
+- **SPM**: The `spm-test` job runs `swift test --enable-code-coverage` for the `FeedReaderCore` package
+- **Reports**: Coverage JSON and human-readable summaries are uploaded as CI artifacts
+- **xccov**: Use `xcrun xccov view --report --json <archive>` to inspect coverage locally
+
+To view coverage locally after running tests:
+```bash
+# After xcodebuild test with -enableCodeCoverage YES -resultBundlePath TestResults
+xcrun xccov view --report --json TestResults/*.xccovarchive
 ```
 
 Test files are in `FeedReaderTests/`:
