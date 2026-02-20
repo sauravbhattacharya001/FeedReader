@@ -56,6 +56,7 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 🔍 **Search & Filter** — Real-time search across story titles and descriptions
 - 📤 **Share** — Share stories via the system share sheet
 - 👁️ **Read/Unread Tracking** — Stories are automatically marked as read when tapped, with blue dot indicators for unread stories, unread count in the title bar, segmented filter (All/Unread/Read), mark all read, and swipe-left to toggle read status
+- 📊 **Reading Statistics** — Analytics dashboard showing reading habits: total stories read, daily/weekly/monthly counts, daily average, reading streaks (current + longest) with motivational messages, hourly activity bar chart, per-feed breakdown with progress bars, bookmark count, and tracking history
 
 ## Architecture
 
@@ -69,6 +70,8 @@ FeedReader/
 │   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
 │   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
 │   ├── ReadStatusManager.swift          # Read/unread status tracking (UserDefaults, singleton)
+│   ├── ReadingStatsManager.swift        # Reading analytics engine (events, streaks, stats)
+│   ├── ReadingStatsViewController.swift # Reading stats dashboard UI
 │   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
 │   ├── StoryTableViewController.swift   # Main feed list + XML parsing
 │   ├── StoryTableViewCell.swift         # Custom table view cell
@@ -83,6 +86,7 @@ FeedReader/
 └── FeedReaderTests/
     ├── BookmarkTests.swift              # Bookmark manager tests (20 cases)
     ├── ReadStatusTests.swift            # Read/unread tracking tests (42 cases)
+    ├── ReadingStatsTests.swift          # Reading statistics tests (38 cases)
     ├── FeedManagerTests.swift           # Feed model + manager tests (35 cases)
     ├── StoryTests.swift                 # Model unit tests
     ├── StoryModelTests.swift            # Extended model tests
@@ -219,6 +223,13 @@ open FeedReader.xcodeproj
 | Select "Read" filter segment | Shows only previously read stories |
 | Select "All" filter segment | Shows all stories regardless of read status |
 | Nav title shows unread count | Displays "(X unread)" when unread stories exist |
+| Tap 📊 chart icon in nav bar | Opens reading statistics dashboard |
+| Reading stats — overview | Shows total/today/week/month counts, daily average, bookmarks |
+| Reading stats — streak | Shows current streak, longest streak, motivational message |
+| Reading stats — hourly chart | Bar chart showing reading activity by hour (0-23) |
+| Reading stats — feed breakdown | Per-feed progress bars sorted by stories read |
+| Reading stats — clear all | Confirmation dialog, permanently deletes all history |
+| Reading stats — empty state | Friendly prompt when no reading data exists |
 
 ## Tech Stack
 

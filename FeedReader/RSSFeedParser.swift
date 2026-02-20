@@ -148,6 +148,13 @@ class RSSFeedParser: NSObject {
         let session = URLSession(configuration: .default)
         currentSession = session
 
+        // Build URL→feedName map from enabled feeds for source attribution
+        let enabledFeeds = FeedManager.shared.enabledFeeds
+        var feedNameMap: [String: String] = [:]
+        for feed in enabledFeeds {
+            feedNameMap[feed.url] = feed.name
+        }
+
         parseQueue.sync {
             stories = []
             seenLinks = Set<String>()
@@ -155,12 +162,13 @@ class RSSFeedParser: NSObject {
         }
 
         for url in urls {
-            parseFeed(url, session: session)
+            let feedName = feedNameMap[url] ?? "Unknown"
+            parseFeed(url, session: session, feedName: feedName)
         }
     }
 
     /// Parse stories from a single feed URL using the given session.
-    private func parseFeed(_ url: String, session: URLSession) {
+    private func parseFeed(_ url: String, session: URLSession, feedName: String) {
         guard let feedURL = URL(string: url) else {
             print("RSSFeedParser: invalid URL — \(url)")
             feedCompleted()
@@ -194,6 +202,7 @@ class RSSFeedParser: NSObject {
                 for story in feedStories {
                     if !self.seenLinks.contains(story.link) {
                         self.seenLinks.insert(story.link)
+                        story.sourceFeedName = feedName
                         self.stories.append(story)
                     }
                 }

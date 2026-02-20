@@ -117,7 +117,15 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         )
         markAllReadButton.tintColor = .systemGreen
         
-        navigationItem.rightBarButtonItems = [bookmarksButton, markAllReadButton]
+        let statsButton = UIBarButtonItem(
+            image: UIImage(systemName: "chart.bar"),
+            style: .plain,
+            target: self,
+            action: #selector(showReadingStats)
+        )
+        statsButton.tintColor = .systemPurple
+        
+        navigationItem.rightBarButtonItems = [bookmarksButton, statsButton, markAllReadButton]
         
         // Add feeds manager button to navigation bar (left side)
         let feedsButton = UIBarButtonItem(
@@ -203,6 +211,12 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     @objc private func showBookmarks() {
         let bookmarksVC = BookmarksViewController()
         navigationController?.pushViewController(bookmarksVC, animated: true)
+    }
+    
+    /// Present the reading stats view controller.
+    @objc private func showReadingStats() {
+        let statsVC = ReadingStatsViewController()
+        navigationController?.pushViewController(statsVC, animated: true)
     }
     
     /// Present the feed manager view controller.
@@ -383,6 +397,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         let story = displayedStories[indexPath.row]
         // Mark story as read when tapped
         ReadStatusManager.shared.markAsRead(story)
+        // Record reading event for statistics
+        let feedName = feedNameForStory(story)
+        ReadingStatsManager.shared.recordRead(story: story, feedName: feedName)
     }
     
     // MARK: - Swipe Actions
@@ -463,6 +480,20 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     }
     
     // MARK: - Helpers
+    
+    /// Determine which feed a story came from.
+    /// Uses the story's sourceFeedName if set, otherwise falls back to
+    /// the first enabled feed name or "Unknown".
+    private func feedNameForStory(_ story: Story) -> String {
+        if let source = story.sourceFeedName, !source.isEmpty {
+            return source
+        }
+        let enabledFeeds = FeedManager.shared.enabledFeeds
+        if enabledFeeds.count == 1 {
+            return enabledFeeds[0].name
+        }
+        return enabledFeeds.first?.name ?? "Unknown"
+    }
     
     /// Display a brief toast message at the bottom of the screen.
     private func showToast(_ message: String) {

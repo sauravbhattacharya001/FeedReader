@@ -23,6 +23,9 @@ class Story: NSObject, NSSecureCoding {
     var link: String
     var imagePath: String?
     
+    /// The name of the feed this story was fetched from (for reading statistics).
+    var sourceFeedName: String?
+    
     /// Allowed URL schemes for links and images. Restricts to safe web protocols
     /// to prevent javascript:, file:, data:, or custom scheme injection.
     private static let allowedSchemes: Set<String> = ["https", "http"]
@@ -41,6 +44,7 @@ class Story: NSObject, NSSecureCoding {
         static let descriptionKey = "description"
         static let linkKey = "link"
         static let imagePathKey = "imagePath"
+        static let sourceFeedNameKey = "sourceFeedName"
     }
     
     // MARK: - Initialization
@@ -155,6 +159,7 @@ class Story: NSObject, NSSecureCoding {
         aCoder.encode(body, forKey: PropertyKey.descriptionKey)
         aCoder.encode(link, forKey: PropertyKey.linkKey)
         aCoder.encode(imagePath, forKey: PropertyKey.imagePathKey)
+        aCoder.encode(sourceFeedName, forKey: PropertyKey.sourceFeedNameKey)
     }
     
     required convenience init?(coder aDecoder: NSCoder) {
@@ -168,9 +173,11 @@ class Story: NSObject, NSSecureCoding {
         // Because photo is an optional property of Story, use conditional cast.
         let photo = aDecoder.decodeObject(of: UIImage.self, forKey: PropertyKey.photoKey)
         let imagePath = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.imagePathKey) as String?
+        let sourceFeedName = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.sourceFeedNameKey) as String?
         
         // Must call designated initializer.
         self.init(title: title, photo: photo, description: description, link: link, imagePath: imagePath)
+        self?.sourceFeedName = sourceFeedName
     }
 }
 
