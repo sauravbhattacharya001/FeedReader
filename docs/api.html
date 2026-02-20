@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Reference — FeedReader Documentation</title>
+    <meta name="description" content="Complete API reference for FeedReaderCore Swift Package: RSSParser, RSSStory, FeedItem, and NetworkReachability.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html" class="active">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="page-header page-content">
+    <h1>📖 API Reference</h1>
+    <p>Complete reference for the FeedReaderCore Swift Package — RSS parsing, models, and utilities.</p>
+</header>
+
+<section>
+    <div class="container">
+
+        <!-- RSSParser -->
+        <div class="api-section">
+            <span class="api-type">class</span>
+            <h3>RSSParser</h3>
+            <p class="api-desc">Parses RSS XML feeds into <code>RSSStory</code> objects. Supports loading multiple feeds concurrently with O(1) deduplication by link URL. Thread-safe — all shared state mutations are serialized on an internal serial queue.</p>
+
+            <h4>Properties</h4>
+            <table class="doc-table">
+                <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>delegate</code></td><td><code>RSSParserDelegate?</code></td><td>Delegate notified when feed loading completes or fails</td></tr>
+                    <tr><td><code>stories</code></td><td><code>[RSSStory]</code></td><td>Read-only. Accumulated stories from all parsed feeds</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Methods</h4>
+            <table class="doc-table">
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>loadFeeds(_ urls: [String])</code></td>
+                        <td>Parse stories from multiple feed URLs concurrently. Calls delegate on the main thread when all feeds complete. Cancels any in-flight load from a previous call. Stories are deduplicated by link URL.</td>
+                    </tr>
+                    <tr>
+                        <td><code>parseData(_ data: Data) → [RSSStory]</code></td>
+                        <td>Parse stories from in-memory XML data synchronously. Useful for testing and offline scenarios. Returns an array of parsed stories directly.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Usage</h4>
+            <div class="code-block">
+<span class="keyword">import</span> <span class="type">FeedReaderCore</span>
+
+<span class="keyword">class</span> <span class="type">MyFeedController</span>: <span class="type">RSSParserDelegate</span> {
+    <span class="keyword">let</span> parser = <span class="type">RSSParser</span>()
+
+    <span class="keyword">func</span> <span class="func">fetchFeeds</span>() {
+        parser.<span class="prop">delegate</span> = <span class="keyword">self</span>
+        parser.<span class="func">loadFeeds</span>([
+            <span class="string">"https://feeds.bbci.co.uk/news/world/rss.xml"</span>,
+            <span class="string">"https://techcrunch.com/feed/"</span>
+        ])
+    }
+
+    <span class="keyword">func</span> <span class="func">parserDidFinishLoading</span>(<span class="prop">stories</span>: [<span class="type">RSSStory</span>]) {
+        <span class="comment">// Stories from all feeds, deduplicated</span>
+        <span class="func">print</span>(<span class="string">"Loaded </span>\(stories.<span class="prop">count</span>)<span class="string"> stories"</span>)
+    }
+
+    <span class="keyword">func</span> <span class="func">parserDidFailWithError</span>(_ <span class="prop">error</span>: <span class="type">Error</span>?) {
+        <span class="func">print</span>(<span class="string">"Feed load failed: </span>\(error?.localizedDescription ?? <span class="string">"unknown"</span>)<span class="string">"</span>)
+    }
+}
+            </div>
+        </div>
+
+        <!-- RSSParserDelegate -->
+        <div class="api-section">
+            <span class="api-type">protocol</span>
+            <h3>RSSParserDelegate</h3>
+            <p class="api-desc">Delegate protocol for receiving RSS parsing results. Callbacks are always delivered on the main thread.</p>
+
+            <h4>Required Methods</h4>
+            <table class="doc-table">
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>parserDidFinishLoading(stories: [RSSStory])</code></td>
+                        <td>Called when all requested feeds have finished loading. The stories array contains deduplicated results from all feeds.</td>
+                    </tr>
+                    <tr>
+                        <td><code>parserDidFailWithError(_ error: Error?)</code></td>
+                        <td>Called when a feed fails to load. The error may be nil for non-HTTP errors.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- RSSStory -->
+        <div class="api-section">
+            <span class="api-type">class</span>
+            <h3>RSSStory</h3>
+            <p class="api-desc">Represents a single parsed RSS story with title, body, link, and optional image URL. Provides URL validation and HTML sanitization. Conforms to <code>NSObject</code> and <code>Sendable</code>.</p>
+
+            <h4>Properties</h4>
+            <table class="doc-table">
+                <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>title</code></td><td><code>String</code></td><td>The story headline</td></tr>
+                    <tr><td><code>body</code></td><td><code>String</code></td><td>The story description with HTML tags stripped and entities decoded</td></tr>
+                    <tr><td><code>link</code></td><td><code>String</code></td><td>The story's unique URL (used for equality and deduplication)</td></tr>
+                    <tr><td><code>imagePath</code></td><td><code>String?</code></td><td>Optional thumbnail image URL (only set if URL passes safety validation)</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Initializer</h4>
+            <div class="code-block">
+<span class="keyword">public init</span>?(
+    <span class="prop">title</span>: <span class="type">String</span>,
+    <span class="prop">body</span>: <span class="type">String</span>,
+    <span class="prop">link</span>: <span class="type">String</span>,
+    <span class="prop">imagePath</span>: <span class="type">String</span>? = <span class="keyword">nil</span>
+)
+            </div>
+            <p style="color: var(--gray); margin-top: 12px;">Returns <code>nil</code> if:</p>
+            <ul style="color: var(--gray); margin-left: 24px; margin-bottom: 16px;">
+                <li><code>title</code> is empty</li>
+                <li><code>body</code> is empty after HTML stripping</li>
+                <li><code>link</code> is not a valid HTTP/HTTPS URL</li>
+            </ul>
+
+            <h4>Static Methods</h4>
+            <table class="doc-table">
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>isSafeURL(_ urlString: String?) → Bool</code></td>
+                        <td>Validates that a URL uses only allowed schemes (<code>http</code>, <code>https</code>). Rejects <code>javascript:</code>, <code>file:</code>, <code>data:</code>, and other unsafe schemes.</td>
+                    </tr>
+                    <tr>
+                        <td><code>stripHTML(_ html: String) → String</code></td>
+                        <td>Strips HTML tags via regex and decodes common HTML entities (<code>&amp;amp;</code>, <code>&amp;lt;</code>, <code>&amp;gt;</code>, <code>&amp;quot;</code>, <code>&amp;#39;</code>, <code>&amp;nbsp;</code>).</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Equality</h4>
+            <p style="color: var(--gray);">Two <code>RSSStory</code> instances are equal if their <code>link</code> properties match. This is how deduplication works across multiple feeds.</p>
+        </div>
+
+        <!-- FeedItem -->
+        <div class="api-section">
+            <span class="api-type">class</span>
+            <h3>FeedItem</h3>
+            <p class="api-desc">Represents an RSS feed source with a name, URL, and enabled state. Conforms to <code>NSSecureCoding</code> for persistent storage and <code>Sendable</code> for thread safety.</p>
+
+            <h4>Properties</h4>
+            <table class="doc-table">
+                <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr><td><code>name</code></td><td><code>String</code></td><td>Display name for the feed</td></tr>
+                    <tr><td><code>url</code></td><td><code>String</code></td><td>RSS feed URL string</td></tr>
+                    <tr><td><code>isEnabled</code></td><td><code>Bool</code></td><td>Whether the feed is currently enabled for fetching</td></tr>
+                    <tr><td><code>identifier</code></td><td><code>String</code></td><td>Computed. Lowercased URL used for deduplication</td></tr>
+                </tbody>
+            </table>
+
+            <h4>Initializer</h4>
+            <div class="code-block">
+<span class="keyword">public init</span>(
+    <span class="prop">name</span>: <span class="type">String</span>,
+    <span class="prop">url</span>: <span class="type">String</span>,
+    <span class="prop">isEnabled</span>: <span class="type">Bool</span> = <span class="keyword">false</span>
+)
+            </div>
+
+            <h4>Static Properties</h4>
+            <table class="doc-table">
+                <thead><tr><th>Property</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>presets: [FeedItem]</code></td>
+                        <td>10 built-in feed sources: BBC World News, BBC Technology, BBC Science, BBC Business, NPR News, Reuters World, TechCrunch, Ars Technica, Hacker News, The Verge</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Usage</h4>
+            <div class="code-block">
+<span class="comment">// Use built-in presets</span>
+<span class="keyword">let</span> feeds = <span class="type">FeedItem</span>.<span class="prop">presets</span>
+<span class="keyword">let</span> enabledUrls = feeds
+    .<span class="func">filter</span> { $0.<span class="prop">isEnabled</span> }
+    .<span class="func">map</span> { $0.<span class="prop">url</span> }
+
+<span class="comment">// Create custom feed</span>
+<span class="keyword">let</span> custom = <span class="type">FeedItem</span>(
+    <span class="prop">name</span>: <span class="string">"My Blog"</span>,
+    <span class="prop">url</span>: <span class="string">"https://myblog.com/rss.xml"</span>,
+    <span class="prop">isEnabled</span>: <span class="keyword">true</span>
+)
+            </div>
+        </div>
+
+        <!-- NetworkReachability -->
+        <div class="api-section">
+            <span class="api-type">enum</span>
+            <h3>NetworkReachability</h3>
+            <p class="api-desc">Provides a simple check for network connectivity using <code>SystemConfiguration</code>. Uses <code>SCNetworkReachability</code> to check for a default network route.</p>
+
+            <h4>Static Methods</h4>
+            <table class="doc-table">
+                <thead><tr><th>Method</th><th>Description</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><code>isConnected() → Bool</code></td>
+                        <td>Returns <code>true</code> if the device currently has a network route available. Does not guarantee that a specific host is reachable — only that the system believes a route exists.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Usage</h4>
+            <div class="code-block">
+<span class="keyword">import</span> <span class="type">FeedReaderCore</span>
+
+<span class="keyword">if</span> <span class="type">NetworkReachability</span>.<span class="func">isConnected</span>() {
+    parser.<span class="func">loadFeeds</span>(feedUrls)
+} <span class="keyword">else</span> {
+    <span class="comment">// Load from cache or show offline UI</span>
+    <span class="func">showCachedStories</span>()
+}
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<footer>
+    <p>Built with ❤️ by <a href="https://github.com/sauravbhattacharya001">Saurav Bhattacharya</a> · Licensed under <a href="https://github.com/sauravbhattacharya001/FeedReader/blob/master/LICENSE">MIT</a></p>
+</footer>
+
+</body>
+</html>

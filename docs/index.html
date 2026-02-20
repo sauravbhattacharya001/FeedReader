@@ -4,224 +4,105 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FeedReader — iOS RSS Feed Reader</title>
-    <meta name="description" content="A native iOS RSS feed reader with offline caching, bookmarks, search, and async image loading.">
-    <style>
-        :root {
-            --orange: #ff6b35;
-            --orange-dark: #e85d2c;
-            --dark: #1a1a2e;
-            --darker: #16162a;
-            --light: #f0f0f5;
-            --gray: #8888a0;
-            --card-bg: #22223a;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--dark);
-            color: var(--light);
-            line-height: 1.6;
-        }
-        a { color: var(--orange); text-decoration: none; }
-        a:hover { color: var(--orange-dark); }
-
-        /* Hero */
-        .hero {
-            text-align: center;
-            padding: 80px 20px 60px;
-            background: linear-gradient(135deg, var(--darker) 0%, #1e1e3a 100%);
-        }
-        .hero img {
-            width: 100px;
-            height: 100px;
-            border-radius: 22px;
-            margin-bottom: 24px;
-            box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3);
-        }
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-        }
-        .hero p {
-            font-size: 1.25rem;
-            color: var(--gray);
-            max-width: 600px;
-            margin: 0 auto 32px;
-        }
-        .badges {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            flex-wrap: wrap;
-            margin-bottom: 32px;
-        }
-        .badges img { height: 22px; }
-        .btn {
-            display: inline-block;
-            padding: 14px 32px;
-            background: var(--orange);
-            color: #fff;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: background 0.2s;
-        }
-        .btn:hover { background: var(--orange-dark); color: #fff; }
-
-        /* Sections */
-        .container {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        section { padding: 60px 0; }
-        section h2 {
-            font-size: 2rem;
-            margin-bottom: 32px;
-            text-align: center;
-        }
-
-        /* Features grid */
-        .features {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 24px;
-        }
-        .feature-card {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .feature-card .emoji {
-            font-size: 2rem;
-            margin-bottom: 12px;
-        }
-        .feature-card h3 {
-            font-size: 1.15rem;
-            margin-bottom: 8px;
-        }
-        .feature-card p {
-            color: var(--gray);
-            font-size: 0.95rem;
-        }
-
-        /* Tech stack */
-        .tech-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-        .tech-item {
-            background: var(--card-bg);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-        }
-        .tech-item strong { display: block; margin-bottom: 4px; }
-        .tech-item span { color: var(--gray); font-size: 0.9rem; }
-
-        /* Getting started */
-        .code-block {
-            background: var(--darker);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 24px;
-            overflow-x: auto;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.9rem;
-            line-height: 1.8;
-            color: #ccc;
-        }
-        .code-block .comment { color: #6a9955; }
-        .code-block .cmd { color: var(--orange); }
-
-        /* Architecture */
-        .arch-tree {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            font-size: 0.85rem;
-            white-space: pre;
-            overflow-x: auto;
-            color: var(--gray);
-        }
-
-        /* Footer */
-        footer {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--gray);
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        @media (max-width: 600px) {
-            .hero h1 { font-size: 2rem; }
-            .hero p { font-size: 1rem; }
-        }
-    </style>
+    <meta name="description" content="A native iOS RSS feed reader with offline caching, bookmarks, multi-feed support, and a Swift Package for embedding RSS parsing in your own apps.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="hero">
-    <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader icon">
+<!-- Nav -->
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<!-- Hero -->
+<header class="hero page-content">
+    <img class="app-icon" src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader icon">
     <h1>FeedReader</h1>
-    <p>A native iOS RSS feed reader with offline caching, bookmarks, search, and async image loading.</p>
+    <p class="subtitle">A native iOS RSS feed reader with offline caching, bookmarks, search, and a Swift Package for embedding in your own apps.</p>
     <div class="badges">
         <img src="https://img.shields.io/badge/platform-iOS-blue?logo=apple" alt="Platform">
-        <img src="https://img.shields.io/badge/swift-3.0-orange?logo=swift" alt="Swift">
-        <img src="https://img.shields.io/badge/Xcode-8+-blue?logo=xcode" alt="Xcode">
+        <img src="https://img.shields.io/badge/swift-5.9+-orange?logo=swift" alt="Swift">
+        <img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/ci.yml/badge.svg" alt="CI">
         <img src="https://img.shields.io/github/license/sauravbhattacharya001/FeedReader" alt="License">
-        <img src="https://img.shields.io/github/last-commit/sauravbhattacharya001/FeedReader" alt="Last Commit">
+        <img src="https://img.shields.io/github/v/release/sauravbhattacharya001/FeedReader?include_prereleases&sort=semver" alt="Release">
     </div>
     <a href="https://github.com/sauravbhattacharya001/FeedReader" class="btn">View on GitHub</a>
+    <a href="guide.html" class="btn btn-outline">Get Started →</a>
 </header>
 
+<!-- Features -->
 <section>
     <div class="container">
         <h2>Features</h2>
-        <div class="features">
-            <div class="feature-card">
-                <div class="emoji">📰</div>
+        <p class="section-desc">Everything you need in a feed reader — plus a Swift Package to bring RSS parsing to your own iOS apps.</p>
+        <div class="card-grid">
+            <div class="card">
+                <span class="emoji">📰</span>
                 <h3>RSS Feed Parsing</h3>
-                <p>Native XMLParser-based RSS feed reader. Currently reads BBC World News, easily configurable for any RSS 2.0 feed.</p>
+                <p>Native XMLParser-based RSS reader with concurrent multi-feed loading and automatic deduplication.</p>
             </div>
-            <div class="feature-card">
-                <div class="emoji">💾</div>
+            <div class="card">
+                <span class="emoji">💾</span>
                 <h3>Offline Caching</h3>
-                <p>Stories persisted via NSCoding so you can read without internet. Smart cache invalidation on refresh.</p>
+                <p>Stories persisted via NSCoding. Read without internet. Smart cache invalidation on refresh.</p>
             </div>
-            <div class="feature-card">
-                <div class="emoji">🌐</div>
-                <h3>Network Detection</h3>
-                <p>Uses SCNetworkReachability to detect connectivity changes and show appropriate UI — online, offline, or cached.</p>
+            <div class="card">
+                <span class="emoji">📡</span>
+                <h3>Multi-Feed Support</h3>
+                <p>Add, remove, toggle, and reorder feeds. 10 built-in presets plus custom URL support.</p>
             </div>
-            <div class="feature-card">
-                <div class="emoji">🖼️</div>
+            <div class="card">
+                <span class="emoji">🔖</span>
+                <h3>Bookmarks</h3>
+                <p>Save stories for later. Swipe-to-bookmark, dedicated bookmarks screen, persistent storage.</p>
+            </div>
+            <div class="card">
+                <span class="emoji">🔍</span>
+                <h3>Search & Filter</h3>
+                <p>Real-time search across story titles and descriptions. Find what you're looking for instantly.</p>
+            </div>
+            <div class="card">
+                <span class="emoji">🖼️</span>
                 <h3>Async Image Loading</h3>
                 <p>Story thumbnails load asynchronously with NSCache-backed in-memory caching for smooth scrolling.</p>
             </div>
-            <div class="feature-card">
-                <div class="emoji">🔖</div>
-                <h3>Bookmarks</h3>
-                <p>Save stories for later. Swipe-to-bookmark, tap-to-toggle, dedicated bookmarks screen with swipe-to-delete.</p>
+            <div class="card">
+                <span class="emoji">🌐</span>
+                <h3>Network Detection</h3>
+                <p>Uses SCNetworkReachability to detect connectivity and gracefully switch between online and cached modes.</p>
             </div>
-            <div class="feature-card">
-                <div class="emoji">🔍</div>
-                <h3>Search &amp; Filter</h3>
-                <p>Real-time search across story titles and descriptions. Find what you're looking for instantly.</p>
+            <div class="card">
+                <span class="emoji">📦</span>
+                <h3>Swift Package</h3>
+                <p>Core RSS parsing available as FeedReaderCore SPM package. Embed in your own iOS apps with zero UI dependency.</p>
+            </div>
+            <div class="card">
+                <span class="emoji">🛡️</span>
+                <h3>URL Validation</h3>
+                <p>All URLs validated against allowed schemes. Rejects javascript:, file:, data: and other injection vectors.</p>
             </div>
         </div>
     </div>
 </section>
 
-<section style="background: var(--darker);">
+<!-- Quick Start -->
+<section class="alt">
     <div class="container">
-        <h2>Getting Started</h2>
+        <h2>Quick Start</h2>
+        <p class="section-desc">Clone, open, and run in under 30 seconds.</p>
         <div class="code-block">
 <span class="comment"># Clone the repository</span>
 <span class="cmd">git clone</span> https://github.com/sauravbhattacharya001/FeedReader.git
@@ -230,81 +111,90 @@
 <span class="cmd">cd</span> FeedReader
 <span class="cmd">open</span> FeedReader.xcodeproj
 
-<span class="comment"># Build and run (⌘R) or run tests (⌘U)</span>
+<span class="comment"># Build and run</span>
+Press <span class="cmd">⌘R</span> to build and run on an iPhone simulator
+
+<span class="comment"># Run tests</span>
+Press <span class="cmd">⌘U</span> to run all tests
         </div>
     </div>
 </section>
 
+<!-- Swift Package -->
 <section>
     <div class="container">
-        <h2>Tech Stack</h2>
-        <div class="tech-grid">
-            <div class="tech-item">
-                <strong>Swift 3</strong>
-                <span>Language</span>
-            </div>
-            <div class="tech-item">
-                <strong>UIKit</strong>
-                <span>UI Framework</span>
-            </div>
-            <div class="tech-item">
-                <strong>XMLParser</strong>
-                <span>RSS Parsing</span>
-            </div>
-            <div class="tech-item">
-                <strong>URLSession</strong>
-                <span>Networking</span>
-            </div>
-            <div class="tech-item">
-                <strong>NSCoding</strong>
-                <span>Persistence</span>
-            </div>
-            <div class="tech-item">
-                <strong>NSCache</strong>
-                <span>Image Caching</span>
-            </div>
+        <h2>Swift Package</h2>
+        <p class="section-desc">Use FeedReaderCore in your own iOS apps — RSS parsing without the UI.</p>
+        <div class="code-block">
+<span class="comment">// Package.swift</span>
+<span class="keyword">dependencies</span>: [
+    .<span class="func">package</span>(<span class="prop">url</span>: <span class="string">"https://github.com/sauravbhattacharya001/FeedReader.git"</span>, <span class="prop">from</span>: <span class="string">"2.0.0"</span>)
+]
+
+<span class="comment">// In your Swift file</span>
+<span class="keyword">import</span> <span class="type">FeedReaderCore</span>
+
+<span class="keyword">let</span> parser = <span class="type">RSSParser</span>()
+<span class="keyword">let</span> stories = parser.<span class="func">parseData</span>(xmlData)  <span class="comment">// [RSSStory]</span>
+
+<span class="keyword">for</span> story <span class="keyword">in</span> stories {
+    <span class="func">print</span>(story.<span class="prop">title</span>)
+    <span class="func">print</span>(story.<span class="prop">body</span>)       <span class="comment">// HTML-stripped</span>
+    <span class="func">print</span>(story.<span class="prop">link</span>)
+    <span class="func">print</span>(story.<span class="prop">imagePath</span>)  <span class="comment">// Optional thumbnail</span>
+}
+        </div>
+        <p style="text-align: center; margin-top: 24px;">
+            <a href="api.html" class="btn btn-outline">Full API Reference →</a>
+        </p>
+    </div>
+</section>
+
+<!-- Tech Stack -->
+<section class="alt">
+    <div class="container">
+        <h2>Built With</h2>
+        <div class="tech-pills">
+            <span class="tech-pill">🍎 Swift</span>
+            <span class="tech-pill">📱 UIKit</span>
+            <span class="tech-pill">📦 Swift Package Manager</span>
+            <span class="tech-pill">🔗 XMLParser</span>
+            <span class="tech-pill">📡 URLSession</span>
+            <span class="tech-pill">💾 NSCoding</span>
+            <span class="tech-pill">🖼️ NSCache</span>
+            <span class="tech-pill">🌐 SystemConfiguration</span>
+            <span class="tech-pill">⚙️ GitHub Actions CI</span>
         </div>
     </div>
 </section>
 
-<section style="background: var(--darker);">
-    <div class="container">
-        <h2>Architecture</h2>
-        <div class="arch-tree">FeedReader/
-├── AppDelegate.swift                 App lifecycle
-├── Story.swift                       Data model (NSCoding)
-├── BookmarkManager.swift             Bookmark persistence (singleton)
-├── BookmarksViewController.swift     Saved stories screen
-├── StoryTableViewController.swift    Main feed list + XML parsing
-├── StoryTableViewCell.swift          Custom table view cell
-├── StoryViewController.swift         Story detail view
-├── NoInternetFoundViewController.swift  Offline fallback UI
-├── Reachability.swift                Network connectivity checker
-└── FeedReaderTests/
-    ├── BookmarkTests.swift           20 bookmark test cases
-    ├── StoryTests.swift              Model unit tests
-    ├── XMLParserTests.swift          XML parser tests
-    └── *.xml                         Test fixtures</div>
-    </div>
-</section>
-
+<!-- Documentation links -->
 <section>
-    <div class="container" style="text-align: center;">
-        <h2>How It Works</h2>
-        <div style="max-width: 640px; margin: 0 auto; text-align: left;">
-            <p style="margin-bottom: 16px;"><strong>1. Launch</strong> — App checks network connectivity via Reachability</p>
-            <p style="margin-bottom: 16px;"><strong>2. Online</strong> — Fetches RSS feed asynchronously, parses XML</p>
-            <p style="margin-bottom: 16px;"><strong>3. Offline</strong> — Loads previously cached stories from disk</p>
-            <p style="margin-bottom: 16px;"><strong>4. No Data</strong> — Shows friendly "no internet" screen with retry</p>
-            <p style="margin-bottom: 16px;"><strong>5. Browse</strong> — Stories in UITableView with titles, thumbnails</p>
-            <p><strong>6. Read</strong> — Tap for detail view, open full article in Safari</p>
+    <div class="container">
+        <h2>Documentation</h2>
+        <p class="section-desc">Everything you need to use, extend, and contribute to FeedReader.</p>
+        <div class="card-grid" style="max-width: 800px; margin: 0 auto;">
+            <a href="guide.html" class="card" style="text-decoration: none; color: inherit;">
+                <span class="emoji">🚀</span>
+                <h3>Getting Started Guide</h3>
+                <p>Installation, running the app, configuration, testing, and customization.</p>
+            </a>
+            <a href="api.html" class="card" style="text-decoration: none; color: inherit;">
+                <span class="emoji">📖</span>
+                <h3>API Reference</h3>
+                <p>Complete reference for FeedReaderCore: RSSParser, RSSStory, FeedItem, NetworkReachability.</p>
+            </a>
+            <a href="architecture.html" class="card" style="text-decoration: none; color: inherit;">
+                <span class="emoji">🏗️</span>
+                <h3>Architecture</h3>
+                <p>How the app is structured — data flow, MVC patterns, threading model, caching strategy.</p>
+            </a>
         </div>
     </div>
 </section>
 
 <footer>
-    <p>Built with ❤️ by <a href="https://github.com/sauravbhattacharya001">Saurav Bhattacharya</a></p>
-    <p style="margin-top: 8px;">Licensed under <a href="https://github.com/sauravbhattacharya001/FeedReader/blob/master/LICENSE">MIT</a></p>
+    <p>Built with ❤️ by <a href="https://github.com/sauravbhattacharya001">Saurav Bhattacharya</a> · Licensed under <a href="https://github.com/sauravbhattacharya001/FeedReader/blob/master/LICENSE">MIT</a></p>
 </footer>
 
 </body>

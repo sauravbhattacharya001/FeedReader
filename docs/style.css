@@ -1,0 +1,423 @@
+:root {
+    --orange: #ff6b35;
+    --orange-dark: #e85d2c;
+    --orange-light: rgba(255, 107, 53, 0.1);
+    --dark: #1a1a2e;
+    --darker: #16162a;
+    --darkest: #111124;
+    --light: #f0f0f5;
+    --gray: #8888a0;
+    --gray-light: #a8a8be;
+    --card-bg: #22223a;
+    --border: rgba(255, 255, 255, 0.06);
+    --code-bg: #0d0d1a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    background: var(--dark);
+    color: var(--light);
+    line-height: 1.7;
+}
+
+a { color: var(--orange); text-decoration: none; transition: color 0.2s; }
+a:hover { color: var(--orange-dark); }
+
+/* ── Navigation ── */
+
+nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    background: rgba(22, 22, 42, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    padding: 14px 0;
+}
+
+nav .nav-inner {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+nav .logo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--light);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+nav .logo img {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+}
+
+nav .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+}
+
+nav .nav-links a {
+    color: var(--gray);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+nav .nav-links a:hover,
+nav .nav-links a.active { color: var(--orange); }
+
+/* ── Container ── */
+
+.container {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 0 24px;
+}
+
+/* ── Page Content ── */
+
+.page-content {
+    padding-top: 80px;
+}
+
+/* ── Hero ── */
+
+.hero {
+    text-align: center;
+    padding: 100px 20px 70px;
+    background: linear-gradient(135deg, var(--darker) 0%, #1e1e3a 100%);
+}
+
+.hero img.app-icon {
+    width: 100px;
+    height: 100px;
+    border-radius: 22px;
+    margin-bottom: 24px;
+    box-shadow: 0 8px 32px rgba(255, 107, 53, 0.3);
+}
+
+.hero h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.hero p.subtitle {
+    font-size: 1.25rem;
+    color: var(--gray);
+    max-width: 620px;
+    margin: 0 auto 28px;
+}
+
+.badges {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+}
+
+.badges img { height: 22px; }
+
+.btn {
+    display: inline-block;
+    padding: 14px 32px;
+    background: var(--orange);
+    color: #fff !important;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s;
+    margin: 0 6px;
+}
+
+.btn:hover {
+    background: var(--orange-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--light) !important;
+}
+
+.btn-outline:hover {
+    border-color: var(--orange);
+    background: var(--orange-light);
+    box-shadow: none;
+}
+
+/* ── Sections ── */
+
+section { padding: 64px 0; }
+section.alt { background: var(--darker); }
+
+section h2 {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+section h2 + p.section-desc {
+    text-align: center;
+    color: var(--gray);
+    max-width: 580px;
+    margin: 0 auto 40px;
+    font-size: 1.05rem;
+}
+
+/* ── Page header (for sub-pages) ── */
+
+.page-header {
+    padding: 100px 0 50px;
+    text-align: center;
+    background: linear-gradient(135deg, var(--darker) 0%, #1e1e3a 100%);
+    border-bottom: 1px solid var(--border);
+}
+
+.page-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.page-header p {
+    color: var(--gray);
+    font-size: 1.15rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* ── Cards ── */
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 28px;
+    border: 1px solid var(--border);
+    transition: all 0.25s;
+}
+
+.card:hover {
+    border-color: rgba(255, 107, 53, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.card .emoji { font-size: 2rem; margin-bottom: 12px; display: block; }
+.card h3 { font-size: 1.15rem; margin-bottom: 8px; }
+.card p { color: var(--gray); font-size: 0.95rem; }
+
+/* ── Code blocks ── */
+
+.code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    overflow-x: auto;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.88rem;
+    line-height: 1.8;
+    color: #c8c8e0;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.code-block .comment { color: #6a9955; }
+.code-block .keyword { color: #c586c0; }
+.code-block .string { color: #ce9178; }
+.code-block .type { color: #4ec9b0; }
+.code-block .func { color: #dcdcaa; }
+.code-block .cmd { color: var(--orange); }
+.code-block .prop { color: #9cdcfe; }
+
+/* ── Tables ── */
+
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+}
+
+.doc-table th,
+.doc-table td {
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.doc-table th {
+    color: var(--gray-light);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.doc-table td { font-size: 0.95rem; }
+.doc-table code {
+    background: var(--code-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: 'SF Mono', monospace;
+    color: var(--orange);
+}
+
+/* ── Tech pills ── */
+
+.tech-pills {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.tech-pill {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 10px 22px;
+    font-size: 0.9rem;
+    color: var(--gray-light);
+}
+
+/* ── Prose content ── */
+
+.prose {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.prose h2 {
+    font-size: 1.6rem;
+    margin: 48px 0 16px;
+    text-align: left;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prose h3 {
+    font-size: 1.25rem;
+    margin: 32px 0 12px;
+    color: var(--orange);
+}
+
+.prose p {
+    margin-bottom: 16px;
+    color: var(--gray-light);
+}
+
+.prose ul, .prose ol {
+    margin: 0 0 16px 24px;
+    color: var(--gray-light);
+}
+
+.prose li { margin-bottom: 6px; }
+
+.prose pre {
+    margin: 16px 0 24px;
+}
+
+.prose .code-block {
+    max-width: 100%;
+}
+
+/* ── API Reference cards ── */
+
+.api-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px;
+    margin-bottom: 32px;
+}
+
+.api-section h3 {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+    color: var(--light);
+}
+
+.api-section .api-type {
+    display: inline-block;
+    background: var(--orange-light);
+    color: var(--orange);
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.api-section p.api-desc {
+    color: var(--gray);
+    margin-bottom: 20px;
+}
+
+.api-section h4 {
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 20px 0 8px;
+}
+
+/* ── Architecture diagram ── */
+
+.arch-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    font-family: 'SF Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    color: var(--gray);
+    white-space: pre;
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* ── Footer ── */
+
+footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--gray);
+    border-top: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 640px) {
+    .hero h1 { font-size: 2rem; }
+    .hero p.subtitle { font-size: 1rem; }
+    .page-header h1 { font-size: 1.8rem; }
+    nav .nav-links { gap: 14px; }
+    nav .nav-links a { font-size: 0.8rem; }
+    .card-grid { grid-template-columns: 1fr; }
+    .code-block { font-size: 0.8rem; padding: 16px; }
+}

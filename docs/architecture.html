@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture — FeedReader Documentation</title>
+    <meta name="description" content="How FeedReader is architected — data flow, MVC patterns, threading model, caching, and the Swift Package split.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html" class="active">Architecture</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="page-header page-content">
+    <h1>🏗️ Architecture</h1>
+    <p>How FeedReader is structured — data flow, threading, caching, and the package split.</p>
+</header>
+
+<section>
+    <div class="container prose">
+
+        <h2>Project Structure</h2>
+        <p>FeedReader is split into two layers: a platform-independent Swift Package and an iOS app that uses it.</p>
+
+        <div class="arch-box">
+FeedReader/
+│
+├── Sources/FeedReaderCore/          ← Swift Package (no UIKit)
+│   ├── RSSParser.swift              RSS parsing with concurrent loading
+│   ├── RSSStory.swift               Story model with URL/HTML safety
+│   ├── FeedItem.swift               Feed source model + presets
+│   └── NetworkReachability.swift    SCNetworkReachability wrapper
+│
+├── FeedReader/                      ← iOS App (UIKit)
+│   ├── AppDelegate.swift            App lifecycle
+│   ├── Story.swift                  NSCoding-based story model
+│   ├── Feed.swift                   Feed model (app layer)
+│   ├── FeedManager.swift            Feed source CRUD singleton
+│   ├── BookmarkManager.swift        Bookmark persistence singleton
+│   ├── RSSFeedParser.swift          App-layer XML parser
+│   ├── ImageCache.swift             Async image loader + NSCache
+│   ├── Reachability.swift           Network detection
+│   ├── StoryTableViewController     Main feed list
+│   ├── StoryViewController          Story detail
+│   ├── BookmarksViewController      Saved stories
+│   ├── FeedListViewController       Feed manager UI
+│   └── NoInternetFound...           Offline fallback
+│
+├── FeedReaderTests/                 ← App tests
+├── Tests/FeedReaderCoreTests/       ← Package tests
+└── Package.swift                    SPM manifest
+        </div>
+
+        <h2>Data Flow</h2>
+        <p>Here's how data flows through the app from network to screen:</p>
+
+        <div class="arch-box">
+┌──────────────┐     HTTP GET      ┌──────────────┐
+│  RSS Feed    │ ◄──────────────── │  URLSession   │
+│  (XML)       │ ──────────────►   │  (async)      │
+└──────┬───────┘                   └──────┬────────┘
+       │ XML data                         │
+       ▼                                  │
+┌──────────────┐                          │
+│ XMLParser    │ ◄────────────────────────┘
+│ (per-feed    │
+│  collector)  │
+└──────┬───────┘
+       │ [RSSStory]
+       ▼
+┌──────────────┐     deduplicate   ┌──────────────┐
+│  RSSParser   │ ─────────────────►│  Main Thread  │
+│  (merge +    │     via serial    │  Delegate     │
+│   dedup)     │     queue         │  Callback     │
+└──────────────┘                   └──────┬────────┘
+                                          │
+                            ┌─────────────┼─────────────┐
+                            ▼             ▼             ▼
+                     ┌────────────┐ ┌──────────┐ ┌────────────┐
+                     │ UITableView│ │ NSCoding  │ │ ImageCache │
+                     │ (display)  │ │ (persist) │ │ (thumbnails│
+                     └────────────┘ └──────────┘ └────────────┘
+        </div>
+
+        <h2>Threading Model</h2>
+        <p>FeedReader's threading is designed for correctness without complexity:</p>
+
+        <table class="doc-table">
+            <thead><tr><th>Component</th><th>Thread</th><th>Why</th></tr></thead>
+            <tbody>
+                <tr><td><code>URLSession</code> tasks</td><td>Background (system)</td><td>Network I/O should never block the main thread</td></tr>
+                <tr><td><code>RSSParseCollector</code></td><td>URLSession callback thread</td><td>Each feed parsed in isolation — no shared state</td></tr>
+                <tr><td><code>RSSParser</code> merge</td><td>Serial <code>DispatchQueue</code></td><td>Protects shared <code>stories</code> and <code>seenLinks</code> from data races</td></tr>
+                <tr><td>Delegate callbacks</td><td>Main thread</td><td>UI updates must happen on main thread</td></tr>
+                <tr><td><code>ImageCache</code> downloads</td><td>Background (URLSession)</td><td>Image fetching doesn't block scrolling</td></tr>
+                <tr><td><code>NSCoding</code> persistence</td><td>Main thread</td><td>Simple archiving — fast enough for typical story counts</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Concurrency Safety</h3>
+        <p>The key concurrency challenge is multi-feed parsing. When <code>loadFeeds</code> is called with multiple URLs:</p>
+        <ol>
+            <li>Each URL spawns its own <code>URLSession</code> data task</li>
+            <li>Each task's completion handler creates an isolated <code>RSSParseCollector</code> — no shared parsing state</li>
+            <li>Parsed stories are merged onto a serial <code>DispatchQueue</code>, which protects the shared <code>stories</code> array and <code>seenLinks</code> set</li>
+            <li>When the last feed completes, the delegate is called on the main thread</li>
+            <li>If a new <code>loadFeeds</code> call arrives while a previous one is in-flight, the previous session is cancelled via <code>invalidateAndCancel()</code></li>
+        </ol>
+
+        <h2>Caching Strategy</h2>
+
+        <h3>Story Persistence (NSCoding)</h3>
+        <p>Stories are persisted to disk using <code>NSKeyedArchiver</code>/<code>NSKeyedUnarchiver</code>. This provides:</p>
+        <ul>
+            <li><strong>Offline reading</strong> — Previously fetched stories are available without network</li>
+            <li><strong>Fast launch</strong> — Cached stories display immediately while fresh data loads</li>
+            <li><strong>Graceful degradation</strong> — If a feed fails to load, the user still sees cached content</li>
+        </ul>
+
+        <h3>Image Caching (NSCache)</h3>
+        <p>The <code>ImageCache</code> class provides a two-tier caching strategy:</p>
+        <ul>
+            <li><strong>In-memory (NSCache)</strong> — Images are cached in memory for instant access during scrolling. NSCache automatically evicts under memory pressure.</li>
+            <li><strong>Async loading</strong> — Images are fetched on background threads. The cell checks if the image is already cached before making a network request.</li>
+            <li><strong>Cell reuse safety</strong> — The cache key is checked against the current cell's story to prevent displaying stale images from reused cells.</li>
+        </ul>
+
+        <h2>MVC Pattern</h2>
+        <p>The iOS app follows Apple's recommended MVC architecture:</p>
+
+        <table class="doc-table">
+            <thead><tr><th>Layer</th><th>Components</th><th>Responsibility</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Model</strong></td>
+                    <td><code>Story</code>, <code>Feed</code></td>
+                    <td>Data representation, NSCoding conformance, equality</td>
+                </tr>
+                <tr>
+                    <td><strong>View</strong></td>
+                    <td>Storyboards, <code>StoryTableViewCell</code></td>
+                    <td>Visual layout, cell rendering, image display</td>
+                </tr>
+                <tr>
+                    <td><strong>Controller</strong></td>
+                    <td><code>StoryTableViewController</code>, <code>StoryViewController</code>, etc.</td>
+                    <td>User interaction, data binding, navigation, XML parsing orchestration</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Singletons</h3>
+        <p>Two singletons manage persistent state:</p>
+        <ul>
+            <li><strong><code>FeedManager.shared</code></strong> — Manages the list of RSS feed sources. Handles adding, removing, toggling, and reordering feeds. Persists to <code>UserDefaults</code> via NSCoding.</li>
+            <li><strong><code>BookmarkManager.shared</code></strong> — Manages bookmarked stories. Persists to the app's documents directory via NSCoding.</li>
+        </ul>
+
+        <h2>The Swift Package Split</h2>
+        <p>The <code>FeedReaderCore</code> Swift Package extracts platform-independent functionality:</p>
+
+        <table class="doc-table">
+            <thead><tr><th>In Package (FeedReaderCore)</th><th>In App (FeedReader)</th></tr></thead>
+            <tbody>
+                <tr><td><code>RSSParser</code> — concurrent multi-feed parsing</td><td>StoryTableViewController — UI + XML orchestration</td></tr>
+                <tr><td><code>RSSStory</code> — model with URL/HTML safety</td><td><code>Story</code> — NSCoding model for persistence</td></tr>
+                <tr><td><code>FeedItem</code> — feed source model + presets</td><td><code>Feed</code> — app-layer feed model</td></tr>
+                <tr><td><code>NetworkReachability</code> — SCNetworkReachability</td><td><code>Reachability</code> — app-layer connectivity</td></tr>
+            </tbody>
+        </table>
+
+        <p>The package has <strong>no UIKit dependency</strong>, making it suitable for any iOS, macOS, or server-side Swift project that needs RSS parsing.</p>
+
+        <h2>Security Considerations</h2>
+
+        <h3>URL Validation</h3>
+        <p>All URLs (story links and image paths) are validated by <code>RSSStory.isSafeURL()</code>:</p>
+        <ul>
+            <li>Only <code>http</code> and <code>https</code> schemes are allowed</li>
+            <li><code>javascript:</code>, <code>file:</code>, <code>data:</code>, and other schemes are rejected</li>
+            <li>Stories with invalid link URLs are dropped entirely (<code>init?</code> returns <code>nil</code>)</li>
+            <li>Invalid image URLs are silently discarded (imagePath set to <code>nil</code>)</li>
+        </ul>
+
+        <h3>HTML Sanitization</h3>
+        <p>RSS descriptions often contain HTML. <code>RSSStory.stripHTML()</code> removes all HTML tags via regex and decodes common entities, preventing XSS-style injection in the UI.</p>
+
+        <h3>Network Security</h3>
+        <p>All feed fetching uses <code>URLSession</code> with default security settings (ATS enforced on iOS 9+). HTTPS is preferred for all preset feeds.</p>
+
+    </div>
+</section>
+
+<footer>
+    <p>Built with ❤️ by <a href="https://github.com/sauravbhattacharya001">Saurav Bhattacharya</a> · Licensed under <a href="https://github.com/sauravbhattacharya001/FeedReader/blob/master/LICENSE">MIT</a></p>
+</footer>
+
+</body>
+</html>

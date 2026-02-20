@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getting Started — FeedReader Documentation</title>
+    <meta name="description" content="Install and run FeedReader, configure feeds, customize the app, and run tests.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html" class="active">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="page-header page-content">
+    <h1>🚀 Getting Started</h1>
+    <p>Everything you need to install, run, configure, and test FeedReader.</p>
+</header>
+
+<section>
+    <div class="container prose">
+
+        <h2>Prerequisites</h2>
+        <ul>
+            <li><strong>macOS</strong> with Xcode installed</li>
+            <li><strong>Xcode 8+</strong> (Swift 3 for the iOS app)</li>
+            <li><strong>iOS 10+</strong> deployment target</li>
+            <li>An iPhone simulator or physical device</li>
+        </ul>
+        <p>For the Swift Package (<code>FeedReaderCore</code>), you need Swift 5.9+ and the iOS 14+ deployment target.</p>
+
+        <h2>Installation</h2>
+
+        <h3>Clone & Open</h3>
+        <div class="code-block">
+<span class="comment"># Clone the repository</span>
+<span class="cmd">git clone</span> https://github.com/sauravbhattacharya001/FeedReader.git
+<span class="cmd">cd</span> FeedReader
+
+<span class="comment"># Open in Xcode</span>
+<span class="cmd">open</span> FeedReader.xcodeproj
+        </div>
+
+        <h3>Build & Run</h3>
+        <ol>
+            <li>Open <code>FeedReader.xcodeproj</code> in Xcode</li>
+            <li>Select an iPhone simulator (iPhone 5S or later)</li>
+            <li>Press <strong>⌘R</strong> to build and run</li>
+        </ol>
+
+        <h3>Using the Swift Package</h3>
+        <p>If you want to use FeedReaderCore in your own project:</p>
+        <div class="code-block">
+<span class="comment">// In your Package.swift</span>
+<span class="keyword">dependencies</span>: [
+    .<span class="func">package</span>(
+        <span class="prop">url</span>: <span class="string">"https://github.com/sauravbhattacharya001/FeedReader.git"</span>,
+        <span class="prop">from</span>: <span class="string">"2.0.0"</span>
+    )
+]
+        </div>
+        <p>Or in Xcode: <strong>File → Add Package Dependencies</strong> → enter the repository URL.</p>
+
+        <h2>Using the App</h2>
+
+        <h3>Reading Stories</h3>
+        <p>On first launch, FeedReader loads BBC World News. Stories appear in a table view with titles, descriptions, and thumbnails. Tap any story to see the full description and a link to the original article.</p>
+
+        <h3>Managing Feeds</h3>
+        <p>Tap the 📡 antenna icon in the navigation bar to open the Feed Manager:</p>
+        <ul>
+            <li><strong>Toggle feeds</strong> — Tap a feed to enable/disable it (green checkmark = active)</li>
+            <li><strong>Add presets</strong> — Choose from 10 built-in feeds (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, Reuters)</li>
+            <li><strong>Custom feeds</strong> — Tap + to add any RSS/Atom feed URL</li>
+            <li><strong>Remove</strong> — Swipe left on a feed to delete it</li>
+            <li><strong>Reorder</strong> — Tap Edit and drag to rearrange priority</li>
+        </ul>
+
+        <h3>Bookmarks</h3>
+        <ul>
+            <li><strong>Swipe right</strong> on a story to bookmark/unbookmark</li>
+            <li><strong>Tap ★</strong> in the story detail view to toggle bookmark</li>
+            <li><strong>Tap 🔖</strong> in the navigation bar to see all bookmarks</li>
+            <li>Bookmarks persist across app launches</li>
+        </ul>
+
+        <h3>Search</h3>
+        <p>Pull down on the story list to reveal the search bar. Search queries filter across story titles and descriptions in real time.</p>
+
+        <h3>Offline Mode</h3>
+        <p>When the device goes offline:</p>
+        <ul>
+            <li>If stories were previously loaded, they're displayed from the local cache</li>
+            <li>If no cached data exists, a "No Internet" screen appears with a retry button</li>
+            <li>Network changes are detected automatically via SCNetworkReachability</li>
+        </ul>
+
+        <h2>Configuration</h2>
+
+        <h3>Changing Default Feeds</h3>
+        <p>To change the feeds available on first launch, edit the presets array in <code>Feed.swift</code>:</p>
+        <div class="code-block">
+<span class="keyword">static let</span> presets: [<span class="type">Feed</span>] = [
+    <span class="type">Feed</span>(<span class="prop">name</span>: <span class="string">"My Blog"</span>, <span class="prop">url</span>: <span class="string">"https://myblog.com/rss.xml"</span>, <span class="prop">isEnabled</span>: <span class="keyword">true</span>),
+    <span class="type">Feed</span>(<span class="prop">name</span>: <span class="string">"Tech News"</span>, <span class="prop">url</span>: <span class="string">"https://technews.com/feed/"</span>),
+    <span class="comment">// ...</span>
+]
+        </div>
+
+        <h2>Testing</h2>
+
+        <h3>Running Tests</h3>
+        <ol>
+            <li>Open <code>FeedReader.xcodeproj</code> in Xcode</li>
+            <li>Press <strong>⌘U</strong> to run all tests</li>
+            <li>Or open the Test Navigator (<strong>⌘6</strong>) and run individual suites</li>
+        </ol>
+
+        <h3>Test Suites</h3>
+        <table class="doc-table">
+            <thead>
+                <tr><th>Suite</th><th>Coverage</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>BookmarkTests</code></td><td>20 cases</td><td>Bookmark add, remove, toggle, persistence, deduplication</td></tr>
+                <tr><td><code>FeedManagerTests</code></td><td>35 cases</td><td>Feed CRUD, preset loading, persistence, validation</td></tr>
+                <tr><td><code>StoryTests</code></td><td>Core model</td><td>NSCoding serialization, equality, hash</td></tr>
+                <tr><td><code>StoryModelTests</code></td><td>Extended</td><td>Edge cases, HTML stripping, URL validation</td></tr>
+                <tr><td><code>SearchFilterTests</code></td><td>Search</td><td>Title/description matching, empty queries, special characters</td></tr>
+                <tr><td><code>XMLParserTests</code></td><td>Parser</td><td>Valid XML, malformed XML, missing fields, encoding</td></tr>
+                <tr><td><code>ViewControllerTests</code></td><td>UI</td><td>View controller lifecycle, table view data source</td></tr>
+                <tr><td><code>FeedReaderCoreTests</code></td><td>SPM</td><td>Swift Package module integration tests</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Test Fixtures</h3>
+        <p>XML test fixtures are in <code>FeedReaderTests/</code>:</p>
+        <ul>
+            <li><code>storiesTest.xml</code> — Standard RSS feed with valid stories</li>
+            <li><code>multiStoriesTest.xml</code> — Multiple stories for pagination/dedup testing</li>
+            <li><code>malformedStoriesTest.xml</code> — Malformed XML for error handling tests</li>
+            <li><code>storiesTest.plist</code> — NSCoding serialized test data</li>
+        </ul>
+
+        <h2>CI/CD</h2>
+        <p>FeedReader uses GitHub Actions for continuous integration:</p>
+        <table class="doc-table">
+            <thead>
+                <tr><th>Workflow</th><th>Trigger</th><th>What It Does</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>ci.yml</code></td><td>Push / PR to master</td><td>Build + test on macOS with Xcode</td></tr>
+                <tr><td><code>codeql.yml</code></td><td>Push / PR / schedule</td><td>CodeQL security scanning for Swift</td></tr>
+                <tr><td><code>pages.yml</code></td><td>Push to master (docs/)</td><td>Deploy documentation site to GitHub Pages</td></tr>
+                <tr><td><code>docker.yml</code></td><td>Push / PR</td><td>Docker image build verification</td></tr>
+            </tbody>
+        </table>
+
+    </div>
+</section>
+
+<footer>
+    <p>Built with ❤️ by <a href="https://github.com/sauravbhattacharya001">Saurav Bhattacharya</a> · Licensed under <a href="https://github.com/sauravbhattacharya001/FeedReader/blob/master/LICENSE">MIT</a></p>
+</footer>
+
+</body>
+</html>
