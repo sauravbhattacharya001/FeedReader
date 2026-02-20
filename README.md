@@ -55,6 +55,7 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 📡 **Multi-Feed Support** — Add, remove, and toggle multiple RSS feed sources. 10 built-in presets (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, etc.) plus custom URL support
 - 🔍 **Search & Filter** — Real-time search across story titles and descriptions
 - 📤 **Share** — Share stories via the system share sheet
+- 👁️ **Read/Unread Tracking** — Stories are automatically marked as read when tapped, with blue dot indicators for unread stories, unread count in the title bar, segmented filter (All/Unread/Read), mark all read, and swipe-left to toggle read status
 
 ## Architecture
 
@@ -67,6 +68,7 @@ FeedReader/
 │   ├── FeedManager.swift                # Feed source management singleton (CRUD + persistence)
 │   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
 │   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
+│   ├── ReadStatusManager.swift          # Read/unread status tracking (UserDefaults, singleton)
 │   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
 │   ├── StoryTableViewController.swift   # Main feed list + XML parsing
 │   ├── StoryTableViewCell.swift         # Custom table view cell
@@ -80,6 +82,7 @@ FeedReader/
 ├── FeedReader.xcodeproj/                # Xcode project
 └── FeedReaderTests/
     ├── BookmarkTests.swift              # Bookmark manager tests (20 cases)
+    ├── ReadStatusTests.swift            # Read/unread tracking tests (42 cases)
     ├── FeedManagerTests.swift           # Feed model + manager tests (35 cases)
     ├── StoryTests.swift                 # Model unit tests
     ├── StoryModelTests.swift            # Extended model tests
@@ -209,6 +212,13 @@ open FeedReader.xcodeproj
 | Tap + button in feed manager | Opens dialog to add custom RSS feed URL |
 | Tap Edit in feed manager | Enables drag-to-reorder for feed priority |
 | Enable multiple feeds | Stories from all active feeds are merged (duplicates removed) |
+| Tap a story in the list | Story is marked as read (blue dot disappears, text dims slightly) |
+| Swipe left on a story | Toggle read/unread status with envelope icon |
+| Tap ✓ checkmark icon in nav bar | Confirms and marks all stories as read |
+| Select "Unread" filter segment | Shows only unread stories |
+| Select "Read" filter segment | Shows only previously read stories |
+| Select "All" filter segment | Shows all stories regardless of read status |
+| Nav title shows unread count | Displays "(X unread)" when unread stories exist |
 
 ## Tech Stack
 

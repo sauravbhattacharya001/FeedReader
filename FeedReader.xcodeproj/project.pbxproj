@@ -37,6 +37,8 @@
 		DD000001DDDD000100000004 /* FeedManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD000001DDDD000100000040 /* FeedManagerTests.swift */; };
 		EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001EEEE000100000010 /* RSSFeedParser.swift */; };
 		EE000001EEEE000100000002 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE000001EEEE000100000020 /* ImageCache.swift */; };
+		FF000001FFFF000100000001 /* ReadStatusManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000001FFFF000100000010 /* ReadStatusManager.swift */; };
+		FF000001FFFF000100000002 /* ReadStatusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF000001FFFF000100000020 /* ReadStatusTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,6 +83,8 @@
 		DD000001DDDD000100000040 /* FeedManagerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FeedManagerTests.swift; sourceTree = "<group>"; };
 		EE000001EEEE000100000010 /* RSSFeedParser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RSSFeedParser.swift; sourceTree = "<group>"; };
 		EE000001EEEE000100000020 /* ImageCache.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
+		FF000001FFFF000100000010 /* ReadStatusManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReadStatusManager.swift; sourceTree = "<group>"; };
+		FF000001FFFF000100000020 /* ReadStatusTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReadStatusTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +144,7 @@
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
 				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
 				EE000001EEEE000100000020 /* ImageCache.swift */,
+				FF000001FFFF000100000010 /* ReadStatusManager.swift */,
 				080686B41D89F2DA00C5E08B /* Assets.xcassets */,
 				080686B61D89F2DA00C5E08B /* LaunchScreen.storyboard */,
 				080686B91D89F2DA00C5E08B /* Info.plist */,
@@ -157,6 +162,7 @@
 				BB000001BBBB000100000010 /* SearchFilterTests.swift */,
 				CC000001CCCC000100000030 /* BookmarkTests.swift */,
 				DD000001DDDD000100000040 /* FeedManagerTests.swift */,
+				FF000001FFFF000100000020 /* ReadStatusTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -285,6 +291,7 @@
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
 				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
 				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,
+				FF000001FFFF000100000001 /* ReadStatusManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -299,6 +306,7 @@
 				BB000001BBBB000100000001 /* SearchFilterTests.swift in Sources */,
 				CC000001CCCC000100000003 /* BookmarkTests.swift in Sources */,
 				DD000001DDDD000100000004 /* FeedManagerTests.swift in Sources */,
+				FF000001FFFF000100000002 /* ReadStatusTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

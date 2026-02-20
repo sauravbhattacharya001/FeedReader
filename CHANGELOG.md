@@ -2,6 +2,22 @@
 
 All notable changes to FeedReader are documented in this file.
 
+## [v1.3.0] — 2026-02-19
+
+### Read/Unread Tracking
+
+- **Auto-mark as read** — Stories are automatically marked as read when tapped or when navigating to detail view
+- **Blue dot indicator** — Unread stories display a blue dot on the left edge of the cell
+- **Visual dimming** — Read stories appear slightly dimmed (lower opacity) for quick visual scanning
+- **Unread count in title** — Navigation bar shows "(X unread)" when unread stories exist
+- **Segmented filter** — All/Unread/Read filter with live counts in the table header
+- **Mark All Read** — ✓ checkmark button in nav bar to mark all stories as read with confirmation dialog
+- **Swipe to toggle** — Swipe left on any story to toggle read/unread status (envelope icon)
+- **Persistent storage** — Read status persisted via UserDefaults with automatic pruning (max 5,000 links)
+- **Efficient lookups** — O(1) read status checks via Set-based index
+- **Change notifications** — `.readStatusDidChange` notification for reactive UI updates
+- **42 new tests** — ReadStatusManager (mark read/unread, toggle, filter, count, persistence, notifications, edge cases, ReadFilter enum)
+
 ## [v1.2.0] — 2026-02-15
 
 ### Multi-Feed Support

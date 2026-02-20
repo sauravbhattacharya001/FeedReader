@@ -33,14 +33,30 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Debounce timer for search filtering.
     private var searchDebounceTimer: Timer?
     
+    /// Current read status filter.
+    private var readFilter: ReadStatusManager.ReadFilter = .all
+    
+    /// Segmented control for filtering by read/unread.
+    private let readFilterControl: UISegmentedControl = {
+        let items = ReadStatusManager.ReadFilter.allCases.map { $0.title }
+        let control = UISegmentedControl(items: items)
+        control.selectedSegmentIndex = 0
+        return control
+    }()
+    
     /// Returns true when the search bar is active and has text.
     private var isFiltering: Bool {
         return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
     }
     
-    /// Returns the appropriate stories array based on search state.
+    /// Returns the appropriate stories array based on search and read filter state.
     private var displayedStories: [Story] {
-        return isFiltering ? filteredStories : stories
+        var result = isFiltering ? filteredStories : stories
+        // Apply read status filter
+        if readFilter != .all {
+            result = ReadStatusManager.shared.filterStories(result, readStatus: readFilter)
+        }
+        return result
     }
 
     // MARK: - ViewController methods
@@ -71,7 +87,20 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         // Enable image prefetching for smoother scrolling.
         tableView.prefetchDataSource = self
         
-        // Add bookmarks button to navigation bar
+        // Set up read filter segmented control in the table header
+        readFilterControl.addTarget(self, action: #selector(readFilterChanged(_:)), for: .valueChanged)
+        
+        let headerView = UIView(frame: CGRect(x: 0, y: 0, width: tableView.frame.width, height: 44))
+        readFilterControl.translatesAutoresizingMaskIntoConstraints = false
+        headerView.addSubview(readFilterControl)
+        NSLayoutConstraint.activate([
+            readFilterControl.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 16),
+            readFilterControl.trailingAnchor.constraint(equalTo: headerView.trailingAnchor, constant: -16),
+            readFilterControl.centerYAnchor.constraint(equalTo: headerView.centerYAnchor)
+        ])
+        tableView.tableHeaderView = headerView
+        
+        // Add bookmarks button and mark-all-read button to navigation bar (right side)
         let bookmarksButton = UIBarButtonItem(
             image: UIImage(systemName: "bookmark"),
             style: .plain,
@@ -79,7 +108,16 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             action: #selector(showBookmarks)
         )
         bookmarksButton.tintColor = .systemOrange
-        navigationItem.rightBarButtonItem = bookmarksButton
+        
+        let markAllReadButton = UIBarButtonItem(
+            image: UIImage(systemName: "checkmark.circle"),
+            style: .plain,
+            target: self,
+            action: #selector(markAllRead)
+        )
+        markAllReadButton.tintColor = .systemGreen
+        
+        navigationItem.rightBarButtonItems = [bookmarksButton, markAllReadButton]
         
         // Add feeds manager button to navigation bar (left side)
         let feedsButton = UIBarButtonItem(
@@ -99,6 +137,14 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             object: nil
         )
         
+        // Listen for read status changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(readStatusChanged),
+            name: .readStatusDidChange,
+            object: nil
+        )
+        
         // Update title with feed count
         updateTitle()
     }
@@ -108,15 +154,35 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         searchDebounceTimer?.invalidate()
     }
     
-    /// Update the navigation title to show active feed count.
+    /// Update the navigation title to show active feed count and unread count.
     private func updateTitle() {
-        let enabledCount = FeedManager.shared.enabledFeeds.count
-        let totalCount = FeedManager.shared.count
-        if totalCount <= 1 {
-            navigationItem.title = "FeedReader"
+        let unreadCount = ReadStatusManager.shared.unreadCount(in: stories)
+        if unreadCount > 0 {
+            navigationItem.title = "FeedReader (\(unreadCount) unread)"
         } else {
-            navigationItem.title = "FeedReader (\(enabledCount)/\(totalCount) feeds)"
+            let enabledCount = FeedManager.shared.enabledFeeds.count
+            let totalCount = FeedManager.shared.count
+            if totalCount <= 1 {
+                navigationItem.title = "FeedReader"
+            } else {
+                navigationItem.title = "FeedReader (\(enabledCount)/\(totalCount) feeds)"
+            }
         }
+        
+        // Update segment titles with counts
+        updateFilterCounts()
+    }
+    
+    /// Update the segment control titles with story counts.
+    private func updateFilterCounts() {
+        let baseStories = isFiltering ? filteredStories : stories
+        let allCount = baseStories.count
+        let unreadCount = ReadStatusManager.shared.unreadCount(in: baseStories)
+        let readCount = allCount - unreadCount
+        
+        readFilterControl.setTitle("All (\(allCount))", forSegmentAt: 0)
+        readFilterControl.setTitle("Unread (\(unreadCount))", forSegmentAt: 1)
+        readFilterControl.setTitle("Read (\(readCount))", forSegmentAt: 2)
     }
     
     /// Called when feed configuration changes — reload all data.
@@ -125,6 +191,12 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         updateTitle()
         loadData()
         hasLoadedData = true
+    }
+    
+    /// Called when read status changes — refresh display.
+    @objc private func readStatusChanged() {
+        updateTitle()
+        tableView.reloadData()
     }
     
     /// Present the bookmarks view controller.
@@ -142,6 +214,34 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Pull-to-refresh handler — reloads the RSS feed.
     @objc private func refreshFeed() {
         loadData()
+    }
+    
+    /// Handle read filter segment control changes.
+    @objc private func readFilterChanged(_ sender: UISegmentedControl) {
+        readFilter = ReadStatusManager.ReadFilter(rawValue: sender.selectedSegmentIndex) ?? .all
+        tableView.reloadData()
+    }
+    
+    /// Mark all current stories as read.
+    @objc private func markAllRead() {
+        let unreadCount = ReadStatusManager.shared.unreadCount(in: stories)
+        guard unreadCount > 0 else {
+            showToast("All stories are already read")
+            return
+        }
+        
+        let alert = UIAlertController(
+            title: "Mark All Read",
+            message: "Mark all \(unreadCount) unread stories as read?",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Mark All Read", style: .default) { [weak self] _ in
+            guard let self = self else { return }
+            ReadStatusManager.shared.markAllAsRead(self.stories)
+            self.showToast("Marked \(unreadCount) stories as read ✓")
+        })
+        present(alert, animated: true)
     }
     
     // MARK: - UISearchResultsUpdating
@@ -162,6 +262,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             story.title.lowercased().contains(lowercasedSearch) ||
             story.body.lowercased().contains(lowercasedSearch)
         }
+        updateTitle()
         tableView.reloadData()
     }
     
@@ -176,6 +277,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             loadData()
             hasLoadedData = true
         }
+        // Refresh read status indicators when returning from detail
+        updateTitle()
+        tableView.reloadData()
     }
     
     func loadData() {
@@ -183,6 +287,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             let enabledFeeds = FeedManager.shared.enabledFeeds
             if enabledFeeds.isEmpty {
                 stories = []
+                updateTitle()
                 tableView.reloadData()
                 return
             }
@@ -192,6 +297,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             
         } else if let savedStories = loadStories() {
             stories = savedStories
+            updateTitle()
             tableView.reloadData()
         } else {
             if let resultController = storyboard!.instantiateViewController(withIdentifier: "NoInternetFound") as? NoInternetFoundViewController {
@@ -206,6 +312,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         self.stories = stories
         activityIndicator.stopAnimating()
         refreshControl?.endRefreshing()
+        updateTitle()
         tableView.reloadData()
     }
     
@@ -250,6 +357,10 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         cell.titleLabel.text = story.title
         cell.descriptionLabel.text = story.body
         
+        // Configure read/unread status
+        let isRead = ReadStatusManager.shared.isRead(story)
+        cell.configureReadStatus(isRead: isRead)
+        
         // Load thumbnail via shared ImageCache
         cell.photoImage.image = UIImage(named: "sample") // placeholder
         if let imagePathString = story.imagePath {
@@ -264,6 +375,14 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         }
         
         return cell
+    }
+    
+    // MARK: - Table View Delegate
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let story = displayedStories[indexPath.row]
+        // Mark story as read when tapped
+        ReadStatusManager.shared.markAsRead(story)
     }
     
     // MARK: - Swipe Actions
@@ -281,6 +400,21 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         bookmarkAction.backgroundColor = isBookmarked ? .systemGray : .systemOrange
         
         return UISwipeActionsConfiguration(actions: [bookmarkAction])
+    }
+    
+    override func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let story = displayedStories[indexPath.row]
+        let isRead = ReadStatusManager.shared.isRead(story)
+        
+        let readAction = UIContextualAction(style: .normal, title: nil) { _, _, completionHandler in
+            ReadStatusManager.shared.toggleReadStatus(story)
+            completionHandler(true)
+        }
+        
+        readAction.image = UIImage(systemName: isRead ? "envelope.badge" : "envelope.open")
+        readAction.backgroundColor = isRead ? .systemBlue : .systemGray
+        
+        return UISwipeActionsConfiguration(actions: [readAction])
     }
     
     // MARK: - Prefetching
@@ -303,6 +437,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
                 let indexPath = tableView.indexPath(for: selectedStoryCell)!
                 let selectedStory = displayedStories[indexPath.row]
                 storyDetailViewController.story = selectedStory as Story
+                
+                // Mark as read when navigating to detail
+                ReadStatusManager.shared.markAsRead(selectedStory)
             }
         }
     }
@@ -323,5 +460,42 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             return nil
         }
         return (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story]
+    }
+    
+    // MARK: - Helpers
+    
+    /// Display a brief toast message at the bottom of the screen.
+    private func showToast(_ message: String) {
+        let toastLabel = UILabel()
+        toastLabel.text = message
+        toastLabel.textAlignment = .center
+        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        toastLabel.textColor = .white
+        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastLabel.layer.cornerRadius = 16
+        toastLabel.clipsToBounds = true
+        toastLabel.alpha = 0
+        
+        let textSize = toastLabel.intrinsicContentSize
+        let width = textSize.width + 40
+        let height: CGFloat = 36
+        toastLabel.frame = CGRect(
+            x: (view.frame.width - width) / 2,
+            y: view.frame.height - 120,
+            width: width,
+            height: height
+        )
+        
+        view.addSubview(toastLabel)
+        
+        UIView.animate(withDuration: 0.3, animations: {
+            toastLabel.alpha = 1
+        }) { _ in
+            UIView.animate(withDuration: 0.3, delay: 1.2, options: [], animations: {
+                toastLabel.alpha = 0
+            }) { _ in
+                toastLabel.removeFromSuperview()
+            }
+        }
     }
 }
