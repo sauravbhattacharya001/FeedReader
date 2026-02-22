@@ -42,6 +42,8 @@
 		AB000001ABAB000100000001 /* ReadingStatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001ABAB000100000010 /* ReadingStatsManager.swift */; };
 		AB000001ABAB000100000002 /* ReadingStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001ABAB000100000020 /* ReadingStatsViewController.swift */; };
 		AB000001ABAB000100000003 /* ReadingStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000001ABAB000100000030 /* ReadingStatsTests.swift */; };
+		OP000001OPML000100000001 /* OPMLManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP000001OPML000100000010 /* OPMLManager.swift */; };
+		OP000001OPML000100000002 /* OPMLTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = OP000001OPML000100000020 /* OPMLTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -91,6 +93,8 @@
 		AB000001ABAB000100000010 /* ReadingStatsManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReadingStatsManager.swift; sourceTree = "<group>"; };
 		AB000001ABAB000100000020 /* ReadingStatsViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReadingStatsViewController.swift; sourceTree = "<group>"; };
 		AB000001ABAB000100000030 /* ReadingStatsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ReadingStatsTests.swift; sourceTree = "<group>"; };
+		OP000001OPML000100000010 /* OPMLManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OPMLManager.swift; sourceTree = "<group>"; };
+		OP000001OPML000100000020 /* OPMLTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OPMLTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -147,6 +151,7 @@
 				CC000001CCCC000100000020 /* BookmarksViewController.swift */,
 				DD000001DDDD000100000010 /* Feed.swift */,
 				DD000001DDDD000100000020 /* FeedManager.swift */,
+				OP000001OPML000100000010 /* OPMLManager.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
 				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
 				EE000001EEEE000100000020 /* ImageCache.swift */,
@@ -172,6 +177,7 @@
 				DD000001DDDD000100000040 /* FeedManagerTests.swift */,
 				FF000001FFFF000100000020 /* ReadStatusTests.swift */,
 				AB000001ABAB000100000030 /* ReadingStatsTests.swift */,
+				OP000001OPML000100000020 /* OPMLTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -297,6 +303,7 @@
 				CC000001CCCC000100000002 /* BookmarksViewController.swift in Sources */,
 				DD000001DDDD000100000001 /* Feed.swift in Sources */,
 				DD000001DDDD000100000002 /* FeedManager.swift in Sources */,
+				OP000001OPML000100000001 /* OPMLManager.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
 				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
 				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,
@@ -319,6 +326,7 @@
 				DD000001DDDD000100000004 /* FeedManagerTests.swift in Sources */,
 				FF000001FFFF000100000002 /* ReadStatusTests.swift in Sources */,
 				AB000001ABAB000100000003 /* ReadingStatsTests.swift in Sources */,
+				OP000001OPML000100000002 /* OPMLTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

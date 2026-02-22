@@ -11,7 +11,7 @@
 
 import UIKit
 
-class FeedListViewController: UITableViewController {
+class FeedListViewController: UITableViewController, UIDocumentPickerDelegate {
     
     // MARK: - Properties
     
@@ -40,7 +40,16 @@ class FeedListViewController: UITableViewController {
             target: self,
             action: #selector(addCustomFeed)
         )
-        navigationItem.leftBarButtonItem = addButton
+        
+        let opmlButton = UIBarButtonItem(
+            image: UIImage(systemName: "arrow.up.arrow.down.square"),
+            style: .plain,
+            target: self,
+            action: #selector(showOPMLMenu)
+        )
+        opmlButton.accessibilityLabel = "OPML Import/Export"
+        
+        navigationItem.leftBarButtonItems = [addButton, opmlButton]
         
         NotificationCenter.default.addObserver(
             self,
@@ -56,6 +65,202 @@ class FeedListViewController: UITableViewController {
     
     @objc private func feedsChanged() {
         tableView.reloadData()
+    }
+    
+    // MARK: - OPML Import/Export
+    
+    /// Show action sheet with OPML import/export options.
+    @objc private func showOPMLMenu() {
+        let alert = UIAlertController(
+            title: "OPML Import/Export",
+            message: "Import feeds from other RSS readers, or export your feeds to share.",
+            preferredStyle: .actionSheet
+        )
+        
+        alert.addAction(UIAlertAction(title: "Import from File", style: .default) { [weak self] _ in
+            self?.importOPML()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Import from URL", style: .default) { [weak self] _ in
+            self?.importOPMLFromURL()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Import from Clipboard", style: .default) { [weak self] _ in
+            self?.importOPMLFromClipboard()
+        })
+        
+        let exportTitle = "Export All Feeds (\(FeedManager.shared.count))"
+        alert.addAction(UIAlertAction(title: exportTitle, style: .default) { [weak self] _ in
+            self?.exportOPML(enabledOnly: false)
+        })
+        
+        if FeedManager.shared.enabledFeeds.count != FeedManager.shared.count {
+            let enabledTitle = "Export Enabled Only (\(FeedManager.shared.enabledFeeds.count))"
+            alert.addAction(UIAlertAction(title: enabledTitle, style: .default) { [weak self] _ in
+                self?.exportOPML(enabledOnly: true)
+            })
+        }
+        
+        alert.addAction(UIAlertAction(title: "Copy OPML to Clipboard", style: .default) { [weak self] _ in
+            self?.copyOPMLToClipboard()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // iPad support — action sheets need a source for popover
+        if let popover = alert.popoverPresentationController {
+            popover.barButtonItem = navigationItem.leftBarButtonItems?[1]
+        }
+        
+        present(alert, animated: true)
+    }
+    
+    /// Import OPML via document picker (Files app).
+    private func importOPML() {
+        let types = ["public.xml", "org.opml.opml", "public.text"]
+        let picker = UIDocumentPickerViewController(
+            documentTypes: types,
+            in: .import
+        )
+        picker.delegate = self
+        picker.allowsMultipleSelection = false
+        present(picker, animated: true)
+    }
+    
+    /// Import OPML from a URL.
+    private func importOPMLFromURL() {
+        let alert = UIAlertController(
+            title: "Import from URL",
+            message: "Enter the URL of an OPML file.",
+            preferredStyle: .alert
+        )
+        
+        alert.addTextField { textField in
+            textField.placeholder = "https://example.com/feeds.opml"
+            textField.keyboardType = .URL
+            textField.autocapitalizationType = .none
+            textField.autocorrectionType = .no
+        }
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Import", style: .default) { [weak self] _ in
+            guard let urlString = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let url = URL(string: urlString),
+                  let scheme = url.scheme?.lowercased(),
+                  (scheme == "https" || scheme == "http") else {
+                self?.showError("Please enter a valid https:// or http:// URL.")
+                return
+            }
+            
+            self?.downloadAndImportOPML(url)
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    /// Download an OPML file and import it.
+    private func downloadAndImportOPML(_ url: URL) {
+        let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    self?.showError("Download failed: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let data = data else {
+                    self?.showError("No data received from the URL.")
+                    return
+                }
+                
+                let outlines = OPMLManager.shared.parseOPMLData(data)
+                if outlines.isEmpty {
+                    self?.showError("No valid RSS feeds found in the OPML file.")
+                    return
+                }
+                
+                self?.confirmImport(outlines)
+            }
+        }
+        task.resume()
+    }
+    
+    /// Import OPML from clipboard content.
+    private func importOPMLFromClipboard() {
+        guard let clipboardString = UIPasteboard.general.string,
+              !clipboardString.isEmpty else {
+            showError("Clipboard is empty. Copy OPML content first.")
+            return
+        }
+        
+        let outlines = OPMLManager.shared.parseOPML(clipboardString)
+        if outlines.isEmpty {
+            showError("No valid RSS feeds found in clipboard content.")
+            return
+        }
+        
+        confirmImport(outlines)
+    }
+    
+    /// Show confirmation dialog before importing feeds.
+    private func confirmImport(_ outlines: [OPMLOutline]) {
+        let existingCount = outlines.filter { FeedManager.shared.feedExists(url: $0.xmlUrl) }.count
+        let newCount = outlines.count - existingCount
+        
+        var message = "Found \(outlines.count) feed\(outlines.count == 1 ? "" : "s")."
+        if newCount > 0 {
+            message += "\n\(newCount) new feed\(newCount == 1 ? "" : "s") will be added."
+        }
+        if existingCount > 0 {
+            message += "\n\(existingCount) duplicate\(existingCount == 1 ? "" : "s") will be skipped."
+        }
+        
+        if newCount == 0 {
+            showError("All feeds in this OPML file are already in your list.")
+            return
+        }
+        
+        let alert = UIAlertController(
+            title: "Import Feeds",
+            message: message,
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Import \(newCount)", style: .default) { [weak self] _ in
+            let result = OPMLManager.shared.importOutlines(outlines)
+            self?.tableView.reloadData()
+            self?.showToast(result.summary)
+        })
+        
+        present(alert, animated: true)
+    }
+    
+    /// Export feeds as OPML via share sheet.
+    private func exportOPML(enabledOnly: Bool) {
+        do {
+            let fileURL = try OPMLManager.shared.exportToTemporaryFile(includeDisabled: !enabledOnly)
+            
+            let activityVC = UIActivityViewController(
+                activityItems: [fileURL],
+                applicationActivities: nil
+            )
+            
+            // iPad support
+            if let popover = activityVC.popoverPresentationController {
+                popover.barButtonItem = navigationItem.leftBarButtonItems?[1]
+            }
+            
+            present(activityVC, animated: true)
+        } catch {
+            showError("Failed to export: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Copy OPML content to clipboard.
+    private func copyOPMLToClipboard() {
+        let opml = OPMLManager.shared.exportToString()
+        UIPasteboard.general.string = opml
+        showToast("OPML copied to clipboard")
     }
     
     // MARK: - Actions
@@ -311,5 +516,34 @@ class FeedListViewController: UITableViewController {
                 toastLabel.removeFromSuperview()
             }
         }
+    }
+    
+    // MARK: - UIDocumentPickerDelegate
+    
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        
+        // Ensure we can access the file (security-scoped resource)
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        
+        do {
+            let outlines = try OPMLManager.shared.parseOPMLFile(url)
+            if outlines.isEmpty {
+                showError("No valid RSS feeds found in this file.")
+                return
+            }
+            confirmImport(outlines)
+        } catch {
+            showError("Failed to read file: \(error.localizedDescription)")
+        }
+    }
+    
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        // Nothing to do
     }
 }
