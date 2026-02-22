@@ -125,7 +125,15 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         )
         statsButton.tintColor = .systemPurple
         
-        navigationItem.rightBarButtonItems = [bookmarksButton, statsButton, markAllReadButton]
+        let offlineButton = UIBarButtonItem(
+            image: UIImage(systemName: "arrow.down.circle"),
+            style: .plain,
+            target: self,
+            action: #selector(showOfflineArticles)
+        )
+        offlineButton.tintColor = .systemGreen
+        
+        navigationItem.rightBarButtonItems = [bookmarksButton, statsButton, offlineButton, markAllReadButton]
         
         // Add feeds manager button to navigation bar (left side)
         let feedsButton = UIBarButtonItem(
@@ -217,6 +225,12 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     @objc private func showReadingStats() {
         let statsVC = ReadingStatsViewController()
         navigationController?.pushViewController(statsVC, animated: true)
+    }
+    
+    /// Show the offline articles cache viewer.
+    @objc private func showOfflineArticles() {
+        let offlineVC = OfflineArticlesViewController(style: .grouped)
+        navigationController?.pushViewController(offlineVC, animated: true)
     }
     
     /// Present the feed manager view controller.
@@ -431,7 +445,15 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         readAction.image = UIImage(systemName: isRead ? "envelope.badge" : "envelope.open")
         readAction.backgroundColor = isRead ? .systemBlue : .systemGray
         
-        return UISwipeActionsConfiguration(actions: [readAction])
+        let isCached = OfflineCacheManager.shared.isCached(story)
+        let offlineAction = UIContextualAction(style: .normal, title: nil) { _, _, completionHandler in
+            OfflineCacheManager.shared.toggleCache(story)
+            completionHandler(true)
+        }
+        offlineAction.image = UIImage(systemName: isCached ? "arrow.down.circle.fill" : "arrow.down.circle")
+        offlineAction.backgroundColor = isCached ? .systemRed : .systemGreen
+        
+        return UISwipeActionsConfiguration(actions: [readAction, offlineAction])
     }
     
     // MARK: - Prefetching

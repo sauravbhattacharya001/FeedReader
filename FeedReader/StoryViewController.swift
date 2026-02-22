@@ -24,6 +24,9 @@ class StoryViewController: UIViewController {
     /// Bookmark bar button for toggling bookmark state.
     private var bookmarkButton: UIBarButtonItem!
     
+    /// Offline cache bar button for save/remove.
+    private var offlineButton: UIBarButtonItem!
+    
     // MARK: - ViewController methods
     
     override func viewDidLoad() {
@@ -36,7 +39,7 @@ class StoryViewController: UIViewController {
             linkTarget = story.link
         }
         
-        // Create bookmark and share buttons for the navigation bar
+        // Create bookmark, offline, and share buttons for the navigation bar
         bookmarkButton = UIBarButtonItem(
             image: bookmarkIcon(),
             style: .plain,
@@ -45,13 +48,21 @@ class StoryViewController: UIViewController {
         )
         bookmarkButton.tintColor = .systemOrange
         
+        offlineButton = UIBarButtonItem(
+            image: offlineIcon(),
+            style: .plain,
+            target: self,
+            action: #selector(toggleOfflineCache)
+        )
+        offlineButton.tintColor = .systemGreen
+        
         let shareButton = UIBarButtonItem(
             barButtonSystemItem: .action,
             target: self,
             action: #selector(shareStory)
         )
         
-        navigationItem.rightBarButtonItems = [shareButton, bookmarkButton]
+        navigationItem.rightBarButtonItems = [shareButton, bookmarkButton, offlineButton]
     }
     
     // MARK: - Bookmark
@@ -119,6 +130,38 @@ class StoryViewController: UIViewController {
                 toastLabel.removeFromSuperview()
             }
         }
+    }
+    
+    // MARK: - Offline Cache
+    
+    /// Returns the appropriate offline icon based on cache state.
+    private func offlineIcon() -> UIImage? {
+        guard let story = story else {
+            return UIImage(systemName: "arrow.down.circle")
+        }
+        let name = OfflineCacheManager.shared.isCached(story)
+            ? "arrow.down.circle.fill"
+            : "arrow.down.circle"
+        return UIImage(systemName: name)
+    }
+    
+    /// Updates the offline button icon to reflect current state.
+    private func updateOfflineIcon() {
+        offlineButton.image = offlineIcon()
+    }
+    
+    /// Toggle offline cache state for the current story.
+    @objc private func toggleOfflineCache() {
+        guard let story = story else { return }
+        
+        let isNowCached = OfflineCacheManager.shared.toggleCache(story)
+        updateOfflineIcon()
+        
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        let message = isNowCached ? "Saved for offline reading ↓" : "Removed from offline cache"
+        showToast(message)
     }
     
     // MARK: - Share
