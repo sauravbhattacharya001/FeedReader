@@ -36,7 +36,8 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
     private var insideItem = false
     private var storyTitle = NSMutableString()
     private var storyDescription = NSMutableString()
-    private var link = NSMutableString()
+    private var storyLink = NSMutableString()  // from <link> element (preferred)
+    private var storyGuid = NSMutableString()  // from <guid> element (fallback)
     private var imagePath = NSMutableString()
 
     /// Parse the given data synchronously on the calling thread.
@@ -60,7 +61,8 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             insideItem = true
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
-            link = NSMutableString()
+            storyLink = NSMutableString()
+            storyGuid = NSMutableString()
             imagePath = NSMutableString()
         }
 
@@ -79,8 +81,10 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             storyTitle.append(string)
         } else if currentElement.isEqual(to: "description") {
             storyDescription.append(string)
+        } else if currentElement.isEqual(to: "link") {
+            storyLink.append(string)
         } else if currentElement.isEqual(to: "guid") {
-            link.append(string)
+            storyGuid.append(string)
         }
     }
 
@@ -88,12 +92,18 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
                 namespaceURI: String?, qualifiedName qName: String?) {
         guard (elementName as NSString).isEqual(to: "item") else { return }
 
+        // Prefer <link> for the article URL; fall back to <guid> which
+        // may or may not be a permalink (fixes issue #11).
+        let trimmedLink = storyLink.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedGuid = storyGuid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finalLink = trimmedLink.isEmpty ? trimmedGuid : trimmedLink
+
         let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
         if let story = Story(
             title: storyTitle as String,
             photo: UIImage(named: "sample")!,
             description: storyDescription as String,
-            link: link.components(separatedBy: "\n")[0],
+            link: finalLink.components(separatedBy: "\n")[0],
             imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath
         ) {
             parsedStories.append(story)

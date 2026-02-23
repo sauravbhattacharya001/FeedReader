@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss>
+    <channel>
+        <!-- Item 1: has both <link> and <guid>, should prefer <link> -->
+        <item>
+            <title>Link Preferred</title>
+            <description>Parser should use link not guid</description>
+            <link>http://example.com/article-url</link>
+            <guid isPermaLink="false">unique-id-001</guid>
+        </item>
+        <!-- Item 2: has only <guid>, should fall back to guid -->
+        <item>
+            <title>Guid Fallback</title>
+            <description>No link element, guid used as fallback</description>
+            <guid>http://example.com/guid-as-link</guid>
+        </item>
+        <!-- Item 3: has only <link>, no guid at all -->
+        <item>
+            <title>Link Only</title>
+            <description>Only link element, no guid</description>
+            <link>http://example.com/link-only</link>
+        </item>
+        <!-- Item 4: has <link> and URL <guid>, should prefer <link> -->
+        <item>
+            <title>Both URL Types</title>
+            <description>Both link and guid are URLs but different</description>
+            <link>http://example.com/canonical-url</link>
+            <guid>http://example.com/different-guid-url</guid>
+        </item>
+    </channel>
+</rss>

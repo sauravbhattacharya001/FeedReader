@@ -220,4 +220,128 @@ class XMLParserTests: XCTestCase {
             XCTAssertEqual(story.link, viewController.stories[i].link)
         }
     }
+
+    // MARK: - Link vs GUID Parsing (Issue #11)
+
+    /// Helper: parse an inline XML string via RSSFeedParser.parseData.
+    private func parseXML(_ xml: String) -> [Story] {
+        guard let data = xml.data(using: .utf8) else { return [] }
+        let parser = RSSFeedParser()
+        return parser.parseData(data)
+    }
+
+    func testLinkPreferredOverGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel><item>
+            <title>Test</title>
+            <description>Desc</description>
+            <link>http://example.com/article</link>
+            <guid isPermaLink="false">unique-id-001</guid>
+        </item></channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "http://example.com/article",
+                       "Should prefer <link> over non-permalink <guid>")
+    }
+
+    func testGuidFallbackWhenNoLink() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel><item>
+            <title>Test</title>
+            <description>Desc</description>
+            <guid>http://example.com/guid-url</guid>
+        </item></channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "http://example.com/guid-url",
+                       "Should fall back to <guid> when <link> is absent")
+    }
+
+    func testLinkOnlyNoGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel><item>
+            <title>Test</title>
+            <description>Desc</description>
+            <link>http://example.com/link-only</link>
+        </item></channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "http://example.com/link-only",
+                       "Should use <link> when <guid> is absent")
+    }
+
+    func testLinkPreferredWhenBothAreURLs() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel><item>
+            <title>Test</title>
+            <description>Desc</description>
+            <link>http://example.com/canonical</link>
+            <guid>http://example.com/different-guid</guid>
+        </item></channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "http://example.com/canonical",
+                       "Should prefer <link> even when <guid> is also a URL")
+    }
+
+    func testNonURLGuidNotUsedAsLink() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel><item>
+            <title>Test</title>
+            <description>Desc</description>
+            <link>http://example.com/real-url</link>
+            <guid isPermaLink="false">article-12345</guid>
+        </item></channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertFalse(stories[0].link.contains("article-12345"),
+                       "Non-URL guid should not appear in story link")
+        XCTAssertEqual(stories[0].link, "http://example.com/real-url")
+    }
+
+    func testMultipleItemsLinkGuidMix() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss><channel>
+            <item>
+                <title>With Link</title>
+                <description>Has link</description>
+                <link>http://example.com/a</link>
+                <guid>guid-a</guid>
+            </item>
+            <item>
+                <title>Guid Only</title>
+                <description>No link element</description>
+                <guid>http://example.com/b</guid>
+            </item>
+        </channel></rss>
+        """
+        let stories = parseXML(xml)
+        XCTAssertEqual(stories.count, 2)
+        XCTAssertEqual(stories[0].link, "http://example.com/a")
+        XCTAssertEqual(stories[1].link, "http://example.com/b")
+    }
+
+    func testUpdatedMultiStoriesXMLUsesLinks() {
+        // Verify the updated multiStoriesTest.xml works correctly
+        guard let path = Bundle.main.path(
+            forResource: "multiStoriesTest", ofType: "xml"
+        ) else { return }
+
+        viewController.beginParsingTest(path)
+
+        // Story 2 has <link> and non-URL <guid>, should use link
+        XCTAssertTrue(viewController.stories[1].link.contains("story2"),
+                      "Second story should get link from <link>, not guid")
+    }
 }
