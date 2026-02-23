@@ -221,4 +221,194 @@ final class RSSParserTests: XCTestCase {
         XCTAssertEqual(stories.count, 1)
         XCTAssertEqual(stories[0].imagePath, "https://cdn.example.com/thumb.jpg")
     }
+
+    // MARK: - Link/GUID Priority Tests
+
+    func testPrefersLinkOverGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Link Priority</title>
+            <description>Should use link not guid</description>
+            <link>https://example.com/article</link>
+            <guid>https://example.com/guid-123</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/article")
+    }
+
+    func testFallsBackToGuidWhenNoLink() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Guid Only</title>
+            <description>No link element present</description>
+            <guid>https://example.com/guid-only</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/guid-only")
+    }
+
+    func testLinkOnlyNoGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Link Only</title>
+            <description>No guid element</description>
+            <link>https://example.com/link-only</link>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/link-only")
+    }
+
+    func testNonURLGuidFallsToLink() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Non-URL GUID</title>
+            <description>GUID is just an identifier</description>
+            <link>https://example.com/real-url</link>
+            <guid>unique-id-12345</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/real-url")
+    }
+
+    func testDeduplicatesByLinkNotGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Story A</title>
+            <description>First</description>
+            <link>https://example.com/same-url</link>
+            <guid>guid-aaa</guid>
+          </item>
+          <item>
+            <title>Story B</title>
+            <description>Second</description>
+            <link>https://example.com/same-url</link>
+            <guid>guid-bbb</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        // parseData doesn't deduplicate (loadFeeds does), but both should
+        // resolve to the same link URL
+        XCTAssertEqual(stories[0].link, "https://example.com/same-url")
+        XCTAssertEqual(stories[1].link, "https://example.com/same-url")
+    }
+
+    func testLinkWithWhitespace() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Whitespace Link</title>
+            <description>Link has whitespace around it</description>
+            <link>
+              https://example.com/trimmed
+            </link>
+            <guid>https://example.com/guid</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/trimmed")
+    }
+
+    func testMixedLinkAndGuidItems() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Has Both</title>
+            <description>Link and guid</description>
+            <link>https://example.com/link-url</link>
+            <guid>https://example.com/guid-url</guid>
+          </item>
+          <item>
+            <title>Guid Only</title>
+            <description>Only guid</description>
+            <guid>https://example.com/only-guid</guid>
+          </item>
+          <item>
+            <title>Link Only</title>
+            <description>Only link</description>
+            <link>https://example.com/only-link</link>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 3)
+        XCTAssertEqual(stories[0].link, "https://example.com/link-url")
+        XCTAssertEqual(stories[1].link, "https://example.com/only-guid")
+        XCTAssertEqual(stories[2].link, "https://example.com/only-link")
+    }
+
+    func testEmptyLinkFallsToGuid() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Empty Link</title>
+            <description>Link element exists but is empty</description>
+            <link></link>
+            <guid>https://example.com/fallback-guid</guid>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/fallback-guid")
+    }
 }
