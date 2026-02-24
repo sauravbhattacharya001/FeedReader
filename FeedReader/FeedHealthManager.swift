@@ -281,9 +281,16 @@ class FeedHealthManager {
             )
         }
         
-        // Basic counts
-        let successRecords = feedRecords.filter { $0.success }
-        let failureRecords = feedRecords.filter { !$0.success }
+        // Basic counts — single-pass partitioning instead of two filter passes
+        var successRecords: [FetchRecord] = []
+        var failureRecords: [FetchRecord] = []
+        for record in feedRecords {
+            if record.success {
+                successRecords.append(record)
+            } else {
+                failureRecords.append(record)
+            }
+        }
         let successRate = Double(successRecords.count) / Double(feedRecords.count)
         
         // Response time statistics (from successful fetches only)
@@ -317,11 +324,11 @@ class FeedHealthManager {
             }
         }
         
-        // Last dates
-        let sortedByDate = feedRecords.sorted { $0.timestamp < $1.timestamp }
-        let lastFetch = sortedByDate.last?.timestamp
-        let lastSuccess = successRecords.sorted(by: { $0.timestamp < $1.timestamp }).last?.timestamp
-        let lastError = failureRecords.sorted(by: { $0.timestamp < $1.timestamp }).last
+        // Last dates — records are already in chronological order (appended via recordFetch),
+        // so .last is the most recent. No need to sort O(N log N) just to get the last element.
+        let lastFetch = feedRecords.last?.timestamp
+        let lastSuccess = successRecords.last?.timestamp
+        let lastError = failureRecords.last
         
         // Recent errors (last 5)
         let recentErrors = Array(failureRecords.suffix(5))
