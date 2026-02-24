@@ -89,6 +89,9 @@ class OfflineCacheManager {
     /// O(1) lookup index for cache checks.
     private var cacheIndex = Set<String>()
 
+    /// Running total of estimated cache size in bytes.
+    private var _totalSizeBytes: Int = 0
+
     private static let archiveURL: URL = {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documentsDirectory.appendingPathComponent("offlineCache")
@@ -129,6 +132,7 @@ class OfflineCacheManager {
 
         cachedArticles.insert(article, at: 0) // newest first
         cacheIndex.insert(story.link)
+        _totalSizeBytes += article.estimatedSizeBytes
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
         return true
@@ -136,7 +140,10 @@ class OfflineCacheManager {
 
     /// Remove a story from the offline cache.
     func removeFromCache(_ story: Story) {
-        cachedArticles.removeAll { $0.story.link == story.link }
+        if let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) {
+            let removed = cachedArticles.remove(at: idx)
+            _totalSizeBytes -= removed.estimatedSizeBytes
+        }
         cacheIndex.remove(story.link)
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
@@ -147,6 +154,7 @@ class OfflineCacheManager {
         guard index >= 0 && index < cachedArticles.count else { return }
         let removed = cachedArticles.remove(at: index)
         cacheIndex.remove(removed.story.link)
+        _totalSizeBytes -= removed.estimatedSizeBytes
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
     }
@@ -167,9 +175,9 @@ class OfflineCacheManager {
         return cachedArticles.count
     }
 
-    /// Total estimated cache size in bytes.
+    /// Total estimated cache size in bytes (O(1) lookup).
     var totalSizeBytes: Int {
-        return cachedArticles.reduce(0) { $0 + $1.estimatedSizeBytes }
+        return _totalSizeBytes
     }
 
     /// Formatted cache size string (e.g., "1.2 MB", "345 KB").
@@ -181,6 +189,7 @@ class OfflineCacheManager {
     func clearAll() {
         cachedArticles.removeAll()
         cacheIndex.removeAll()
+        _totalSizeBytes = 0
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
     }
@@ -193,6 +202,7 @@ class OfflineCacheManager {
         let before = cachedArticles.count
         cachedArticles.removeAll { $0.savedDate < cutoff }
         cacheIndex = Set(cachedArticles.map { $0.story.link })
+        _totalSizeBytes = cachedArticles.reduce(0) { $0 + $1.estimatedSizeBytes }
         let removed = before - cachedArticles.count
         if removed > 0 {
             persistCache()
@@ -267,6 +277,7 @@ class OfflineCacheManager {
         guard !cachedArticles.isEmpty else { return }
         let removed = cachedArticles.removeLast()
         cacheIndex.remove(removed.story.link)
+        _totalSizeBytes -= removed.estimatedSizeBytes
     }
 
     // MARK: - Persistence
@@ -287,6 +298,7 @@ class OfflineCacheManager {
         guard let data = try? Data(contentsOf: OfflineCacheManager.archiveURL) else {
             cachedArticles = []
             cacheIndex = Set<String>()
+            _totalSizeBytes = 0
             return
         }
         if let loaded = (try? NSKeyedUnarchiver.unarchivedObject(
@@ -295,9 +307,11 @@ class OfflineCacheManager {
         )) as? [CachedArticle] {
             cachedArticles = loaded
             cacheIndex = Set(loaded.map { $0.story.link })
+            _totalSizeBytes = cachedArticles.reduce(0) { $0 + $1.estimatedSizeBytes }
         } else {
             cachedArticles = []
             cacheIndex = Set<String>()
+            _totalSizeBytes = 0
         }
     }
 
