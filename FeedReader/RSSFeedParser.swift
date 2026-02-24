@@ -46,6 +46,7 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
         parsedStories = []
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = self
+        xmlParser.shouldResolveExternalEntities = false  // Prevent XXE
         xmlParser.parse()
         return parsedStories
     }

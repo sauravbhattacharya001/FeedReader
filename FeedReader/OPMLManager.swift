@@ -229,6 +229,7 @@ private class OPMLParser: NSObject, XMLParserDelegate {
     func parse() -> [OPMLOutline] {
         let parser = XMLParser(data: data)
         parser.delegate = self
+        parser.shouldResolveExternalEntities = false  // Prevent XXE
         parser.parse()
         return outlines
     }
