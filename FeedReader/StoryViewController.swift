@@ -179,7 +179,7 @@ class StoryViewController: UIViewController {
             : story.body
         shareItems.append(shortBody)
         
-        if let url = URL(string: story.link) {
+        if Story.isSafeURL(story.link), let url = URL(string: story.link) {
             shareItems.append(url)
         }
         

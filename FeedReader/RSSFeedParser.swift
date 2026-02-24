@@ -99,13 +99,38 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
         let trimmedGuid = storyGuid.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalLink = trimmedLink.isEmpty ? trimmedGuid : trimmedLink
 
+        // Validate article link URL scheme at parse time (defense-in-depth).
+        // Reject stories with unsafe schemes (javascript:, data:, file:, etc.)
+        // before they reach BookmarkManager, ReadStatusManager, or share actions.
+        let linkCandidate = finalLink.components(separatedBy: "\n")[0]
+        guard Story.isSafeURL(linkCandidate) else {
+            // Skip stories with unsafe links entirely
+            storyTitle = NSMutableString()
+            storyDescription = NSMutableString()
+            storyLink = NSMutableString()
+            storyGuid = NSMutableString()
+            imagePath = NSMutableString()
+            insideItem = false
+            return
+        }
+
+        // Validate image path URL scheme — strip unsafe image URLs silently.
         let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sanitizedImagePath: String?
+        if trimmedImagePath.isEmpty {
+            sanitizedImagePath = nil
+        } else if Story.isSafeURL(trimmedImagePath) {
+            sanitizedImagePath = trimmedImagePath
+        } else {
+            sanitizedImagePath = nil  // Strip unsafe image URLs silently
+        }
+
         if let story = Story(
             title: storyTitle as String,
             photo: UIImage(named: "sample")!,
             description: storyDescription as String,
-            link: finalLink.components(separatedBy: "\n")[0],
-            imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath
+            link: linkCandidate,
+            imagePath: sanitizedImagePath
         ) {
             parsedStories.append(story)
         }
