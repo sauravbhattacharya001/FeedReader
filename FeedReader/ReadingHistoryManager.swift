@@ -170,10 +170,20 @@ class ReadingHistoryManager {
             entry.timeSpentSeconds += max(timeSpent, 0)
             entry.scrollProgress = min(max(scrollProgress, 0.0), 1.0)
             
-            // Move to front (newest first by lastVisitedAt)
+            // Move to front (newest first by lastVisitedAt).
+            // Instead of rebuildIndex() which re-indexes all entries O(n),
+            // we only update the indices of entries that shifted: those at
+            // positions 0..<index move up by one, and the moved entry goes
+            // to position 0. O(index) worst case, but avoids scanning the
+            // entire array when the entry is already near the front.
             entries.remove(at: index)
             entries.insert(entry, at: 0)
-            rebuildIndex()
+            entryIndex[link] = 0
+            if index > 0 {
+                for i in 1...index {
+                    entryIndex[entries[i].link] = i
+                }
+            }
         } else {
             // Create new entry
             let entry = HistoryEntry(
@@ -320,23 +330,31 @@ class ReadingHistoryManager {
     }
     
     /// Reading history summary for display.
+    /// Single-pass: computes feed counts, active days, total visits,
+    /// and total time spent in one iteration instead of 4 separate passes
+    /// (previously: feedCounts loop + activeDays loop + totalVisits reduce
+    /// + averageTimeSpent reduce).
     func historySummary() -> HistorySummary {
         var feedCounts: [String: Int] = [:]
-        for entry in entries {
-            feedCounts[entry.feedName, default: 0] += entry.visitCount
-        }
-        let topEntry = feedCounts.max(by: { $0.value < $1.value })
-        
         let calendar = Calendar.current
         var activeDays = Set<Date>()
+        var totalVisits = 0
+        var totalTime = 0.0
+        
         for entry in entries {
+            feedCounts[entry.feedName, default: 0] += entry.visitCount
             activeDays.insert(calendar.startOfDay(for: entry.lastVisitedAt))
+            totalVisits += entry.visitCount
+            totalTime += entry.timeSpentSeconds
         }
+        
+        let topEntry = feedCounts.max(by: { $0.value < $1.value })
+        let avgTime = entries.isEmpty ? 0.0 : totalTime / Double(entries.count)
         
         return HistorySummary(
             totalArticles: entries.count,
             totalVisits: totalVisits,
-            averageTimeSpentSeconds: averageTimeSpent,
+            averageTimeSpentSeconds: avgTime,
             topFeed: topEntry?.key,
             topFeedCount: topEntry?.value ?? 0,
             uniqueFeeds: feedCounts.count,

@@ -98,21 +98,33 @@ class ReadingStatsManager {
     }
     
     /// Compute current reading statistics.
+    /// Single-pass: computes today/week/month counts, hourly distribution,
+    /// and feed breakdown in one iteration instead of 5 separate passes
+    /// (previously: 3 filter passes + hourly loop + feed loop).
     func computeStats() -> ReadingStats {
         let calendar = Calendar.current
         let now = Date()
         let startOfToday = calendar.startOfDay(for: now)
-        
-        // Stories read today
-        let readToday = events.filter { $0.timestamp >= startOfToday }.count
-        
-        // Stories read this week (last 7 days)
         let weekAgo = calendar.date(byAdding: .day, value: -7, to: startOfToday)!
-        let readThisWeek = events.filter { $0.timestamp >= weekAgo }.count
-        
-        // Stories read this month (last 30 days)
         let monthAgo = calendar.date(byAdding: .day, value: -30, to: startOfToday)!
-        let readThisMonth = events.filter { $0.timestamp >= monthAgo }.count
+        
+        var readToday = 0
+        var readThisWeek = 0
+        var readThisMonth = 0
+        var hourlyDist: [Int: Int] = [:]
+        var feedCounts: [String: Int] = [:]
+        
+        for event in events {
+            let ts = event.timestamp
+            if ts >= startOfToday { readToday += 1 }
+            if ts >= weekAgo { readThisWeek += 1 }
+            if ts >= monthAgo { readThisMonth += 1 }
+            
+            let hour = calendar.component(.hour, from: ts)
+            hourlyDist[hour, default: 0] += 1
+            
+            feedCounts[event.feedName, default: 0] += 1
+        }
         
         // Daily average
         let daysTracking = computeDaysTracking(calendar: calendar, now: now)
@@ -121,19 +133,8 @@ class ReadingStatsManager {
         // Streaks
         let (currentStreak, longestStreak) = computeStreaks(calendar: calendar, now: now)
         
-        // Hourly distribution
-        var hourlyDist: [Int: Int] = [:]
-        for event in events {
-            let hour = calendar.component(.hour, from: event.timestamp)
-            hourlyDist[hour, default: 0] += 1
-        }
         let mostActiveHour = hourlyDist.max(by: { $0.value < $1.value })?.key
         
-        // Feed breakdown
-        var feedCounts: [String: Int] = [:]
-        for event in events {
-            feedCounts[event.feedName, default: 0] += 1
-        }
         let feedBreakdown = feedCounts
             .map { (name: $0.key, count: $0.value) }
             .sorted { $0.count > $1.count }
