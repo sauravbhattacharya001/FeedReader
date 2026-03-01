@@ -16,6 +16,9 @@ class ReadingStatsViewController: UIViewController {
     private let scrollView = UIScrollView()
     private let contentStack = UIStackView()
     
+    /// Standard card insets used across all dashboard sections.
+    private static let cardInsets = UIEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
@@ -121,15 +124,9 @@ class ReadingStatsViewController: UIViewController {
     // MARK: - Overview Grid
     
     private func makeOverviewGrid(_ stats: ReadingStatsManager.ReadingStats) -> UIView {
-        let container = UIView()
-        container.backgroundColor = .secondarySystemGroupedBackground
-        container.layer.cornerRadius = 12
-        
-        let grid = UIStackView()
-        grid.axis = .vertical
+        let insets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        let (card, grid) = makeCard(insets: insets)
         grid.spacing = 0
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        container.addSubview(grid)
         
         // Row 1: Total | Today
         let row1 = makeStatRow([
@@ -155,14 +152,7 @@ class ReadingStatsViewController: UIViewController {
         ])
         grid.addArrangedSubview(row3)
         
-        NSLayoutConstraint.activate([
-            grid.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-            grid.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 8),
-            grid.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -8),
-            grid.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -8)
-        ])
-        
-        return container
+        return card
     }
     
     private func makeStatRow(_ items: [(title: String, value: String, emoji: String)]) -> UIView {
@@ -217,9 +207,11 @@ class ReadingStatsViewController: UIViewController {
         return sep
     }
     
-    // MARK: - Streak Card
+    // MARK: - Reusable Card Builder
     
-    private func makeStreakCard(_ stats: ReadingStatsManager.ReadingStats) -> UIView {
+    /// Creates a rounded card with a vertical stack inside, pinned with
+    /// standard insets. Callers add arranged subviews to the returned stack.
+    private func makeCard(insets: UIEdgeInsets = ReadingStatsViewController.cardInsets) -> (card: UIView, stack: UIStackView) {
         let card = UIView()
         card.backgroundColor = .secondarySystemGroupedBackground
         card.layer.cornerRadius = 12
@@ -229,6 +221,29 @@ class ReadingStatsViewController: UIViewController {
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(stack)
+        
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: insets.top),
+            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: insets.left),
+            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -insets.right),
+            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -insets.bottom)
+        ])
+        
+        return (card, stack)
+    }
+    
+    /// Format an hour (0-23) as a human-readable time string.
+    private static func formatHourLabel(_ hour: Int) -> String {
+        if hour == 0 { return "12 AM" }
+        if hour < 12 { return "\(hour) AM" }
+        if hour == 12 { return "12 PM" }
+        return "\(hour - 12) PM"
+    }
+    
+    // MARK: - Streak Card
+    
+    private func makeStreakCard(_ stats: ReadingStatsManager.ReadingStats) -> UIView {
+        let (card, stack) = makeCard()
         
         // Current streak
         let currentRow = UIStackView()
@@ -293,13 +308,6 @@ class ReadingStatsViewController: UIViewController {
         motivationLabel.numberOfLines = 0
         stack.addArrangedSubview(motivationLabel)
         
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16)
-        ])
-        
         return card
     }
     
@@ -345,37 +353,24 @@ class ReadingStatsViewController: UIViewController {
     // MARK: - Hourly Chart
     
     private func makeHourlyChart(_ stats: ReadingStatsManager.ReadingStats) -> UIView {
-        let card = UIView()
-        card.backgroundColor = .secondarySystemGroupedBackground
-        card.layer.cornerRadius = 12
+        let (card, stack) = makeCard()
+        stack.spacing = 8
         
         let chartView = HourlyBarChartView(distribution: stats.hourlyDistribution)
         chartView.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(chartView)
+        chartView.heightAnchor.constraint(equalToConstant: 120).isActive = true
+        stack.addArrangedSubview(chartView)
         
         let infoLabel = UILabel()
-        infoLabel.translatesAutoresizingMaskIntoConstraints = false
         if let activeHour = stats.mostActiveHour {
-            infoLabel.text = "Most active: \(formatHour(activeHour))"
+            infoLabel.text = "Most active: \(ReadingStatsViewController.formatHourLabel(activeHour))"
         } else {
             infoLabel.text = "No reading data yet"
         }
         infoLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         infoLabel.textColor = .secondaryLabel
         infoLabel.textAlignment = .center
-        card.addSubview(infoLabel)
-        
-        NSLayoutConstraint.activate([
-            chartView.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            chartView.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 12),
-            chartView.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -12),
-            chartView.heightAnchor.constraint(equalToConstant: 120),
-            
-            infoLabel.topAnchor.constraint(equalTo: chartView.bottomAnchor, constant: 8),
-            infoLabel.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            infoLabel.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            infoLabel.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12)
-        ])
+        stack.addArrangedSubview(infoLabel)
         
         return card
     }
@@ -383,15 +378,8 @@ class ReadingStatsViewController: UIViewController {
     // MARK: - Feed Breakdown
     
     private func makeFeedBreakdown(_ stats: ReadingStatsManager.ReadingStats) -> UIView {
-        let card = UIView()
-        card.backgroundColor = .secondarySystemGroupedBackground
-        card.layer.cornerRadius = 12
-        
-        let stack = UIStackView()
-        stack.axis = .vertical
+        let (card, stack) = makeCard()
         stack.spacing = 8
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(stack)
         
         let maxCount = stats.feedBreakdown.first?.count ?? 1
         let colors: [UIColor] = [.systemBlue, .systemGreen, .systemOrange, .systemPurple, .systemPink, .systemTeal, .systemIndigo, .systemYellow]
@@ -454,29 +442,15 @@ class ReadingStatsViewController: UIViewController {
             stack.addArrangedSubview(row)
         }
         
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 16),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -16)
-        ])
-        
         return card
     }
     
     // MARK: - Empty State
     
     private func makeEmptyState() -> UIView {
-        let card = UIView()
-        card.backgroundColor = .secondarySystemGroupedBackground
-        card.layer.cornerRadius = 12
-        
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 12
+        let insets = UIEdgeInsets(top: 32, left: 16, bottom: 32, right: 16)
+        let (card, stack) = makeCard(insets: insets)
         stack.alignment = .center
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(stack)
         
         let emoji = UILabel()
         emoji.text = "📖"
@@ -497,13 +471,6 @@ class ReadingStatsViewController: UIViewController {
         stack.addArrangedSubview(emoji)
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(subtitle)
-        
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: card.topAnchor, constant: 32),
-            stack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
-            stack.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            stack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -32)
-        ])
         
         return card
     }
@@ -549,13 +516,6 @@ class ReadingStatsViewController: UIViewController {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d, yyyy"
         return formatter.string(from: date)
-    }
-    
-    private func formatHour(_ hour: Int) -> String {
-        if hour == 0 { return "12 AM" }
-        if hour < 12 { return "\(hour) AM" }
-        if hour == 12 { return "12 PM" }
-        return "\(hour - 12) PM"
     }
 }
 
@@ -606,10 +566,12 @@ class HourlyBarChartView: UIView {
             // Draw hour labels for select hours
             if labelHours.contains(hour) {
                 let label: String
-                if hour == 0 { label = "12a" }
-                else if hour < 12 { label = "\(hour)a" }
-                else if hour == 12 { label = "12p" }
-                else { label = "\(hour-12)p" }
+                switch hour {
+                case 0: label = "12a"
+                case 1..<12: label = "\(hour)a"
+                case 12: label = "12p"
+                default: label = "\(hour-12)p"
+                }
                 
                 let attrs: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(ofSize: 9, weight: .regular),
