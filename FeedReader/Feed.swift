@@ -20,6 +20,9 @@ class Feed: NSObject, NSSecureCoding {
     var url: String
     var isEnabled: Bool
     
+    /// Optional category name for organizing feeds into groups.
+    var category: String?
+    
     /// Unique identifier based on URL for deduplication.
     var identifier: String {
         return url.lowercased()
@@ -36,6 +39,7 @@ class Feed: NSObject, NSSecureCoding {
         static let nameKey = "feedName"
         static let urlKey = "feedUrl"
         static let isEnabledKey = "feedIsEnabled"
+        static let categoryKey = "feedCategory"
     }
     
     // MARK: - Preset Feeds
@@ -56,10 +60,11 @@ class Feed: NSObject, NSSecureCoding {
     
     // MARK: - Initialization
     
-    init(name: String, url: String, isEnabled: Bool = true) {
+    init(name: String, url: String, isEnabled: Bool = true, category: String? = nil) {
         self.name = name
         self.url = url
         self.isEnabled = isEnabled
+        self.category = category
         super.init()
     }
     
@@ -69,6 +74,7 @@ class Feed: NSObject, NSSecureCoding {
         aCoder.encode(name, forKey: PropertyKey.nameKey)
         aCoder.encode(url, forKey: PropertyKey.urlKey)
         aCoder.encode(isEnabled, forKey: PropertyKey.isEnabledKey)
+        aCoder.encode(category as NSString?, forKey: PropertyKey.categoryKey)
     }
     
     required convenience init?(coder aDecoder: NSCoder) {
@@ -77,7 +83,8 @@ class Feed: NSObject, NSSecureCoding {
             return nil
         }
         let isEnabled = aDecoder.decodeBool(forKey: PropertyKey.isEnabledKey)
-        self.init(name: name, url: url, isEnabled: isEnabled)
+        let category = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.categoryKey) as String?
+        self.init(name: name, url: url, isEnabled: isEnabled, category: category)
     }
     
     // MARK: - Equality
