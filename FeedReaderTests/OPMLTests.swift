@@ -487,6 +487,55 @@ class OPMLTests: XCTestCase {
         XCTAssertEqual(outlines[0].category, "Tech")
     }
     
+    func testParseCategoryDoesNotStickToRootFeeds() {
+        // Regression test for issue #13: feeds after a folder should not
+        // inherit the folder's category when they're at root level.
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <opml version="2.0">
+          <head><title>Test</title></head>
+          <body>
+            <outline text="Tech">
+              <outline type="rss" text="Ars Technica" xmlUrl="https://arstechnica.com/feed/"/>
+            </outline>
+            <outline type="rss" text="BBC News" xmlUrl="https://feeds.bbci.co.uk/news/rss.xml"/>
+          </body>
+        </opml>
+        """
+        
+        let outlines = opmlManager.parseOPML(opml)
+        XCTAssertEqual(outlines.count, 2)
+        XCTAssertEqual(outlines[0].title, "Ars Technica")
+        XCTAssertEqual(outlines[0].category, "Tech")
+        XCTAssertEqual(outlines[1].title, "BBC News")
+        XCTAssertNil(outlines[1].category, "Root-level feed after a folder should have nil category")
+    }
+    
+    func testParseMultipleCategoriesWithRootFeedsBetween() {
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Tech">
+              <outline type="rss" text="TC" xmlUrl="https://techcrunch.com/feed/"/>
+            </outline>
+            <outline type="rss" text="Root1" xmlUrl="https://example.com/root1.xml"/>
+            <outline text="News">
+              <outline type="rss" text="BBC" xmlUrl="https://feeds.bbci.co.uk/news/rss.xml"/>
+            </outline>
+            <outline type="rss" text="Root2" xmlUrl="https://example.com/root2.xml"/>
+          </body>
+        </opml>
+        """
+        
+        let outlines = opmlManager.parseOPML(opml)
+        XCTAssertEqual(outlines.count, 4)
+        XCTAssertEqual(outlines[0].category, "Tech")
+        XCTAssertNil(outlines[1].category)
+        XCTAssertEqual(outlines[2].category, "News")
+        XCTAssertNil(outlines[3].category)
+    }
+    
     func testParseLargeOPML() {
         var opml = """
         <?xml version="1.0" encoding="UTF-8"?>

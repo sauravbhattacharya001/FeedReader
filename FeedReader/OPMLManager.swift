@@ -220,6 +220,7 @@ private class OPMLParser: NSObject, XMLParserDelegate {
     private let data: Data
     private var outlines: [OPMLOutline] = []
     private var currentCategory: String?
+    private var outlineDepth = 0
     
     init(data: Data) {
         self.data = data
@@ -243,6 +244,7 @@ private class OPMLParser: NSObject, XMLParserDelegate {
                 attributes attributeDict: [String: String] = [:]) {
         
         guard elementName.lowercased() == "outline" else { return }
+        outlineDepth += 1
         
         // Check if this is a category/folder outline (has children, no xmlUrl)
         if attributeDict["xmlUrl"] == nil && attributeDict["xmlurl"] == nil {
@@ -276,12 +278,13 @@ private class OPMLParser: NSObject, XMLParserDelegate {
                 didEndElement elementName: String,
                 namespaceURI: String?,
                 qualifiedName qName: String?) {
-        // When leaving an outline that was a category, clear the category
-        // Note: this is simplified — doesn't handle deeply nested categories
+        // When leaving an outline element, track depth and clear category
+        // when exiting a top-level folder outline (depth 1).
         if elementName.lowercased() == "outline" {
-            // We can't easily distinguish category end from feed end in SAX,
-            // so we keep the last category until a new one is set.
-            // This is sufficient for most OPML files (1-level deep folders).
+            if outlineDepth == 1 {
+                currentCategory = nil
+            }
+            outlineDepth -= 1
         }
     }
 }
