@@ -143,10 +143,12 @@ class ContentFilterManager {
     // MARK: - Matching
     
     /// Check if a story should be muted (matches any active filter).
+    /// Increments the matching filter's muted count and persists it.
     func shouldMute(_ story: Story) -> Bool {
         for filter in activeFilters {
             if matchesFilter(story, filter: filter) {
                 filter.mutedCount += 1
+                save()
                 return true
             }
         }
@@ -154,17 +156,39 @@ class ContentFilterManager {
     }
     
     /// Returns stories that would be hidden by active filters.
+    /// Increments muted counts for each matching filter and persists.
     func mutedStories(from stories: [Story]) -> [Story] {
-        return stories.filter { story in
-            activeFilters.contains { matchesFilter(story, filter: $0) }
+        var didUpdate = false
+        let result = stories.filter { story in
+            for filter in activeFilters {
+                if matchesFilter(story, filter: filter) {
+                    filter.mutedCount += 1
+                    didUpdate = true
+                    return true
+                }
+            }
+            return false
         }
+        if didUpdate { save() }
+        return result
     }
     
     /// Returns stories that pass all active filters (not muted).
+    /// Increments muted counts for filtered-out stories and persists.
     func filteredStories(from stories: [Story]) -> [Story] {
-        return stories.filter { story in
-            !activeFilters.contains { matchesFilter(story, filter: $0) }
+        var didUpdate = false
+        let result = stories.filter { story in
+            for filter in activeFilters {
+                if matchesFilter(story, filter: filter) {
+                    filter.mutedCount += 1
+                    didUpdate = true
+                    return false
+                }
+            }
+            return true
         }
+        if didUpdate { save() }
+        return result
     }
     
     /// Check if a story matches a specific filter.
