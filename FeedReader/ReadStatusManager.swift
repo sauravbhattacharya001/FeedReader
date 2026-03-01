@@ -114,7 +114,9 @@ class ReadStatusManager {
     
     /// Count unread stories from the given array.
     func unreadCount(in stories: [Story]) -> Int {
-        return stories.filter { !readLinks.contains($0.link) }.count
+        return stories.reduce(0) { acc, story in
+            readLinks.contains(story.link) ? acc : acc + 1
+        }
     }
     
     /// Filter stories by read status.

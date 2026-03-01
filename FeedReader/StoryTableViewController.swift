@@ -49,14 +49,27 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         return searchController.isActive && !(searchController.searchBar.text?.isEmpty ?? true)
     }
     
+    /// Cached displayed stories array, invalidated when stories, filter, or
+    /// search state changes. Avoids re-filtering on every cell render call.
+    private var _cachedDisplayedStories: [Story]?
+    
     /// Returns the appropriate stories array based on search and read filter state.
+    /// Result is cached until invalidated by invalidateDisplayCache().
     private var displayedStories: [Story] {
+        if let cached = _cachedDisplayedStories { return cached }
         var result = isFiltering ? filteredStories : stories
         // Apply read status filter
         if readFilter != .all {
             result = ReadStatusManager.shared.filterStories(result, readStatus: readFilter)
         }
+        _cachedDisplayedStories = result
         return result
+    }
+    
+    /// Invalidate the displayed stories cache. Call whenever stories,
+    /// filteredStories, readFilter, or search state changes.
+    private func invalidateDisplayCache() {
+        _cachedDisplayedStories = nil
     }
 
     // MARK: - ViewController methods
@@ -204,6 +217,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Called when feed configuration changes — reload all data.
     @objc private func feedsChanged() {
         hasLoadedData = false
+        invalidateDisplayCache()
         updateTitle()
         loadData()
         hasLoadedData = true
@@ -211,6 +225,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     
     /// Called when read status changes — refresh display.
     @objc private func readStatusChanged() {
+        invalidateDisplayCache()
         updateTitle()
         tableView.reloadData()
     }
@@ -247,6 +262,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Handle read filter segment control changes.
     @objc private func readFilterChanged(_ sender: UISegmentedControl) {
         readFilter = ReadStatusManager.ReadFilter(rawValue: sender.selectedSegmentIndex) ?? .all
+        invalidateDisplayCache()
         tableView.reloadData()
     }
     
@@ -290,6 +306,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             story.title.lowercased().contains(lowercasedSearch) ||
             story.body.lowercased().contains(lowercasedSearch)
         }
+        invalidateDisplayCache()
         updateTitle()
         tableView.reloadData()
     }
@@ -340,6 +357,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         self.stories = stories
         activityIndicator.stopAnimating()
         refreshControl?.endRefreshing()
+        invalidateDisplayCache()
         updateTitle()
         tableView.reloadData()
     }
@@ -464,6 +482,11 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
             return displayedStories[indexPath.row].imagePath
         }
         ImageCache.shared.prefetch(urls: urls)
+    }
+    
+    func tableView(_ tableView: UITableView, cancelPrefetchingForRowsAt indexPaths: [IndexPath]) {
+        // Cancel in-flight prefetches when the user scrolls away
+        ImageCache.shared.cancelPrefetches()
     }
     
     // MARK: - Navigation
