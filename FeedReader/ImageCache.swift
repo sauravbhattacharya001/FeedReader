@@ -8,6 +8,7 @@
 //
 
 import UIKit
+import ImageIO
 
 class ImageCache {
 
@@ -59,6 +60,36 @@ class ImageCache {
         cache.setObject(image, forKey: key as NSString)
     }
 
+    /// Maximum pixel dimension for cached thumbnail images.
+    /// Images are downsampled at decode time to avoid holding
+    /// full-resolution bitmaps in memory (often 3000×2000+ for
+    /// news article photos). A 200pt limit covers typical table
+    /// view cells at 3× scale (600px).
+    static let maxThumbnailPixels: CGFloat = 600
+
+    /// Downsample raw image data to a thumbnail without decoding
+    /// the full image into memory first. Uses ImageIO to decode
+    /// directly at the target size, saving ~10× memory for typical
+    /// news images.
+    private static func downsampledImage(data: Data) -> UIImage? {
+        let options: [CFString: Any] = [
+            kCGImageSourceShouldCache: false
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, options as CFDictionary) else {
+            return UIImage(data: data)
+        }
+        let downsampleOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxThumbnailPixels
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions as CFDictionary) else {
+            return UIImage(data: data)
+        }
+        return UIImage(cgImage: cgImage)
+    }
+
     /// Loads an image from URL, returning it via the completion handler.
     /// If already cached, returns immediately on the calling queue.
     /// Otherwise fetches asynchronously and caches the result.
@@ -81,7 +112,7 @@ class ImageCache {
 
         // Fetch asynchronously via the constrained session
         imageSession.dataTask(with: url) { [weak self] data, _, _ in
-            guard let data = data, let image = UIImage(data: data) else {
+            guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
@@ -110,7 +141,7 @@ class ImageCache {
                 self?.inflightURLs.remove(urlString)
                 self?.inflightLock.unlock()
 
-                guard let data = data, let image = UIImage(data: data) else { return }
+                guard let data = data, let image = ImageCache.downsampledImage(data: data) else { return }
                 self?.setImage(image, forKey: urlString)
             }.resume()
         }

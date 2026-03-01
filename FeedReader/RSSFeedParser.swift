@@ -161,28 +161,41 @@ class RSSFeedParser: NSObject {
     /// step is serialized.
     private let parseQueue = DispatchQueue(label: "com.feedreader.parseQueue")
 
-    /// Cancels any in-progress load when a new one starts, so stale
-    /// results from an old refresh don't overwrite a newer one.
-    private var currentSession: URLSession?
+    /// Reusable URL session for feed fetching. Created once and reused
+    /// across loads to avoid the overhead of session creation (TLS
+    /// session cache, connection pool, delegate setup) on every refresh.
+    private lazy var feedSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 20
+        config.httpMaximumConnectionsPerHost = 4
+        return URLSession(configuration: config)
+    }()
+
+    /// Generation counter to discard results from stale loads.
+    private var loadGeneration: UInt64 = 0
 
     // MARK: - Public API
 
     /// Parse stories from multiple feed URLs concurrently.
     /// Calls delegate on the main thread when all feeds have completed.
     ///
-    /// If a previous load is still in flight it is cancelled first,
-    /// preventing stale data from arriving after the new request.
+    /// If a previous load is still in flight its results are discarded
+    /// via the generation counter, without destroying the shared session.
     func loadFeeds(_ urls: [String]) {
         guard !urls.isEmpty else {
             delegate?.parserDidFinishLoading(stories: [])
             return
         }
 
-        // Cancel any in-progress load to avoid stale results.
-        currentSession?.invalidateAndCancel()
+        // Cancel in-flight data tasks (not the session itself) and
+        // bump generation so any stragglers from the old load are ignored.
+        feedSession.getAllTasks { tasks in
+            for task in tasks { task.cancel() }
+        }
+        loadGeneration &+= 1
+        let currentGeneration = loadGeneration
 
-        let session = URLSession(configuration: .default)
-        currentSession = session
+        let session = feedSession
 
         // Build URL→feedName map from enabled feeds for source attribution
         let enabledFeeds = FeedManager.shared.enabledFeeds
@@ -199,12 +212,12 @@ class RSSFeedParser: NSObject {
 
         for url in urls {
             let feedName = feedNameMap[url] ?? "Unknown"
-            parseFeed(url, session: session, feedName: feedName)
+            parseFeed(url, session: session, feedName: feedName, generation: currentGeneration)
         }
     }
 
     /// Parse stories from a single feed URL using the given session.
-    private func parseFeed(_ url: String, session: URLSession, feedName: String) {
+    private func parseFeed(_ url: String, session: URLSession, feedName: String, generation: UInt64) {
         guard let feedURL = URL(string: url) else {
             print("RSSFeedParser: invalid URL — \(url)")
             feedCompleted()
@@ -235,6 +248,8 @@ class RSSFeedParser: NSObject {
 
             // Merge results on the serial queue.
             self.parseQueue.async {
+                // Discard if a newer load has started.
+                guard self.loadGeneration == generation else { return }
                 for story in feedStories {
                     if !self.seenLinks.contains(story.link) {
                         self.seenLinks.insert(story.link)
