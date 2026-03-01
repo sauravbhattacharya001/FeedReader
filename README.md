@@ -14,6 +14,7 @@
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml/badge.svg" alt="Pages"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
+  <img src="https://img.shields.io/badge/tests-614-brightgreen?logo=swift" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-enabled-brightgreen?logo=swift" alt="Code Coverage">
   <br>
   <!-- Platform / Language -->
@@ -57,6 +58,14 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 📤 **Share** — Share stories via the system share sheet
 - 👁️ **Read/Unread Tracking** — Stories are automatically marked as read when tapped, with blue dot indicators for unread stories, unread count in the title bar, segmented filter (All/Unread/Read), mark all read, and swipe-left to toggle read status
 - 📊 **Reading Statistics** — Analytics dashboard showing reading habits: total stories read, daily/weekly/monthly counts, daily average, reading streaks (current + longest) with motivational messages, hourly activity bar chart, per-feed breakdown with progress bars, bookmark count, and tracking history
+- 📝 **Article Notes** — Add, edit, and delete personal notes on any article. Notes persist across sessions and support timestamped annotations
+- 🎯 **Content Filters** — Create keyword-based content filters to highlight or hide stories. Supports import/export as JSON for backup and sharing
+- ❤️ **Feed Health Monitor** — Tracks feed reliability metrics: fetch success/failure history, response times, uptime percentage, and generates health reports with per-feed status
+- 📶 **Offline Article Cache** — Dedicated offline cache for saving full articles. Browse cached articles without internet, manage cache size, and receive notifications when cache changes
+- 📂 **OPML Import/Export** — Import and export feed subscriptions in standard OPML format for interoperability with other RSS readers
+- 📜 **Reading History** — Rich reading history with timestamped entries, source tracking, session duration, and history summaries with date-range filtering
+- 🧠 **Smart Feeds** — Create saved keyword-based filters that auto-match stories across all feeds. Supports AND/OR match modes and search across title, description, or both
+- 🔒 **Security Hardening** — RSS parser security: XXE prevention, URL validation (blocks javascript:/data:/file: schemes), HTML sanitization, and protocol enforcement
 
 ## Architecture
 
@@ -66,12 +75,24 @@ FeedReader/
 │   ├── AppDelegate.swift                # App lifecycle
 │   ├── Story.swift                      # Data model (NSCoding-conformant)
 │   ├── Feed.swift                       # RSS feed source model (name, URL, enabled)
+│   ├── ArticleNote.swift                # Article note data model
+│   ├── ContentFilter.swift              # Content filter data model (keyword, action)
 │   ├── FeedManager.swift                # Feed source management singleton (CRUD + persistence)
 │   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
+│   ├── FeedHealthManager.swift          # Feed reliability tracking (uptime, response times, reports)
 │   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
 │   ├── ReadStatusManager.swift          # Read/unread status tracking (UserDefaults, singleton)
 │   ├── ReadingStatsManager.swift        # Reading analytics engine (events, streaks, stats)
+│   ├── ReadingHistoryManager.swift      # Rich reading history with timestamps and sessions
 │   ├── ReadingStatsViewController.swift # Reading stats dashboard UI
+│   ├── ArticleNotesManager.swift        # Article note CRUD and persistence
+│   ├── ContentFilterManager.swift       # Content filter management with JSON import/export
+│   ├── SmartFeedManager.swift           # Keyword-based auto-matching smart feeds
+│   ├── OPMLManager.swift                # OPML import/export for feed subscriptions
+│   ├── OfflineCacheManager.swift        # Full-article offline caching with size management
+│   ├── OfflineArticlesViewController.swift  # Offline cached articles browsing UI
+│   ├── ImageCache.swift                 # NSCache-based in-memory image cache
+│   ├── RSSFeedParser.swift              # Concurrent multi-feed RSS parser with deduplication
 │   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
 │   ├── StoryTableViewController.swift   # Main feed list + XML parsing
 │   ├── StoryTableViewCell.swift         # Custom table view cell
@@ -83,16 +104,31 @@ FeedReader/
 │       ├── Main.storyboard              # Main UI layout
 │       └── LaunchScreen.storyboard      # Launch screen
 ├── FeedReader.xcodeproj/                # Xcode project
+├── Sources/FeedReaderCore/              # Swift Package for reusable RSS functionality
+│   ├── RSSParser.swift                  # Standalone RSS parser
+│   ├── RSSStory.swift                   # Story model with URL validation & HTML sanitization
+│   ├── FeedItem.swift                   # Feed source model with 10 built-in presets
+│   └── NetworkReachability.swift        # Network connectivity check
+├── Tests/FeedReaderCoreTests/           # Swift Package tests
 └── FeedReaderTests/
-    ├── BookmarkTests.swift              # Bookmark manager tests (20 cases)
-    ├── ReadStatusTests.swift            # Read/unread tracking tests (42 cases)
-    ├── ReadingStatsTests.swift          # Reading statistics tests (38 cases)
-    ├── FeedManagerTests.swift           # Feed model + manager tests (35 cases)
-    ├── StoryTests.swift                 # Model unit tests
-    ├── StoryModelTests.swift            # Extended model tests
-    ├── SearchFilterTests.swift          # Search/filter tests
-    ├── XMLParserTests.swift             # XML parser tests
-    ├── ViewControllerTests.swift        # View controller tests
+    ├── ArticleNotesTests.swift          # Article notes tests (51 cases)
+    ├── BookmarkTests.swift              # Bookmark manager tests (18 cases)
+    ├── ContentFilterTests.swift         # Content filter tests (67 cases)
+    ├── FeedHealthTests.swift            # Feed health monitor tests (73 cases)
+    ├── FeedManagerTests.swift           # Feed model + manager tests (36 cases)
+    ├── OfflineCacheTests.swift          # Offline cache tests (40 cases)
+    ├── OPMLTests.swift                  # OPML import/export tests (38 cases)
+    ├── ReadingHistoryTests.swift        # Reading history tests (62 cases)
+    ├── ReadingStatsTests.swift          # Reading statistics tests (34 cases)
+    ├── ReadStatusTests.swift            # Read/unread tracking tests (41 cases)
+    ├── RSSParserSecurityTests.swift     # RSS parser security tests (12 cases)
+    ├── SearchFilterTests.swift          # Search/filter tests (6 cases)
+    ├── SmartFeedTests.swift             # Smart feed tests (70 cases)
+    ├── StoryModelTests.swift            # Extended model tests (37 cases)
+    ├── StoryTests.swift                 # Model unit tests (2 cases)
+    ├── ViewControllerTests.swift        # View controller tests (3 cases)
+    ├── XMLParserTests.swift             # XML parser tests (19 cases)
+    ├── XXETests.swift                   # XXE prevention tests (5 cases)
     ├── storiesTest.xml                  # Test fixture XML
     ├── multiStoriesTest.xml             # Multi-story test fixture
     └── malformedStoriesTest.xml         # Malformed XML test fixture
@@ -230,6 +266,20 @@ open FeedReader.xcodeproj
 | Reading stats — feed breakdown | Per-feed progress bars sorted by stories read |
 | Reading stats — clear all | Confirmation dialog, permanently deletes all history |
 | Reading stats — empty state | Friendly prompt when no reading data exists |
+| Add note on article | Note saved with timestamp, persists across sessions |
+| Edit/delete article note | Note updated or removed from persistent storage |
+| Create content filter | Keyword filter highlights or hides matching stories |
+| Import/export filters (JSON) | Filters round-trip through JSON import/export |
+| Feed health dashboard | Shows per-feed uptime %, response times, failure history |
+| Feed health report | Generates aggregate health summary across all feeds |
+| Save article offline | Full article cached for reading without internet |
+| Browse offline articles | Cached articles accessible from dedicated screen |
+| Clear offline cache | All cached articles removed after confirmation |
+| Import OPML file | Feed subscriptions imported from standard OPML format |
+| Export OPML file | Current feeds exported as valid OPML for other readers |
+| Create smart feed | Keyword filter auto-matches stories across all feeds |
+| Smart feed match modes | AND mode requires all keywords; OR matches any keyword |
+| Smart feed search scopes | Search title only, description only, or both |
 
 ## Tech Stack
 
