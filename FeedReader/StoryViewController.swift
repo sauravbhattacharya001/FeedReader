@@ -27,6 +27,9 @@ class StoryViewController: UIViewController {
     /// Offline cache bar button for save/remove.
     private var offlineButton: UIBarButtonItem!
     
+    /// Timestamp when the user opened this article (for reading time tracking).
+    private var viewStartTime: Date?
+    
     // MARK: - ViewController methods
     
     override func viewDidLoad() {
@@ -63,6 +66,39 @@ class StoryViewController: UIViewController {
         )
         
         navigationItem.rightBarButtonItems = [shareButton, bookmarkButton, offlineButton]
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        viewStartTime = Date()
+        
+        // Record the visit in reading history so that ReadingStatsManager,
+        // DigestGenerator, and the history UI actually receive data.
+        // Previously this call was missing, leaving all history-dependent
+        // features non-functional (bug fix).
+        if let story = story {
+            ReadingHistoryManager.shared.recordVisit(
+                link: story.link,
+                title: story.title,
+                feedName: story.sourceFeedName ?? "Unknown"
+            )
+            // Also mark the article as read for the read/unread filter
+            ReadStatusManager.shared.markAsRead(link: story.link)
+        }
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        // Update time spent reading this article
+        if let story = story, let startTime = viewStartTime {
+            let timeSpent = Date().timeIntervalSince(startTime)
+            ReadingHistoryManager.shared.updateTimeSpent(
+                link: story.link,
+                additionalSeconds: timeSpent
+            )
+        }
+        viewStartTime = nil
     }
     
     // MARK: - Bookmark
