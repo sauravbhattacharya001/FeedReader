@@ -220,7 +220,7 @@ class RSSFeedParser: NSObject {
     private func parseFeed(_ url: String, session: URLSession, feedName: String, generation: UInt64) {
         guard let feedURL = URL(string: url) else {
             print("RSSFeedParser: invalid URL — \(url)")
-            feedCompleted()
+            feedCompleted(generation: generation)
             return
         }
 
@@ -230,7 +230,7 @@ class RSSFeedParser: NSObject {
             guard let data = data, error == nil else {
                 if (error as? URLError)?.code == .cancelled { return }
                 print("RSSFeedParser: fetch failed — \(error?.localizedDescription ?? "unknown")")
-                self.feedCompleted()
+                self.feedCompleted(generation: generation)
                 return
             }
 
@@ -238,7 +238,7 @@ class RSSFeedParser: NSObject {
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
                 print("RSSFeedParser: HTTP \(httpResponse.statusCode)")
-                self.feedCompleted()
+                self.feedCompleted(generation: generation)
                 return
             }
 
@@ -273,8 +273,12 @@ class RSSFeedParser: NSObject {
     // MARK: - Private
 
     /// Called from arbitrary threads — bounces to the serial queue.
-    private func feedCompleted() {
-        parseQueue.async { self.feedCompletedOnQueue() }
+    /// Includes the generation counter to discard completions from stale loads.
+    private func feedCompleted(generation: UInt64) {
+        parseQueue.async {
+            guard self.loadGeneration == generation else { return }
+            self.feedCompletedOnQueue()
+        }
     }
 
     /// Must be called on `parseQueue`.
