@@ -92,6 +92,13 @@ class OfflineCacheManager {
     /// Running total of estimated cache size in bytes.
     private var _totalSizeBytes: Int = 0
 
+    /// Serial queue protecting all mutable state. All reads and writes
+    /// to `cachedArticles`, `cacheIndex`, and `_totalSizeBytes` must
+    /// happen on this queue to avoid data races when the cache is
+    /// accessed from background threads (e.g., notification handlers,
+    /// prefetch operations).
+    private let queue = DispatchQueue(label: "com.feedreader.offlineCache")
+
     private static let archiveURL: URL = {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documentsDirectory.appendingPathComponent("offlineCache")
@@ -107,77 +114,104 @@ class OfflineCacheManager {
 
     /// Check if a story is cached for offline reading (O(1) lookup).
     func isCached(_ story: Story) -> Bool {
-        return cacheIndex.contains(story.link)
+        return queue.sync { cacheIndex.contains(story.link) }
     }
 
     /// Save a story for offline reading. Returns true if saved, false if
     /// already cached or cache limits are reached.
     @discardableResult
     func saveForOffline(_ story: Story) -> Bool {
-        guard !isCached(story) else { return false }
+        return queue.sync {
+            guard !cacheIndex.contains(story.link) else { return false }
 
-        let article = CachedArticle(story: story)
+            let article = CachedArticle(story: story)
 
-        // Check article count limit
-        if cachedArticles.count >= OfflineCacheManager.maxArticles {
-            // Remove oldest to make room
-            removeOldest()
+            // Check article count limit
+            if cachedArticles.count >= OfflineCacheManager.maxArticles {
+                // Remove oldest to make room
+                removeOldestUnsafe()
+            }
+
+            // Check total size limit
+            while _totalSizeBytes + article.estimatedSizeBytes > OfflineCacheManager.maxCacheSizeBytes
+                    && !cachedArticles.isEmpty {
+                removeOldestUnsafe()
+            }
+
+            cachedArticles.insert(article, at: 0) // newest first
+            cacheIndex.insert(story.link)
+            _totalSizeBytes += article.estimatedSizeBytes
+            persistCache()
+            NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+            return true
         }
-
-        // Check total size limit
-        while totalSizeBytes + article.estimatedSizeBytes > OfflineCacheManager.maxCacheSizeBytes
-                && !cachedArticles.isEmpty {
-            removeOldest()
-        }
-
-        cachedArticles.insert(article, at: 0) // newest first
-        cacheIndex.insert(story.link)
-        _totalSizeBytes += article.estimatedSizeBytes
-        persistCache()
-        NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
-        return true
     }
 
     /// Remove a story from the offline cache.
     func removeFromCache(_ story: Story) {
-        if let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) {
-            let removed = cachedArticles.remove(at: idx)
-            _totalSizeBytes -= removed.estimatedSizeBytes
+        queue.sync {
+            if let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) {
+                let removed = cachedArticles.remove(at: idx)
+                _totalSizeBytes -= removed.estimatedSizeBytes
+            }
+            cacheIndex.remove(story.link)
+            persistCache()
+            NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
         }
-        cacheIndex.remove(story.link)
-        persistCache()
-        NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
     }
 
     /// Remove a cached article at a specific index.
     func removeFromCache(at index: Int) {
-        guard index >= 0 && index < cachedArticles.count else { return }
-        let removed = cachedArticles.remove(at: index)
-        cacheIndex.remove(removed.story.link)
-        _totalSizeBytes -= removed.estimatedSizeBytes
-        persistCache()
-        NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+        queue.sync {
+            guard index >= 0 && index < cachedArticles.count else { return }
+            let removed = cachedArticles.remove(at: index)
+            cacheIndex.remove(removed.story.link)
+            _totalSizeBytes -= removed.estimatedSizeBytes
+            persistCache()
+            NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+        }
     }
 
     /// Toggle offline cache state for a story. Returns true if now cached.
     @discardableResult
     func toggleCache(_ story: Story) -> Bool {
-        if isCached(story) {
-            removeFromCache(story)
-            return false
-        } else {
-            return saveForOffline(story)
+        return queue.sync {
+            if cacheIndex.contains(story.link) {
+                if let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) {
+                    let removed = cachedArticles.remove(at: idx)
+                    _totalSizeBytes -= removed.estimatedSizeBytes
+                }
+                cacheIndex.remove(story.link)
+                persistCache()
+                NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+                return false
+            } else {
+                let article = CachedArticle(story: story)
+                if cachedArticles.count >= OfflineCacheManager.maxArticles {
+                    removeOldestUnsafe()
+                }
+                while _totalSizeBytes + article.estimatedSizeBytes > OfflineCacheManager.maxCacheSizeBytes
+                        && !cachedArticles.isEmpty {
+                    removeOldestUnsafe()
+                }
+                cachedArticles.insert(article, at: 0)
+                cacheIndex.insert(story.link)
+                _totalSizeBytes += article.estimatedSizeBytes
+                persistCache()
+                NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+                return true
+            }
         }
     }
 
     /// Number of cached articles.
     var count: Int {
-        return cachedArticles.count
+        return queue.sync { cachedArticles.count }
     }
 
     /// Total estimated cache size in bytes (O(1) lookup).
     var totalSizeBytes: Int {
-        return _totalSizeBytes
+        return queue.sync { _totalSizeBytes }
     }
 
     /// Formatted cache size string (e.g., "1.2 MB", "345 KB").
@@ -187,74 +221,90 @@ class OfflineCacheManager {
 
     /// Remove all cached articles.
     func clearAll() {
-        cachedArticles.removeAll()
-        cacheIndex.removeAll()
-        _totalSizeBytes = 0
-        persistCache()
-        NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+        queue.sync {
+            cachedArticles.removeAll()
+            cacheIndex.removeAll()
+            _totalSizeBytes = 0
+            persistCache()
+            NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+        }
     }
 
     /// Remove articles older than the stale threshold.
     /// Returns the number of articles removed.
     @discardableResult
     func purgeStale() -> Int {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -OfflineCacheManager.staleAfterDays, to: Date())!
-        let before = cachedArticles.count
-        cachedArticles.removeAll { $0.savedDate < cutoff }
-        cacheIndex = Set(cachedArticles.map { $0.story.link })
-        _totalSizeBytes = cachedArticles.reduce(0) { $0 + $1.estimatedSizeBytes }
-        let removed = before - cachedArticles.count
-        if removed > 0 {
-            persistCache()
-            NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+        return queue.sync {
+            let cutoff = Calendar.current.date(byAdding: .day, value: -OfflineCacheManager.staleAfterDays, to: Date())!
+            let before = cachedArticles.count
+            cachedArticles.removeAll { $0.savedDate < cutoff }
+            cacheIndex = Set(cachedArticles.map { $0.story.link })
+            _totalSizeBytes = cachedArticles.reduce(0) { $0 + $1.estimatedSizeBytes }
+            let removed = before - cachedArticles.count
+            if removed > 0 {
+                persistCache()
+                NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
+            }
+            return removed
         }
-        return removed
     }
 
     /// Get cached articles sorted by save date (newest first).
     var sortedByDate: [CachedArticle] {
-        return cachedArticles.sorted { $0.savedDate > $1.savedDate }
+        return queue.sync { cachedArticles.sorted { $0.savedDate > $1.savedDate } }
     }
 
     /// Get cached articles from a specific feed.
     func articles(fromFeed feedName: String) -> [CachedArticle] {
-        return cachedArticles.filter { $0.story.sourceFeedName == feedName }
+        return queue.sync { cachedArticles.filter { $0.story.sourceFeedName == feedName } }
     }
 
     /// Get a list of unique feed names in the cache.
     var cachedFeedNames: [String] {
-        let names = Set(cachedArticles.compactMap { $0.story.sourceFeedName })
-        return names.sorted()
+        return queue.sync {
+            let names = Set(cachedArticles.compactMap { $0.story.sourceFeedName })
+            return names.sorted()
+        }
     }
 
     /// Search cached articles by title or body text.
     func search(query: String) -> [CachedArticle] {
-        guard !query.isEmpty else { return cachedArticles }
-        let lowered = query.lowercased()
-        return cachedArticles.filter {
-            $0.story.title.lowercased().contains(lowered)
-                || $0.story.body.lowercased().contains(lowered)
+        return queue.sync {
+            guard !query.isEmpty else { return cachedArticles }
+            let lowered = query.lowercased()
+            return cachedArticles.filter {
+                $0.story.title.lowercased().contains(lowered)
+                    || $0.story.body.lowercased().contains(lowered)
+            }
         }
     }
 
     /// Cache utilization as a percentage (0-100).
     var utilizationPercent: Double {
-        let countPercent = Double(cachedArticles.count) / Double(OfflineCacheManager.maxArticles) * 100
-        let sizePercent = Double(totalSizeBytes) / Double(OfflineCacheManager.maxCacheSizeBytes) * 100
-        return max(countPercent, sizePercent)
+        return queue.sync {
+            let countPercent = Double(cachedArticles.count) / Double(OfflineCacheManager.maxArticles) * 100
+            let sizePercent = Double(_totalSizeBytes) / Double(OfflineCacheManager.maxCacheSizeBytes) * 100
+            return max(countPercent, sizePercent)
+        }
     }
 
     /// Summary statistics for display.
     var summary: CacheSummary {
-        return CacheSummary(
-            articleCount: cachedArticles.count,
-            totalSizeBytes: totalSizeBytes,
-            formattedSize: formattedSize,
-            feedCount: cachedFeedNames.count,
-            utilizationPercent: utilizationPercent,
-            oldestDate: cachedArticles.last?.savedDate,
-            newestDate: cachedArticles.first?.savedDate
-        )
+        return queue.sync {
+            CacheSummary(
+                articleCount: cachedArticles.count,
+                totalSizeBytes: _totalSizeBytes,
+                formattedSize: OfflineCacheManager.formatBytes(_totalSizeBytes),
+                feedCount: Set(cachedArticles.compactMap { $0.story.sourceFeedName }).count,
+                utilizationPercent: {
+                    let countPercent = Double(cachedArticles.count) / Double(OfflineCacheManager.maxArticles) * 100
+                    let sizePercent = Double(_totalSizeBytes) / Double(OfflineCacheManager.maxCacheSizeBytes) * 100
+                    return max(countPercent, sizePercent)
+                }(),
+                oldestDate: cachedArticles.last?.savedDate,
+                newestDate: cachedArticles.first?.savedDate
+            )
+        }
     }
 
     // MARK: - Helpers
@@ -272,8 +322,8 @@ class OfflineCacheManager {
         }
     }
 
-    /// Remove the oldest cached article.
-    private func removeOldest() {
+    /// Remove the oldest cached article. Must be called on `queue`.
+    private func removeOldestUnsafe() {
         guard !cachedArticles.isEmpty else { return }
         let removed = cachedArticles.removeLast()
         cacheIndex.remove(removed.story.link)
