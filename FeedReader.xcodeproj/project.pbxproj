@@ -49,6 +49,8 @@
 		HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */; };
 		TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000010 /* ArticleTagManager.swift */; };
 		TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000020 /* ArticleTagTests.swift */; };
+		KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = KA000001KWAT000100000010 /* KeywordAlertTests.swift */; };
+		RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RE000001RECE000100000010 /* RecommendationEngineTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -105,6 +107,8 @@
 		HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsTests.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000010 /* ArticleTagManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagManager.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000020 /* ArticleTagTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagTests.swift; sourceTree = "<group>"; };
+		KA000001KWAT000100000010 /* KeywordAlertTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeywordAlertTests.swift; sourceTree = "<group>"; };
+		RE000001RECE000100000010 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -193,6 +197,8 @@
 				OP000001OPML000100000020 /* OPMLTests.swift */,
 				HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */,
 				TG000001TAGS000100000020 /* ArticleTagTests.swift */,
+				KA000001KWAT000100000010 /* KeywordAlertTests.swift */,
+				RE000001RECE000100000010 /* RecommendationEngineTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -347,6 +353,8 @@
 				OP000001OPML000100000002 /* OPMLTests.swift in Sources */,
 				HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */,
 				TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */,
+				KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */,
+				RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Management — FeedReader</title>
+    <meta name="description" content="Content management features in FeedReader: filters, highlights, notes, tags, reading goals, and OPML import/export.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="smart-features.html">Smart Features</a></li>
+            <li><a href="content-management.html" class="active">Content Management</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="docs-page">
+
+<div class="page-header">
+    <h1>📂 Content Management</h1>
+    <p>Tools for organizing, filtering, annotating, and migrating your reading content&mdash;from muting noise to highlighting insights.</p>
+</div>
+
+<!-- Content Filters -->
+<section class="doc-section">
+    <h2 id="content-filters">Content Filters</h2>
+    <p><code>ContentFilterManager</code> lets you mute stories containing specific keywords or phrases. Filtered stories are hidden from all views, reducing noise without unsubscribing from entire feeds.</p>
+
+    <h3>Filter Properties</h3>
+    <table class="doc-table">
+        <thead>
+            <tr><th>Property</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>keyword</code></td><td>The text to match against story titles/content</td></tr>
+            <tr><td><code>isActive</code></td><td>Toggle on/off without deleting</td></tr>
+            <tr><td><code>matchCount</code></td><td>Number of stories this filter has blocked</td></tr>
+            <tr><td><code>scope</code></td><td>Where to match: title, body, or both</td></tr>
+            <tr><td><code>caseSensitive</code></td><td>Whether matching is case-sensitive (default: no)</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Limits</h3>
+    <ul>
+        <li>Maximum <strong>50 filters</strong> — prevents excessive filtering overhead</li>
+        <li>Matching uses <code>localizedCaseInsensitiveContains</code> for locale-aware comparison</li>
+        <li>Filters are persisted via NSSecureCoding to the Documents directory</li>
+    </ul>
+
+    <h3>Usage</h3>
+    <pre><code class="language-swift">let mgr = ContentFilterManager.shared
+
+// Create a filter to mute clickbait
+let filter = ContentFilter(keyword: "you won't believe")
+mgr.addFilter(filter)
+
+// Check if a story should be shown
+if mgr.shouldDisplay(story) {
+    // show the story
+} else {
+    // story matches an active filter — hidden
+}
+
+// Import/export filters as JSON
+let json = mgr.exportAsJSON()
+let result = mgr.importFromJSON(jsonString)
+print("Added: \(result.added), Skipped: \(result.skipped)")</code></pre>
+
+    <div class="info-box">
+        <strong>Tip:</strong> Use content filters for recurring noise (e.g., "sponsored", "BREAKING") and Smart Feeds for content you <em>want</em> to find. They complement each other.
+    </div>
+</section>
+
+<!-- Article Highlights -->
+<section class="doc-section">
+    <h2 id="highlights">Article Highlights</h2>
+    <p><code>ArticleHighlightsManager</code> lets you save text snippets from articles with color coding. Think of it as a highlighter pen for your RSS reader.</p>
+
+    <h3>Capabilities</h3>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>🎨 Color-Coded</h3>
+            <p>Assign colors to highlights for visual organization. Group by theme (yellow for quotes, green for facts, red for follow-up).</p>
+        </div>
+        <div class="feature-card">
+            <h3>🔍 Searchable</h3>
+            <p>Full-text search across all highlights. Find that snippet you saved weeks ago without remembering which article it came from.</p>
+        </div>
+        <div class="feature-card">
+            <h3>📤 Exportable</h3>
+            <p>Export highlights as JSON for backup or sharing. Import highlights from other devices or users.</p>
+        </div>
+    </div>
+
+    <h3>Usage</h3>
+    <pre><code class="language-swift">let mgr = ArticleHighlightsManager.shared
+
+// Add a highlight
+let highlight = ArticleHighlight(
+    articleId: story.guid,
+    text: "The key insight is...",
+    color: .yellow,
+    note: "Follow up on this"
+)
+mgr.addHighlight(highlight)
+
+// Find highlights for an article
+let articleHighlights = mgr.highlights(for: story.guid)
+
+// Search all highlights
+let results = mgr.search("key insight")</code></pre>
+
+    <h3>Limits</h3>
+    <p>Maximum <strong>1000 highlights</strong> across all articles. Stored in <code>UserDefaults</code> via NSSecureCoding. Each highlight stores the article ID, selected text, color, optional note, and creation date.</p>
+</section>
+
+<!-- Article Notes -->
+<section class="doc-section">
+    <h2 id="notes">Article Notes</h2>
+    <p><code>ArticleNotesManager</code> provides free-form note-taking attached to articles. Unlike highlights (which capture existing text), notes are your own thoughts and annotations.</p>
+
+    <h3>Usage</h3>
+    <pre><code class="language-swift">let mgr = ArticleNotesManager.shared
+
+// Add a note to an article
+let note = ArticleNote(
+    articleId: story.guid,
+    content: "This contradicts the findings in yesterday's paper..."
+)
+mgr.addNote(note)
+
+// Get all notes for an article
+let notes = mgr.notes(for: story.guid)
+
+// Get all notes (for a "My Notes" view)
+let allNotes = mgr.allNotes</code></pre>
+</section>
+
+<!-- Article Tags -->
+<section class="doc-section">
+    <h2 id="tags">Article Tags</h2>
+    <p><code>ArticleTagManager</code> adds a tagging system for organizing articles beyond feed categories. Tags are user-defined labels that can cross-cut feeds.</p>
+
+    <h3>Examples</h3>
+    <ul>
+        <li>Tag articles from different feeds as <strong>"research"</strong> for a project</li>
+        <li>Mark articles as <strong>"share-worthy"</strong> for later discussion</li>
+        <li>Create a <strong>"read-later"</strong> tag independent of bookmarks</li>
+    </ul>
+
+    <pre><code class="language-swift">let mgr = ArticleTagManager.shared
+
+// Tag an article
+mgr.addTag("research", to: story.guid)
+mgr.addTag("AI", to: story.guid)
+
+// Get articles with a specific tag
+let researchArticles = mgr.articles(withTag: "research")
+
+// Get all tags for an article
+let tags = mgr.tags(for: story.guid)
+
+// Get all unique tags
+let allTags = mgr.allTags</code></pre>
+</section>
+
+<!-- Reading Goals -->
+<section class="doc-section">
+    <h2 id="reading-goals">Reading Goals</h2>
+    <p><code>ReadingGoalsManager</code> lets users set daily and weekly reading targets and tracks progress automatically.</p>
+
+    <h3>Goal Types</h3>
+    <table class="doc-table">
+        <thead>
+            <tr><th>Goal</th><th>Description</th><th>Default</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Daily Target</td><td>Number of articles to read per day</td><td>0 (disabled)</td></tr>
+            <tr><td>Weekly Target</td><td>Number of articles to read per week</td><td>0 (disabled)</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Progress Tracking</h3>
+    <pre><code class="language-swift">let mgr = ReadingGoalsManager.shared
+
+// Set goals
+mgr.updateGoals(ReadingGoals(dailyTarget: 10, weeklyTarget: 50))
+
+// Check progress
+let progress = mgr.currentProgress()
+print("Daily: \(progress.dailyRead)/\(progress.dailyTarget)")
+print("Weekly: \(progress.weeklyRead)/\(progress.weeklyTarget)")
+print("Daily %: \(progress.dailyPercentage)")</code></pre>
+
+    <h3>Notifications</h3>
+    <p>The manager posts notifications you can observe:</p>
+    <ul>
+        <li><code>.readingGoalsDidChange</code> — goals or progress updated</li>
+        <li><code>.readingGoalAchieved</code> — daily or weekly target reached 🎉</li>
+    </ul>
+</section>
+
+<!-- Feed Categories -->
+<section class="doc-section">
+    <h2 id="categories">Feed Categories</h2>
+    <p><code>FeedCategoryManager</code> organizes feeds into user-defined categories (e.g., "Tech", "News", "Hobbies"). Categories provide a folder-like hierarchy for the feed list.</p>
+
+    <pre><code class="language-swift">let mgr = FeedCategoryManager.shared
+
+// Create a category
+mgr.addCategory("Technology")
+
+// Assign a feed to a category
+mgr.assignFeed(feed, toCategory: "Technology")
+
+// Get feeds in a category
+let techFeeds = mgr.feeds(inCategory: "Technology")</code></pre>
+</section>
+
+<!-- OPML Import/Export -->
+<section class="doc-section">
+    <h2 id="opml">OPML Import/Export</h2>
+    <p><code>OPMLManager</code> supports the industry-standard <a href="http://opml.org/spec2.opml">OPML 2.0</a> format for migrating feeds between RSS reader apps.</p>
+
+    <h3>Import</h3>
+    <pre><code class="language-swift">let mgr = OPMLManager.shared
+
+// Import from file
+let result = mgr.importFromFile(at: fileURL)
+print(result.summary)
+// "12 feeds imported, 3 duplicates skipped, 1 invalid outlines skipped"
+
+// Import from string
+let result2 = mgr.importFromString(opmlString)</code></pre>
+
+    <h3>Export</h3>
+    <pre><code class="language-swift">// Export all feeds as OPML
+let opmlString = mgr.exportToString(title: "My RSS Feeds")
+
+// Export to file
+mgr.exportToFile(at: fileURL, title: "My RSS Feeds")</code></pre>
+
+    <h3>OPML Format</h3>
+    <p>The generated OPML includes:</p>
+    <ul>
+        <li><strong>Title</strong> — customizable document title</li>
+        <li><strong>Date</strong> — export timestamp</li>
+        <li><strong>Outlines</strong> — one per feed with <code>xmlUrl</code> (feed URL), <code>htmlUrl</code> (site URL), <code>title</code>, and <code>text</code></li>
+        <li><strong>Categories</strong> — feeds grouped by category as nested outlines</li>
+    </ul>
+
+    <div class="info-box">
+        <strong>Compatibility:</strong> OPML files from FeedReader work with Feedly, Inoreader, NetNewsWire, Reeder, and most other RSS readers. The format is the universal standard for feed subscription portability.
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div class="footer-inner">
+        <p>FeedReader &copy; 2025 Saurav Bhattacharya &mdash; <a href="https://github.com/sauravbhattacharya001/FeedReader">View on GitHub</a></p>
+    </div>
+</footer>
+
+</body>
+</html>

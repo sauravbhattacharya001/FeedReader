@@ -420,4 +420,140 @@ footer {
     nav .nav-links a { font-size: 0.8rem; }
     .card-grid { grid-template-columns: 1fr; }
     .code-block { font-size: 0.8rem; padding: 16px; }
+    .feature-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Docs Page Layout ── */
+
+.docs-page {
+    max-width: 860px;
+    margin: 100px auto 0;
+    padding: 0 24px 60px;
+}
+
+.doc-section {
+    margin-bottom: 48px;
+    padding-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+}
+
+.doc-section:last-child {
+    border-bottom: none;
+}
+
+.doc-section h2 {
+    font-size: 1.6rem;
+    margin-bottom: 16px;
+    color: var(--light);
+}
+
+.doc-section h3 {
+    font-size: 1.1rem;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    color: var(--gray-light);
+}
+
+.doc-section p {
+    margin-bottom: 12px;
+    line-height: 1.7;
+}
+
+.doc-section ul {
+    margin: 12px 0;
+    padding-left: 24px;
+}
+
+.doc-section ul li {
+    margin-bottom: 8px;
+    line-height: 1.6;
+}
+
+.doc-section pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.doc-section code {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+.doc-section p code,
+.doc-section li code,
+.doc-section td code {
+    background: var(--code-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.88rem;
+    color: var(--orange);
+}
+
+/* ── Feature Cards ── */
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+}
+
+.feature-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.feature-card h3 {
+    font-size: 1rem;
+    margin-top: 0;
+    margin-bottom: 8px;
+    color: var(--light);
+}
+
+.feature-card p {
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    margin-bottom: 0;
+}
+
+/* ── Info Box ── */
+
+.info-box {
+    background: var(--card-bg);
+    border-left: 3px solid var(--orange);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+    color: var(--gray-light);
+    line-height: 1.6;
+}
+
+.info-box strong {
+    color: var(--orange);
+}
+
+/* ── Tag Grid ── */
+
+.tag-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+}
+
+.tag {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--gray-light);
 }

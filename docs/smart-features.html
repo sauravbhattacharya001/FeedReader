@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Features — FeedReader</title>
+    <meta name="description" content="Smart features in FeedReader: article recommendations, smart feeds, digest generation, and keyword alerts.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="smart-features.html" class="active">Smart Features</a></li>
+            <li><a href="content-management.html">Content Management</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="docs-page">
+
+<div class="page-header">
+    <h1>🧠 Smart Features</h1>
+    <p>FeedReader goes beyond basic RSS reading with intelligent features that learn from your habits, surface relevant articles, and generate personalized digests&mdash;all running entirely on-device.</p>
+</div>
+
+<!-- Article Recommendations -->
+<section class="doc-section">
+    <h2 id="recommendations">Article Recommendations</h2>
+    <p>The <code>ArticleRecommendationEngine</code> analyzes your reading history to suggest unread articles you're likely to enjoy. It scores articles using two signals:</p>
+
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>📊 Feed Preference</h3>
+            <p>Tracks how often you read from each feed. Articles from feeds you engage with frequently get higher scores. If you've read 50 articles from "TechCrunch" but only 3 from "Cooking Weekly," tech articles rank higher.</p>
+        </div>
+        <div class="feature-card">
+            <h3>🔤 Keyword Affinity</h3>
+            <p>Extracts keywords from titles of articles you've read. Common stop words are filtered out. If "machine learning" and "Swift" appear frequently in your history, articles with those terms get a boost.</p>
+        </div>
+    </div>
+
+    <h3>How Scoring Works</h3>
+    <p>Each unread article receives a composite score (0.0–1.0):</p>
+    <pre><code class="language-none">feedScore = readCount(feed) / maxReadCount        // 0.0 – 1.0
+keywordScore = matchingKeywords / totalKeywords     // 0.0 – 1.0
+finalScore = (0.6 × feedScore) + (0.4 × keywordScore)</code></pre>
+    <p>Articles are returned sorted by score, with a recommendation <em>reason</em> explaining why each was suggested:</p>
+    <ul>
+        <li><strong><code>.preferredFeed</code></strong> — "You've read 42 articles from TechCrunch"</li>
+        <li><strong><code>.keywordMatch</code></strong> — "Matches your interests: Swift, iOS, Xcode"</li>
+        <li><strong><code>.frequentlyRevisited</code></strong> — Similar to articles you've re-read</li>
+        <li><strong><code>.combined</code></strong> — Multiple signals contributed</li>
+    </ul>
+
+    <h3>Usage</h3>
+    <pre><code class="language-swift">let engine = ArticleRecommendationEngine()
+engine.readingHistory = ReadingHistoryManager.shared
+
+// Get top 10 recommendations
+let scored = engine.recommend(
+    from: allUnreadStories,
+    limit: 10,
+    minScore: 0.1  // filter out low-confidence picks
+)
+
+for article in scored {
+    print("\(article.story.title) — \(article.score)")
+    print("  → \(article.reason)")
+}</code></pre>
+
+    <div class="info-box">
+        <strong>Privacy:</strong> All recommendation data stays on-device. No reading history is sent to any server. The engine operates purely on local <code>ReadingHistoryManager</code> data persisted via NSSecureCoding.
+    </div>
+</section>
+
+<!-- Smart Feeds -->
+<section class="doc-section">
+    <h2 id="smart-feeds">Smart Feeds</h2>
+    <p><code>SmartFeedManager</code> lets users create saved keyword-based searches that automatically filter stories across all enabled feeds&mdash;like creating a custom "virtual feed" from keywords you care about.</p>
+
+    <h3>Capabilities</h3>
+    <table class="doc-table">
+        <thead>
+            <tr><th>Feature</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Match Modes</td><td><code>.any</code> (OR) — match any keyword; <code>.all</code> (AND) — require all keywords</td></tr>
+            <tr><td>Search Scopes</td><td><code>.titleOnly</code>, <code>.bodyOnly</code>, <code>.titleAndBody</code></td></tr>
+            <tr><td>Enable/Disable</td><td>Toggle feeds without deleting them</td></tr>
+            <tr><td>Limits</td><td>Max 10 smart feeds, up to 10 keywords each, max 100 chars per keyword</td></tr>
+            <tr><td>Persistence</td><td>NSSecureCoding to Documents directory</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Creating a Smart Feed</h3>
+    <pre><code class="language-swift">let mgr = SmartFeedManager.shared
+
+// Create a "Swift Development" smart feed
+let feed = SmartFeed(
+    name: "Swift Development",
+    keywords: ["swift", "swiftui", "xcode", "ios"],
+    matchMode: .any,
+    searchScope: .titleAndBody
+)
+
+mgr.addSmartFeed(feed)  // persisted automatically
+
+// Get matching stories
+let matches = mgr.matchingStories(
+    for: feed,
+    from: allStories
+)
+print("Found \(matches.count) matching articles")</code></pre>
+
+    <h3>How Matching Works</h3>
+    <p>Keyword matching is <strong>case-insensitive</strong> and uses <code>localizedCaseInsensitiveContains</code> for locale-aware comparison. With <code>.any</code> mode, a story matches if <em>any</em> keyword appears. With <code>.all</code> mode, <em>every</em> keyword must be present.</p>
+</section>
+
+<!-- Digest Generator -->
+<section class="doc-section">
+    <h2 id="digest">Digest Generator</h2>
+    <p>The <code>DigestGenerator</code> creates formatted reading summaries&mdash;like a personal newsletter of what you've read. Supports multiple time windows and output formats.</p>
+
+    <h3>Time Periods</h3>
+    <div class="tag-grid">
+        <span class="tag">Today</span>
+        <span class="tag">Yesterday</span>
+        <span class="tag">This Week</span>
+        <span class="tag">Last Week</span>
+        <span class="tag">This Month</span>
+        <span class="tag">Last 7 Days</span>
+        <span class="tag">Last 30 Days</span>
+        <span class="tag">Custom Range</span>
+    </div>
+
+    <h3>Output Formats</h3>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <h3>📝 Plain Text</h3>
+            <p>Simple text output with story titles, feed names, and timestamps. Great for copying to notes or sharing via text.</p>
+        </div>
+        <div class="feature-card">
+            <h3>📋 Markdown</h3>
+            <p>Formatted with headers, lists, and links. Ready for pasting into Notion, Obsidian, or any Markdown editor.</p>
+        </div>
+        <div class="feature-card">
+            <h3>🌐 HTML</h3>
+            <p>Styled HTML digest with inline CSS. Share via email or view in a browser. Stories grouped by feed with clickable links.</p>
+        </div>
+    </div>
+
+    <h3>Generating a Digest</h3>
+    <pre><code class="language-swift">let generator = DigestGenerator()
+generator.readingHistory = ReadingHistoryManager.shared
+generator.readingStats = ReadingStatsManager.shared
+
+// Generate this week's digest as Markdown
+let digest = generator.generate(
+    period: .thisWeek,
+    format: .markdown,
+    includeStats: true  // append reading stats summary
+)
+
+print(digest.content)     // formatted string
+print(digest.storyCount)  // number of articles included
+print(digest.feedCount)   // number of feeds represented</code></pre>
+
+    <h3>Digest Structure</h3>
+    <p>Each digest includes:</p>
+    <ul>
+        <li><strong>Header</strong> — period name and date range</li>
+        <li><strong>Stories by Feed</strong> — grouped by source feed, with titles, publication dates, and links</li>
+        <li><strong>Reading Stats</strong> (optional) — total articles read, average per day, top feeds, most active days</li>
+        <li><strong>Footer</strong> — generation timestamp</li>
+    </ul>
+</section>
+
+<!-- Keyword Alerts -->
+<section class="doc-section">
+    <h2 id="keyword-alerts">Keyword Alerts</h2>
+    <p><code>KeywordAlertManager</code> monitors incoming stories for specific terms and marks matching articles for attention. Unlike Smart Feeds (which are browsing filters), alerts are <em>notifications</em>&mdash;they surface articles you might miss.</p>
+
+    <h3>Alert vs Smart Feed</h3>
+    <table class="doc-table">
+        <thead>
+            <tr><th>Feature</th><th>Keyword Alert</th><th>Smart Feed</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Purpose</td><td>Notify on new matches</td><td>Browse filtered content</td></tr>
+            <tr><td>Trigger</td><td>On feed refresh</td><td>On-demand browsing</td></tr>
+            <tr><td>Match tracking</td><td>Counts matches, last triggered date</td><td>No tracking</td></tr>
+            <tr><td>Multi-keyword</td><td>Single keyword per alert</td><td>Up to 10 keywords with AND/OR</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Usage</h3>
+    <pre><code class="language-swift">let mgr = KeywordAlertManager.shared
+
+// Create alert for "security vulnerability"
+let alert = KeywordAlert(keyword: "security vulnerability")
+mgr.addAlert(alert)
+
+// Check new stories against all alerts
+let triggered = mgr.checkStories(newStories)
+for match in triggered {
+    print("⚠️ Alert '\(match.alert.keyword)' triggered by: \(match.story.title)")
+}</code></pre>
+</section>
+
+<!-- Reading Stats -->
+<section class="doc-section">
+    <h2 id="reading-stats">Reading Statistics</h2>
+    <p><code>ReadingStatsManager</code> tracks aggregate reading metrics over time. All data computed from <code>ReadingHistoryManager</code> entries.</p>
+
+    <h3>Available Metrics</h3>
+    <table class="doc-table">
+        <thead>
+            <tr><th>Metric</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>totalArticlesRead</code></td><td>Lifetime article count</td></tr>
+            <tr><td><code>articlesReadToday</code></td><td>Today's count</td></tr>
+            <tr><td><code>averagePerDay</code></td><td>Daily average over tracking period</td></tr>
+            <tr><td><code>topFeeds</code></td><td>Most-read feeds ranked by article count</td></tr>
+            <tr><td><code>readingStreak</code></td><td>Consecutive days with at least one article read</td></tr>
+            <tr><td><code>peakDay</code></td><td>Day with most articles read</td></tr>
+            <tr><td><code>weekdayBreakdown</code></td><td>Articles per day of week (Mon–Sun)</td></tr>
+        </tbody>
+    </table>
+    <p>The <code>ReadingStatsViewController</code> displays these metrics with simple charts. Stats are updated each time <code>ReadingHistoryManager</code> records a read event.</p>
+</section>
+
+</main>
+
+<footer>
+    <div class="footer-inner">
+        <p>FeedReader &copy; 2025 Saurav Bhattacharya &mdash; <a href="https://github.com/sauravbhattacharya001/FeedReader">View on GitHub</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
