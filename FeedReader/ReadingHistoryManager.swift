@@ -170,22 +170,16 @@ class ReadingHistoryManager {
             entry.timeSpentSeconds += max(timeSpent, 0)
             entry.scrollProgress = min(max(scrollProgress, 0.0), 1.0)
             
-            // Move to front (newest first by lastVisitedAt).
-            // Instead of rebuildIndex() which re-indexes all entries O(n),
-            // we only update the indices of entries that shifted: those at
-            // positions 0..<index move up by one, and the moved entry goes
-            // to position 0. O(index) worst case, but avoids scanning the
-            // entire array when the entry is already near the front.
-            entries.remove(at: index)
-            entries.insert(entry, at: 0)
-            entryIndex[link] = 0
-            if index > 0 {
-                for i in 1...index {
-                    entryIndex[entries[i].link] = i
-                }
-            }
+            // Move to front using incremental index update — O(index) instead
+            // of O(n) full rebuildIndex(). Only entries at positions 0..<index
+            // shift up by one; the moved entry goes to position 0.
+            moveEntryToFront(from: index)
         } else {
-            // Create new entry
+            // Create new entry and insert at front with incremental index update.
+            // Previous approach called rebuildIndex() (O(n)) then pruneIfNeeded()
+            // which could call rebuildIndex() again — two full O(n) index scans
+            // on every new article visit. Now we shift existing indices up by 1
+            // and only rebuild during the rare prune operation.
             let entry = HistoryEntry(
                 link: link, title: title, feedName: feedName,
                 readAt: now, lastVisitedAt: now, visitCount: 1,
@@ -193,7 +187,13 @@ class ReadingHistoryManager {
                 timeSpentSeconds: max(timeSpent, 0)
             )
             entries.insert(entry, at: 0)
-            rebuildIndex()
+            
+            // Shift all existing index values up by 1, then add new entry at 0
+            for key in entryIndex.keys {
+                entryIndex[key]! += 1
+            }
+            entryIndex[link] = 0
+            
             pruneIfNeeded()
         }
         
@@ -225,27 +225,29 @@ class ReadingHistoryManager {
     }
     
     /// Get entries for a specific date (by day).
+    ///
+    /// Uses binary search on the sorted entries array — O(log n + k) where k
+    /// is the number of matching entries, instead of the previous O(n) filter.
     func entries(for date: Date) -> [HistoryEntry] {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
         guard let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) else {
             return []
         }
-        return entries.filter { entry in
-            entry.lastVisitedAt >= startOfDay && entry.lastVisitedAt < endOfDay
-        }
+        return entriesInRange(from: startOfDay, before: endOfDay)
     }
     
     /// Get entries within a date range (inclusive of both start and end days).
+    ///
+    /// Uses binary search on the sorted entries array — O(log n + k) where k
+    /// is the number of matching entries, instead of the previous O(n) filter.
     func entries(from startDate: Date, to endDate: Date) -> [HistoryEntry] {
         let calendar = Calendar.current
         let rangeStart = calendar.startOfDay(for: startDate)
         guard let rangeEnd = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: endDate)) else {
             return []
         }
-        return entries.filter { entry in
-            entry.lastVisitedAt >= rangeStart && entry.lastVisitedAt < rangeEnd
-        }
+        return entriesInRange(from: rangeStart, before: rangeEnd)
     }
     
     /// Get entries for a specific feed.
@@ -277,6 +279,9 @@ class ReadingHistoryManager {
     
     /// Get unique dates that have history entries (for section headers).
     /// Dates are normalized to start-of-day, sorted newest first.
+    ///
+    /// Since entries are already sorted by lastVisitedAt descending, the
+    /// unique dates emerge in descending order naturally — no final sort needed.
     func datesWithEntries() -> [Date] {
         let calendar = Calendar.current
         var seen = Set<Date>()
@@ -287,7 +292,8 @@ class ReadingHistoryManager {
                 dates.append(day)
             }
         }
-        return dates.sorted(by: >)
+        // Already in descending order because entries are sorted newest-first.
+        return dates
     }
     
     /// Check if an article has been visited before.
@@ -514,6 +520,63 @@ class ReadingHistoryManager {
         for (index, entry) in entries.enumerated() {
             entryIndex[entry.link] = index
         }
+    }
+    
+    /// Move the entry at `sourceIndex` to the front (index 0) with an
+    /// incremental index update. Only entries at positions 0..<sourceIndex
+    /// need their index shifted up by 1 — O(sourceIndex) instead of the
+    /// O(n) full `rebuildIndex()`.
+    private func moveEntryToFront(from sourceIndex: Int) {
+        guard sourceIndex > 0 else { return } // Already at front
+        let entry = entries[sourceIndex]
+        entries.remove(at: sourceIndex)
+        entries.insert(entry, at: 0)
+        entryIndex[entry.link] = 0
+        // Entries at 1...sourceIndex shifted up by 1
+        for i in 1...sourceIndex {
+            entryIndex[entries[i].link] = i
+        }
+    }
+    
+    // MARK: - Binary Search Helpers
+    
+    /// Returns entries whose `lastVisitedAt` is in [from, before) using binary
+    /// search on the descending-sorted entries array. O(log n + k) where k is
+    /// the number of matching entries, compared to the previous O(n) filter.
+    private func entriesInRange(from rangeStart: Date, before rangeEnd: Date) -> [HistoryEntry] {
+        guard !entries.isEmpty else { return [] }
+        
+        // Entries are sorted by lastVisitedAt descending (newest first).
+        // Find the first entry with lastVisitedAt < rangeEnd (upper bound)
+        // and the last entry with lastVisitedAt >= rangeStart (lower bound).
+        
+        // Upper bound: first index where entry.lastVisitedAt < rangeEnd
+        // (entries before this index have lastVisitedAt >= rangeEnd → too new)
+        let startIdx = lowerBound(before: rangeEnd)
+        
+        // Lower bound: first index where entry.lastVisitedAt < rangeStart
+        // (entries at this index and beyond are too old)
+        let endIdx = lowerBound(before: rangeStart)
+        
+        guard startIdx < endIdx else { return [] }
+        return Array(entries[startIdx..<endIdx])
+    }
+    
+    /// Binary search: returns the first index where
+    /// `entries[index].lastVisitedAt < date`, exploiting the descending sort.
+    /// Returns `entries.count` if all entries are >= date.
+    private func lowerBound(before date: Date) -> Int {
+        var lo = 0
+        var hi = entries.count
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2
+            if entries[mid].lastVisitedAt >= date {
+                lo = mid + 1
+            } else {
+                hi = mid
+            }
+        }
+        return lo
     }
     
     // MARK: - Testing Support
