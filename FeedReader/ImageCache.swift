@@ -9,6 +9,7 @@
 
 import UIKit
 import ImageIO
+import CryptoKit
 
 class ImageCache {
 
@@ -210,11 +211,13 @@ class ImageCache {
     // MARK: - Disk Cache Helpers
 
     /// Compute a stable file URL for a given image URL string using SHA-256.
+    /// Previous implementation used djb2 (UInt64) which has a high collision
+    /// probability at scale — two different URLs mapping to the same file
+    /// means stale/wrong images served silently.
     private static func diskPath(for urlString: String) -> URL {
-        // Use a simple hash to avoid filesystem-unsafe characters
-        let hash = urlString.utf8.reduce(into: UInt64(5381)) { h, c in
-            h = ((h &<< 5) &+ h) &+ UInt64(c)
-        }
+        let data = Data(urlString.utf8)
+        let digest = SHA256.hash(data: data)
+        let hash = digest.prefix(16).map { String(format: "%02x", $0) }.joined()
         return diskCacheDirectory.appendingPathComponent("\(hash).jpg")
     }
 
