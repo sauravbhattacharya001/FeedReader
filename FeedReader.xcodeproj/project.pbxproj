@@ -47,6 +47,8 @@
 		HL000001HLHT000100000001 /* ArticleHighlight.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000010 /* ArticleHighlight.swift */; };
 		HL000001HLHT000100000002 /* ArticleHighlightsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */; };
 		HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */; };
+		TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000010 /* ArticleTagManager.swift */; };
+		TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000020 /* ArticleTagTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -101,6 +103,8 @@
 		HL000001HLHT000100000010 /* ArticleHighlight.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlight.swift; sourceTree = "<group>"; };
 		HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsManager.swift; sourceTree = "<group>"; };
 		HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsTests.swift; sourceTree = "<group>"; };
+		TG000001TAGS000100000010 /* ArticleTagManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagManager.swift; sourceTree = "<group>"; };
+		TG000001TAGS000100000020 /* ArticleTagTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +164,7 @@
 				OP000001OPML000100000010 /* OPMLManager.swift */,
 				HL000001HLHT000100000010 /* ArticleHighlight.swift */,
 				HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */,
+				TG000001TAGS000100000010 /* ArticleTagManager.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
 				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
 				EE000001EEEE000100000020 /* ImageCache.swift */,
@@ -187,6 +192,7 @@
 				AB000001ABAB000100000030 /* ReadingStatsTests.swift */,
 				OP000001OPML000100000020 /* OPMLTests.swift */,
 				HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */,
+				TG000001TAGS000100000020 /* ArticleTagTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -315,6 +321,7 @@
 				OP000001OPML000100000001 /* OPMLManager.swift in Sources */,
 				HL000001HLHT000100000001 /* ArticleHighlight.swift in Sources */,
 				HL000001HLHT000100000002 /* ArticleHighlightsManager.swift in Sources */,
+				TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
 				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
 				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,
@@ -339,6 +346,7 @@
 				AB000001ABAB000100000003 /* ReadingStatsTests.swift in Sources */,
 				OP000001OPML000100000002 /* OPMLTests.swift in Sources */,
 				HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */,
+				TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
