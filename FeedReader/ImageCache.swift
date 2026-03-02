@@ -38,6 +38,24 @@ class ImageCache {
     private var inflightURLs = Set<String>()
     private let inflightLock = NSLock()
 
+    /// Serial queue for disk I/O operations — keeps file writes off the main thread.
+    private let diskQueue = DispatchQueue(label: "com.feedreader.imagecache.disk", qos: .utility)
+
+    /// Directory for persisted thumbnail images on disk.
+    private static let diskCacheDirectory: URL = {
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let dir = cacheDir.appendingPathComponent("ImageThumbnails", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }()
+
+    /// Maximum number of files in the disk cache. Oldest files are evicted
+    /// when this limit is exceeded.
+    private static let maxDiskCacheFiles = 500
+
+    /// Maximum age (in seconds) for disk-cached thumbnails before eviction (7 days).
+    private static let maxDiskCacheAge: TimeInterval = 7 * 24 * 60 * 60
+
     private init() {
         // Evict cache on memory warning
         NotificationCenter.default.addObserver(
@@ -46,6 +64,10 @@ class ImageCache {
             name: UIApplication.didReceiveMemoryWarningNotification,
             object: nil
         )
+        // Evict stale disk cache entries on launch (async, non-blocking)
+        diskQueue.async { [weak self] in
+            self?.evictStaleDiskEntries()
+        }
     }
 
     // MARK: - Public API
@@ -91,8 +113,8 @@ class ImageCache {
     }
 
     /// Loads an image from URL, returning it via the completion handler.
-    /// If already cached, returns immediately on the calling queue.
-    /// Otherwise fetches asynchronously and caches the result.
+    /// Checks: 1) in-memory cache, 2) disk cache, 3) network fetch.
+    /// Persists downloaded thumbnails to disk for fast cold starts.
     ///
     /// - Parameters:
     ///   - urlString: The image URL string. Must pass `Story.isSafeURL` check.
@@ -104,21 +126,34 @@ class ImageCache {
             return
         }
 
-        // Return cached image immediately
+        // 1. Return from memory cache immediately
         if let cached = image(forKey: urlString) {
             completion(cached)
             return
         }
 
-        // Fetch asynchronously via the constrained session
-        imageSession.dataTask(with: url) { [weak self] data, _, _ in
-            guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
-                DispatchQueue.main.async { completion(nil) }
+        // 2. Check disk cache (async to avoid blocking main thread)
+        let diskPath = ImageCache.diskPath(for: urlString)
+        diskQueue.async { [weak self] in
+            if let data = try? Data(contentsOf: diskPath),
+               let diskImage = UIImage(data: data) {
+                self?.setImage(diskImage, forKey: urlString)
+                DispatchQueue.main.async { completion(diskImage) }
                 return
             }
-            self?.setImage(image, forKey: urlString)
-            DispatchQueue.main.async { completion(image) }
-        }.resume()
+
+            // 3. Fetch from network
+            self?.imageSession.dataTask(with: url) { [weak self] data, _, _ in
+                guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
+                    DispatchQueue.main.async { completion(nil) }
+                    return
+                }
+                self?.setImage(image, forKey: urlString)
+                // Persist downsampled thumbnail to disk
+                self?.persistToDisk(image: image, for: urlString)
+                DispatchQueue.main.async { completion(image) }
+            }.resume()
+        }
     }
 
     /// Pre-fetches images for the given URL strings, warming the cache.
@@ -143,6 +178,7 @@ class ImageCache {
 
                 guard let data = data, let image = ImageCache.downsampledImage(data: data) else { return }
                 self?.setImage(image, forKey: urlString)
+                self?.persistToDisk(image: image, for: urlString)
             }.resume()
         }
     }
@@ -159,8 +195,70 @@ class ImageCache {
         inflightLock.unlock()
     }
 
-    /// Clears all cached images.
+    /// Clears all cached images (memory and disk).
     @objc func clearCache() {
         cache.removeAllObjects()
+        diskQueue.async {
+            let fm = FileManager.default
+            if let files = try? fm.contentsOfDirectory(at: ImageCache.diskCacheDirectory,
+                                                        includingPropertiesForKeys: nil) {
+                for file in files { try? fm.removeItem(at: file) }
+            }
+        }
+    }
+
+    // MARK: - Disk Cache Helpers
+
+    /// Compute a stable file URL for a given image URL string using SHA-256.
+    private static func diskPath(for urlString: String) -> URL {
+        // Use a simple hash to avoid filesystem-unsafe characters
+        let hash = urlString.utf8.reduce(into: UInt64(5381)) { h, c in
+            h = ((h &<< 5) &+ h) &+ UInt64(c)
+        }
+        return diskCacheDirectory.appendingPathComponent("\(hash).jpg")
+    }
+
+    /// Persist a downsampled image to the disk cache as JPEG.
+    private func persistToDisk(image: UIImage, for urlString: String) {
+        diskQueue.async {
+            let path = ImageCache.diskPath(for: urlString)
+            if let data = image.jpegData(compressionQuality: 0.8) {
+                try? data.write(to: path, options: .atomic)
+            }
+        }
+    }
+
+    /// Remove disk cache entries older than `maxDiskCacheAge` or exceeding
+    /// `maxDiskCacheFiles`. Called once on init.
+    private func evictStaleDiskEntries() {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(
+            at: ImageCache.diskCacheDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        ) else { return }
+
+        let cutoff = Date().addingTimeInterval(-ImageCache.maxDiskCacheAge)
+        var kept: [(url: URL, date: Date)] = []
+
+        for file in files {
+            if let values = try? file.resourceValues(forKeys: [.contentModificationDateKey]),
+               let modDate = values.contentModificationDate {
+                if modDate < cutoff {
+                    try? fm.removeItem(at: file)
+                } else {
+                    kept.append((file, modDate))
+                }
+            }
+        }
+
+        // Enforce file count limit — remove oldest first
+        if kept.count > ImageCache.maxDiskCacheFiles {
+            let sorted = kept.sorted { $0.date < $1.date }
+            let excess = sorted.prefix(kept.count - ImageCache.maxDiskCacheFiles)
+            for entry in excess {
+                try? fm.removeItem(at: entry.url)
+            }
+        }
     }
 }
