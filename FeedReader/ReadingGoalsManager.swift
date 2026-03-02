@@ -67,6 +67,7 @@ class ReadingGoalsManager {
     
     private static let goalsKey = "ReadingGoalsManager.goals"
     private static let achievedTodayKey = "ReadingGoalsManager.achievedToday"
+    private static let achievedThisWeekKey = "ReadingGoalsManager.achievedThisWeek"
     private static let achievedDateKey = "ReadingGoalsManager.achievedDate"
     private static let achievedWeekKey = "ReadingGoalsManager.achievedWeek"
     
@@ -235,11 +236,15 @@ class ReadingGoalsManager {
     
     private func saveAchievements() {
         UserDefaults.standard.set(Array(achievedToday), forKey: ReadingGoalsManager.achievedTodayKey)
+        UserDefaults.standard.set(Array(achievedThisWeek), forKey: ReadingGoalsManager.achievedThisWeekKey)
     }
     
     private func loadAchievements() {
         if let arr = UserDefaults.standard.stringArray(forKey: ReadingGoalsManager.achievedTodayKey) {
             achievedToday = Set(arr)
+        }
+        if let arr = UserDefaults.standard.stringArray(forKey: ReadingGoalsManager.achievedThisWeekKey) {
+            achievedThisWeek = Set(arr)
         }
         resetAchievementsIfNewPeriod()
     }
