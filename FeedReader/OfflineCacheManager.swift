@@ -92,6 +92,17 @@ class OfflineCacheManager {
     /// Running total of estimated cache size in bytes.
     private var _totalSizeBytes: Int = 0
 
+    /// Serial queue for async persistence — keeps file I/O off the main thread.
+    private let persistQueue = DispatchQueue(label: "com.feedreader.offlinecache.persist",
+                                              qos: .utility)
+
+    /// Pending persistence work item — enables debouncing rapid saves.
+    private var pendingPersist: DispatchWorkItem?
+
+    /// Debounce interval for persistence (seconds). Rapid add/remove cycles
+    /// (e.g., user toggling multiple articles) coalesce into a single disk write.
+    private static let persistDebounceInterval: TimeInterval = 0.5
+
     private static let archiveURL: URL = {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         return documentsDirectory.appendingPathComponent("offlineCache")
@@ -282,15 +293,51 @@ class OfflineCacheManager {
 
     // MARK: - Persistence
 
+    /// Schedule a debounced async persist. Multiple calls within the debounce
+    /// window coalesce into a single disk write, avoiding redundant I/O when
+    /// the user rapidly toggles offline state on multiple articles.
     private func persistCache() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(
-                withRootObject: cachedArticles,
-                requiringSecureCoding: true
-            )
-            try data.write(to: OfflineCacheManager.archiveURL)
-        } catch {
-            print("Failed to save offline cache: \(error)")
+        // Cancel any pending persist — we'll schedule a fresh one.
+        pendingPersist?.cancel()
+
+        // Snapshot the current articles list (value-type semantics via Array copy).
+        let snapshot = cachedArticles
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            do {
+                let data = try NSKeyedArchiver.archivedData(
+                    withRootObject: snapshot,
+                    requiringSecureCoding: true
+                )
+                try data.write(to: OfflineCacheManager.archiveURL, options: .atomic)
+            } catch {
+                print("Failed to save offline cache: \(error)")
+            }
+        }
+        pendingPersist = workItem
+        persistQueue.asyncAfter(
+            deadline: .now() + OfflineCacheManager.persistDebounceInterval,
+            execute: workItem
+        )
+    }
+
+    /// Flush any pending debounced persist immediately (useful before app
+    /// termination or when the caller needs guaranteed on-disk state).
+    func flushPersist() {
+        pendingPersist?.cancel()
+        pendingPersist = nil
+        let snapshot = cachedArticles
+        persistQueue.sync {
+            do {
+                let data = try NSKeyedArchiver.archivedData(
+                    withRootObject: snapshot,
+                    requiringSecureCoding: true
+                )
+                try data.write(to: OfflineCacheManager.archiveURL, options: .atomic)
+            } catch {
+                print("Failed to flush offline cache: \(error)")
+            }
         }
     }
 
