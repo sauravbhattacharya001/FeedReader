@@ -52,6 +52,7 @@
 		TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000020 /* ArticleTagTests.swift */; };
 		KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = KA000001KWAT000100000010 /* KeywordAlertTests.swift */; };
 		RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RE000001RECE000100000010 /* RecommendationEngineTests.swift */; };
+		TA000001TXAN000100000002 /* TextAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TA000001TXAN000100000020 /* TextAnalyzerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -111,6 +112,7 @@
 		TG000001TAGS000100000020 /* ArticleTagTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagTests.swift; sourceTree = "<group>"; };
 		KA000001KWAT000100000010 /* KeywordAlertTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeywordAlertTests.swift; sourceTree = "<group>"; };
 		RE000001RECE000100000010 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
+		TA000001TXAN000100000020 /* TextAnalyzerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextAnalyzerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -202,6 +204,7 @@
 				TG000001TAGS000100000020 /* ArticleTagTests.swift */,
 				KA000001KWAT000100000010 /* KeywordAlertTests.swift */,
 				RE000001RECE000100000010 /* RecommendationEngineTests.swift */,
+				TA000001TXAN000100000020 /* TextAnalyzerTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -359,6 +362,7 @@
 				TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */,
 				KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */,
 				RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */,
+				TA000001TXAN000100000002 /* TextAnalyzerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
