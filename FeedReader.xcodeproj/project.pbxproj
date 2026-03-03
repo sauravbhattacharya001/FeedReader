@@ -48,6 +48,7 @@
 		HL000001HLHT000100000002 /* ArticleHighlightsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */; };
 		HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */; };
 		TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000010 /* ArticleTagManager.swift */; };
+		TA000001TXAN000100000001 /* TextAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TA000001TXAN000100000010 /* TextAnalyzer.swift */; };
 		TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000020 /* ArticleTagTests.swift */; };
 		KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = KA000001KWAT000100000010 /* KeywordAlertTests.swift */; };
 		RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RE000001RECE000100000010 /* RecommendationEngineTests.swift */; };
@@ -106,6 +107,7 @@
 		HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsManager.swift; sourceTree = "<group>"; };
 		HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsTests.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000010 /* ArticleTagManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagManager.swift; sourceTree = "<group>"; };
+		TA000001TXAN000100000010 /* TextAnalyzer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextAnalyzer.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000020 /* ArticleTagTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagTests.swift; sourceTree = "<group>"; };
 		KA000001KWAT000100000010 /* KeywordAlertTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeywordAlertTests.swift; sourceTree = "<group>"; };
 		RE000001RECE000100000010 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 				HL000001HLHT000100000010 /* ArticleHighlight.swift */,
 				HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */,
 				TG000001TAGS000100000010 /* ArticleTagManager.swift */,
+				TA000001TXAN000100000010 /* TextAnalyzer.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
 				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
 				EE000001EEEE000100000020 /* ImageCache.swift */,
@@ -328,6 +331,7 @@
 				HL000001HLHT000100000001 /* ArticleHighlight.swift in Sources */,
 				HL000001HLHT000100000002 /* ArticleHighlightsManager.swift in Sources */,
 				TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */,
+				TA000001TXAN000100000001 /* TextAnalyzer.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
 				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
 				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,

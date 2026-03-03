@@ -59,25 +59,13 @@ class ArticleSimilarityManager {
     /// Whether IDF needs recalculation.
     private var idfDirty = true
     
-    /// Common English stop words to exclude from indexing.
-    private static let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "its", "are", "was", "were",
-        "be", "been", "being", "have", "has", "had", "do", "does", "did",
-        "will", "would", "could", "should", "may", "might", "shall", "can",
-        "this", "that", "these", "those", "i", "you", "he", "she", "we",
-        "they", "me", "him", "her", "us", "them", "my", "your", "his",
-        "our", "their", "what", "which", "who", "whom", "how", "when",
-        "where", "why", "not", "no", "nor", "if", "then", "than", "too",
-        "very", "just", "about", "above", "after", "again", "all", "also",
-        "any", "as", "because", "before", "between", "both", "each",
-        "few", "get", "got", "into", "more", "most", "new", "now", "only",
-        "other", "out", "over", "own", "said", "same", "so", "some",
-        "still", "such", "take", "through", "under", "up", "use", "while"
-    ]
+    /// Common English stop words — provided by TextAnalyzer.shared.
+    /// Kept as a forwarding reference for any internal code that
+    /// referenced ArticleSimilarityManager.stopWords directly.
+    private static var stopWords: Set<String> { TextAnalyzer.stopWords }
     
     /// Minimum term length to index.
-    private static let minTermLength = 3
+    private static let minTermLength = TextAnalyzer.defaultMinTermLength
     
     /// Maximum number of similar articles to return.
     static let defaultLimit = 10
@@ -331,29 +319,15 @@ class ArticleSimilarityManager {
     // MARK: - Private Helpers
     
     /// Tokenize text into lowercase terms, removing stop words and short terms.
+    /// Delegates to TextAnalyzer for consistent tokenization across the app.
     private func tokenize(_ text: String) -> [String] {
-        let lowered = text.lowercased()
-        // Split on non-alphanumeric characters
-        let tokens = lowered.components(separatedBy: CharacterSet.alphanumerics.inverted)
-        return tokens.filter { token in
-            token.count >= ArticleSimilarityManager.minTermLength &&
-            !ArticleSimilarityManager.stopWords.contains(token)
-        }
+        return TextAnalyzer.shared.tokenize(text, minLength: ArticleSimilarityManager.minTermLength)
     }
     
     /// Compute normalized term frequency for a list of tokens.
+    /// Delegates to TextAnalyzer for the core computation.
     private func computeTF(_ tokens: [String]) -> [String: Double] {
-        guard !tokens.isEmpty else { return [:] }
-        var counts: [String: Int] = [:]
-        for token in tokens {
-            counts[token, default: 0] += 1
-        }
-        let maxCount = Double(counts.values.max() ?? 1)
-        var tf: [String: Double] = [:]
-        for (term, count) in counts {
-            tf[term] = Double(count) / maxCount  // augmented TF
-        }
-        return tf
+        return TextAnalyzer.shared.computeTermFrequency(tokens)
     }
     
     /// Recalculate IDF values if the index has changed.

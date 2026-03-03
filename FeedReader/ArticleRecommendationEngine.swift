@@ -107,23 +107,7 @@ class ArticleRecommendationEngine {
     
     // MARK: - Stop Words
     
-    /// Common English stop words filtered from keyword extraction.
-    private static let stopWords: Set<String> = [
-        "the", "and", "for", "that", "this", "with", "from", "have", "has",
-        "had", "are", "was", "were", "been", "being", "will", "would", "could",
-        "should", "shall", "may", "might", "must", "can", "does", "did", "done",
-        "not", "but", "what", "which", "who", "whom", "when", "where", "why",
-        "how", "all", "each", "every", "both", "few", "more", "most", "other",
-        "some", "such", "than", "too", "very", "just", "about", "above", "after",
-        "again", "also", "any", "back", "because", "before", "between", "come",
-        "even", "first", "get", "give", "going", "good", "great", "here", "high",
-        "into", "its", "know", "last", "like", "long", "look", "make", "many",
-        "much", "need", "new", "now", "only", "open", "over", "part", "people",
-        "say", "says", "said", "she", "show", "state", "still", "take", "tell",
-        "them", "then", "there", "these", "they", "think", "time", "two", "under",
-        "upon", "use", "used", "using", "want", "well", "year", "your", "you",
-        "our", "out", "own", "same", "around", "while", "work", "world", "way"
-    ]
+    // Stop words and tokenization are provided by TextAnalyzer.shared
     
     // MARK: - Reading Profile
     
@@ -365,16 +349,11 @@ class ArticleRecommendationEngine {
     // MARK: - Keyword Extraction
     
     /// Extract meaningful keywords from text, filtering stop words and short words.
+    /// Delegates to TextAnalyzer for consistent tokenization across the app.
     private func extractKeywords(from text: String, options: RecommendationOptions) -> [String] {
-        let words = text.lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { word in
-                word.count >= options.minKeywordLength &&
-                !ArticleRecommendationEngine.stopWords.contains(word)
-            }
-        
-        // Deduplicate while preserving order
-        var seen = Set<String>()
-        return words.filter { seen.insert($0).inserted }
+        return TextAnalyzer.shared.extractKeywords(
+            from: text,
+            minLength: options.minKeywordLength
+        )
     }
 }
