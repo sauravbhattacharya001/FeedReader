@@ -55,6 +55,8 @@
 		RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = RE000001RECE000100000010 /* RecommendationEngineTests.swift */; };
 		TA000001TXAN000100000002 /* TextAnalyzerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TA000001TXAN000100000020 /* TextAnalyzerTests.swift */; };
 		SA000001SENT000100000002 /* ArticleSentimentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = SA000001SENT000100000020 /* ArticleSentimentTests.swift */; };
+		SM000001SUMM000100000001 /* ArticleSummarizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM000001SUMM000100000010 /* ArticleSummarizer.swift */; };
+		SM000001SUMM000100000002 /* ArticleSummarizerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = SM000001SUMM000100000020 /* ArticleSummarizerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -117,6 +119,8 @@
 		RE000001RECE000100000010 /* RecommendationEngineTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RecommendationEngineTests.swift; sourceTree = "<group>"; };
 		TA000001TXAN000100000020 /* TextAnalyzerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextAnalyzerTests.swift; sourceTree = "<group>"; };
 		SA000001SENT000100000020 /* ArticleSentimentTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleSentimentTests.swift; sourceTree = "<group>"; };
+		SM000001SUMM000100000010 /* ArticleSummarizer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleSummarizer.swift; sourceTree = "<group>"; };
+		SM000001SUMM000100000020 /* ArticleSummarizerTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleSummarizerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -179,6 +183,7 @@
 				TG000001TAGS000100000010 /* ArticleTagManager.swift */,
 				TA000001TXAN000100000010 /* TextAnalyzer.swift */,
 				SA000001SENT000100000010 /* ArticleSentimentAnalyzer.swift */,
+				SM000001SUMM000100000010 /* ArticleSummarizer.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
 				EE000001EEEE000100000010 /* RSSFeedParser.swift */,
 				EE000001EEEE000100000020 /* ImageCache.swift */,
@@ -211,6 +216,7 @@
 				RE000001RECE000100000010 /* RecommendationEngineTests.swift */,
 				TA000001TXAN000100000020 /* TextAnalyzerTests.swift */,
 				SA000001SENT000100000020 /* ArticleSentimentTests.swift */,
+				SM000001SUMM000100000020 /* ArticleSummarizerTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
 			);
 			path = FeedReaderTests;
@@ -342,6 +348,7 @@
 				TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */,
 				TA000001TXAN000100000001 /* TextAnalyzer.swift in Sources */,
 				SA000001SENT000100000001 /* ArticleSentimentAnalyzer.swift in Sources */,
+				SM000001SUMM000100000001 /* ArticleSummarizer.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
 				EE000001EEEE000100000001 /* RSSFeedParser.swift in Sources */,
 				EE000001EEEE000100000002 /* ImageCache.swift in Sources */,
@@ -371,6 +378,7 @@
 				RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */,
 				TA000001TXAN000100000002 /* TextAnalyzerTests.swift in Sources */,
 				SA000001SENT000100000002 /* ArticleSentimentTests.swift in Sources */,
+				SM000001SUMM000100000002 /* ArticleSummarizerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
