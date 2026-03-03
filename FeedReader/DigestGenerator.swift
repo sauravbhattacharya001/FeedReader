@@ -11,6 +11,20 @@
 
 import Foundation
 
+// MARK: - Shared Time Formatting
+
+/// Format a duration in seconds into a human-readable label.
+/// Shared by DigestArticle, FeedGroup, DigestResult, and formatters.
+func formatReadingTimeLabel(_ seconds: Double) -> String {
+    if seconds < 60 { return "<1 min" }
+    let minutes = Int(seconds / 60)
+    if minutes < 60 { return "\(minutes) min" }
+    let hours = minutes / 60
+    let remainingMin = minutes % 60
+    if remainingMin == 0 { return "\(hours)h" }
+    return "\(hours)h \(remainingMin)m"
+}
+
 // MARK: - DigestPeriod
 
 /// Time window for digest generation.
@@ -158,19 +172,7 @@ struct DigestArticle {
     
     /// Formatted reading time string.
     var readingTimeLabel: String {
-        if timeSpentSeconds < 60 {
-            return "<1 min"
-        }
-        let minutes = Int(timeSpentSeconds / 60)
-        if minutes < 60 {
-            return "\(minutes) min"
-        }
-        let hours = minutes / 60
-        let remainingMin = minutes % 60
-        if remainingMin == 0 {
-            return "\(hours)h"
-        }
-        return "\(hours)h \(remainingMin)m"
+        return formatReadingTimeLabel(timeSpentSeconds)
     }
     
     /// Formatted scroll progress as percentage.
@@ -188,13 +190,7 @@ struct FeedGroup {
     let totalTimeSeconds: Double
     
     var totalTimeLabel: String {
-        let minutes = Int(totalTimeSeconds / 60)
-        if minutes < 1 { return "<1 min" }
-        if minutes < 60 { return "\(minutes) min" }
-        let hours = minutes / 60
-        let remainingMin = minutes % 60
-        if remainingMin == 0 { return "\(hours)h" }
-        return "\(hours)h \(remainingMin)m"
+        return formatReadingTimeLabel(totalTimeSeconds)
     }
 }
 
@@ -214,16 +210,26 @@ struct DigestResult {
     let format: DigestFormat
     
     var totalReadingTimeLabel: String {
-        let minutes = Int(totalReadingTimeSeconds / 60)
-        if minutes < 1 { return "<1 min" }
-        if minutes < 60 { return "\(minutes) min" }
-        let hours = minutes / 60
-        let remainingMin = minutes % 60
-        if remainingMin == 0 { return "\(hours)h" }
-        return "\(hours)h \(remainingMin)m"
+        return formatReadingTimeLabel(totalReadingTimeSeconds)
     }
     
     var isEmpty: Bool { return totalArticles == 0 }
+}
+
+
+// MARK: - FormatContext
+
+/// Collects all parameters needed by digest formatters into a single value type.
+/// Eliminates the 8-parameter method signatures in formatPlainText/Markdown/HTML.
+struct FormatContext {
+    let feedGroups: [FeedGroup]
+    let options: DigestOptions
+    let totalArticles: Int
+    let totalFeeds: Int
+    let totalTime: Double
+    let periodLabel: String
+    let dateRangeLabel: String
+    let generatedAt: Date
 }
 
 // MARK: - DigestGenerator
@@ -297,7 +303,7 @@ class DigestGenerator {
         let rangeLabel = "\(Self.dateFormatter.string(from: rangeStart)) – \(Self.dateFormatter.string(from: rangeEnd))"
         
         // Generate formatted output
-        let output = formatDigest(
+        let ctx = FormatContext(
             feedGroups: feedGroups,
             options: options,
             totalArticles: articles.count,
@@ -307,6 +313,7 @@ class DigestGenerator {
             dateRangeLabel: rangeLabel,
             generatedAt: now
         )
+        let output = formatDigest(ctx)
         
         return DigestResult(
             title: "Reading Digest — \(options.period.label)",
@@ -358,35 +365,21 @@ class DigestGenerator {
     
     // MARK: - Formatting
     
-    private func formatDigest(feedGroups: [FeedGroup], options: DigestOptions,
-                              totalArticles: Int, totalFeeds: Int,
-                              totalTime: Double, periodLabel: String,
-                              dateRangeLabel: String, generatedAt: Date) -> String {
-        switch options.format {
-        case .plainText:
-            return formatPlainText(feedGroups: feedGroups, options: options,
-                                   totalArticles: totalArticles, totalFeeds: totalFeeds,
-                                   totalTime: totalTime, periodLabel: periodLabel,
-                                   dateRangeLabel: dateRangeLabel, generatedAt: generatedAt)
-        case .markdown:
-            return formatMarkdown(feedGroups: feedGroups, options: options,
-                                  totalArticles: totalArticles, totalFeeds: totalFeeds,
-                                  totalTime: totalTime, periodLabel: periodLabel,
-                                  dateRangeLabel: dateRangeLabel, generatedAt: generatedAt)
-        case .html:
-            return formatHTML(feedGroups: feedGroups, options: options,
-                              totalArticles: totalArticles, totalFeeds: totalFeeds,
-                              totalTime: totalTime, periodLabel: periodLabel,
-                              dateRangeLabel: dateRangeLabel, generatedAt: generatedAt)
+    private func formatDigest(_ ctx: FormatContext) -> String {
+        switch ctx.options.format {
+        case .plainText: return formatPlainText(ctx)
+        case .markdown:  return formatMarkdown(ctx)
+        case .html:      return formatHTML(ctx)
         }
     }
     
     // MARK: - Plain Text Format
     
-    private func formatPlainText(feedGroups: [FeedGroup], options: DigestOptions,
-                                  totalArticles: Int, totalFeeds: Int,
-                                  totalTime: Double, periodLabel: String,
-                                  dateRangeLabel: String, generatedAt: Date) -> String {
+    private func formatPlainText(_ ctx: FormatContext) -> String {
+        let feedGroups = ctx.feedGroups; let options = ctx.options
+        let totalArticles = ctx.totalArticles; let totalFeeds = ctx.totalFeeds
+        let totalTime = ctx.totalTime; let periodLabel = ctx.periodLabel
+        let dateRangeLabel = ctx.dateRangeLabel; let generatedAt = ctx.generatedAt
         var lines: [String] = []
         let separator = String(repeating: "=", count: 50)
         
@@ -440,10 +433,11 @@ class DigestGenerator {
     
     // MARK: - Markdown Format
     
-    private func formatMarkdown(feedGroups: [FeedGroup], options: DigestOptions,
-                                 totalArticles: Int, totalFeeds: Int,
-                                 totalTime: Double, periodLabel: String,
-                                 dateRangeLabel: String, generatedAt: Date) -> String {
+    private func formatMarkdown(_ ctx: FormatContext) -> String {
+        let feedGroups = ctx.feedGroups; let options = ctx.options
+        let totalArticles = ctx.totalArticles; let totalFeeds = ctx.totalFeeds
+        let totalTime = ctx.totalTime; let periodLabel = ctx.periodLabel
+        let dateRangeLabel = ctx.dateRangeLabel; let generatedAt = ctx.generatedAt
         var lines: [String] = []
         
         lines.append("# 📖 Reading Digest — \(periodLabel)")
@@ -497,10 +491,11 @@ class DigestGenerator {
     
     // MARK: - HTML Format
     
-    private func formatHTML(feedGroups: [FeedGroup], options: DigestOptions,
-                             totalArticles: Int, totalFeeds: Int,
-                             totalTime: Double, periodLabel: String,
-                             dateRangeLabel: String, generatedAt: Date) -> String {
+    private func formatHTML(_ ctx: FormatContext) -> String {
+        let feedGroups = ctx.feedGroups; let options = ctx.options
+        let totalArticles = ctx.totalArticles; let totalFeeds = ctx.totalFeeds
+        let totalTime = ctx.totalTime; let periodLabel = ctx.periodLabel
+        let dateRangeLabel = ctx.dateRangeLabel; let generatedAt = ctx.generatedAt
         var html: [String] = []
         
         html.append("<!DOCTYPE html>")
@@ -572,13 +567,7 @@ class DigestGenerator {
     // MARK: - Helpers
     
     private func formatTimeLabel(_ seconds: Double) -> String {
-        if seconds < 60 { return "<1 min" }
-        let minutes = Int(seconds / 60)
-        if minutes < 60 { return "\(minutes) min" }
-        let hours = minutes / 60
-        let remainingMin = minutes % 60
-        if remainingMin == 0 { return "\(hours)h" }
-        return "\(hours)h \(remainingMin)m"
+        return formatReadingTimeLabel(seconds)
     }
     
     private func escapeHTML(_ text: String) -> String {
