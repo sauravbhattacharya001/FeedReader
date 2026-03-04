@@ -536,6 +536,37 @@ class OPMLTests: XCTestCase {
         XCTAssertNil(outlines[3].category)
     }
     
+    func testParseNestedFoldersPreserveCategoryCorrectly() {
+        // Regression: nested folders should use a stack, not a single variable.
+        // Feeds in an outer folder after a nested folder should retain the
+        // outer folder's category, not nil.
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Tech">
+              <outline type="rss" text="TC" xmlUrl="https://techcrunch.com/feed/"/>
+              <outline text="Apple">
+                <outline type="rss" text="9to5Mac" xmlUrl="https://9to5mac.com/feed/"/>
+              </outline>
+              <outline type="rss" text="Ars" xmlUrl="https://arstechnica.com/feed/"/>
+            </outline>
+            <outline type="rss" text="Root" xmlUrl="https://example.com/root.xml"/>
+          </body>
+        </opml>
+        """
+        
+        let outlines = opmlManager.parseOPML(opml)
+        XCTAssertEqual(outlines.count, 4)
+        XCTAssertEqual(outlines[0].title, "TC")
+        XCTAssertEqual(outlines[0].category, "Tech")
+        XCTAssertEqual(outlines[1].title, "9to5Mac")
+        XCTAssertEqual(outlines[1].category, "Apple", "Feed in nested folder should have inner folder category")
+        XCTAssertEqual(outlines[2].title, "Ars")
+        XCTAssertEqual(outlines[2].category, "Tech", "Feed in outer folder after nested folder should retain outer category")
+        XCTAssertNil(outlines[3].category, "Root-level feed should have nil category")
+    }
+    
     func testParseLargeOPML() {
         var opml = """
         <?xml version="1.0" encoding="UTF-8"?>

@@ -219,7 +219,9 @@ private class OPMLParser: NSObject, XMLParserDelegate {
     
     private let data: Data
     private var outlines: [OPMLOutline] = []
-    private var currentCategory: String?
+    /// Stack of folder names for nested category tracking.
+    /// Feeds inherit the nearest enclosing folder as their category.
+    private var categoryStack: [String] = []
     private var outlineDepth = 0
     
     init(data: Data) {
@@ -248,8 +250,9 @@ private class OPMLParser: NSObject, XMLParserDelegate {
         
         // Check if this is a category/folder outline (has children, no xmlUrl)
         if attributeDict["xmlUrl"] == nil && attributeDict["xmlurl"] == nil {
-            // This is a folder — remember it as category context
-            currentCategory = attributeDict["text"] ?? attributeDict["title"]
+            // This is a folder — push it onto the category stack
+            let folderName = attributeDict["text"] ?? attributeDict["title"]
+            categoryStack.append(folderName ?? "")
             return
         }
         
@@ -268,7 +271,7 @@ private class OPMLParser: NSObject, XMLParserDelegate {
             title: title,
             xmlUrl: feedUrl,
             htmlUrl: htmlUrl,
-            category: currentCategory
+            category: categoryStack.last(where: { !$0.isEmpty })
         )
         
         outlines.append(outline)
@@ -278,13 +281,15 @@ private class OPMLParser: NSObject, XMLParserDelegate {
                 didEndElement elementName: String,
                 namespaceURI: String?,
                 qualifiedName qName: String?) {
-        // When leaving an outline element, track depth and clear category
-        // when exiting a top-level folder outline (depth 1).
-        if elementName.lowercased() == "outline" {
-            if outlineDepth == 1 {
-                currentCategory = nil
-            }
-            outlineDepth -= 1
+        guard elementName.lowercased() == "outline" else { return }
+        // Pop category stack when leaving a folder outline.
+        // Folder outlines pushed onto the stack in didStartElement;
+        // feed outlines (with xmlUrl) did not push, so we only pop
+        // when the depth matches the stack depth (i.e., this closing
+        // tag corresponds to a folder, not a feed).
+        if categoryStack.count >= outlineDepth {
+            categoryStack.removeLast()
         }
+        outlineDepth -= 1
     }
 }
