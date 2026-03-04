@@ -373,18 +373,23 @@ class ReadingStreakTracker {
 
     // MARK: - Private: Date Helpers
 
-    private func dateKey(for date: Date) -> String {
+    /// Reusable date formatter — DateFormatter is expensive to create and
+    /// was previously allocated on every dateKey() / parseDate() call.
+    /// computeStats() calls these in tight loops making the overhead
+    /// significant (DateFormatter init involves locale + ICU setup).
+    private lazy var iso8601DayFormatter: DateFormatter = {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         fmt.calendar = calendar
-        return fmt.string(from: date)
+        return fmt
+    }()
+
+    private func dateKey(for date: Date) -> String {
+        return iso8601DayFormatter.string(from: date)
     }
 
     private func parseDate(_ key: String) -> Date? {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        fmt.calendar = calendar
-        return fmt.date(from: key)
+        return iso8601DayFormatter.date(from: key)
     }
 
     private func daysBetween(_ from: Date, _ to: Date) -> Int {
