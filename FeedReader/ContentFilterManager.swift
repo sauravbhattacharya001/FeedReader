@@ -248,8 +248,21 @@ class ContentFilterManager {
         return false
     }
     
+    /// Maximum text length for regex matching (ReDoS protection).
+    /// User-supplied regex patterns can exhibit catastrophic backtracking
+    /// (e.g. `(a+)+$`). Capping the input size limits worst-case CPU time
+    /// to a bounded value. 50 KB covers typical article bodies while
+    /// preventing multi-second hangs on pathological inputs.
+    private static let maxRegexInputLength = 50_000
+
     /// Internal: check if text matches keyword using the given mode.
     /// Uses regexCache to avoid recompiling patterns on every call.
+    ///
+    /// For regex/exactWord modes, input text is capped at `maxRegexInputLength`
+    /// characters to mitigate ReDoS (Regular Expression Denial of Service) from
+    /// user-supplied patterns with catastrophic backtracking on large inputs.
+    /// The `.withoutAnchoringBounds` option is also used to prevent anchored
+    /// patterns from forcing the engine to retry at every position.
     private func matchesText(_ text: String, keyword: String, mode: ContentFilter.MatchMode) -> Bool {
         guard !text.isEmpty else { return false }
         
@@ -270,8 +283,12 @@ class ContentFilterManager {
                 regexCache[cacheKey] = compiled
                 regex = compiled
             }
-            let range = NSRange(text.startIndex..., in: text)
-            return regex.firstMatch(in: text, options: [], range: range) != nil
+            // Cap input length for ReDoS protection
+            let safeText = text.count > ContentFilterManager.maxRegexInputLength
+                ? String(text.prefix(ContentFilterManager.maxRegexInputLength))
+                : text
+            let range = NSRange(safeText.startIndex..., in: safeText)
+            return regex.firstMatch(in: safeText, options: [.withoutAnchoringBounds], range: range) != nil
             
         case .regex:
             let cacheKey = "regex:\(keyword)"
@@ -285,8 +302,12 @@ class ContentFilterManager {
                 regexCache[cacheKey] = compiled
                 regex = compiled
             }
-            let range = NSRange(text.startIndex..., in: text)
-            return regex.firstMatch(in: text, options: [], range: range) != nil
+            // Cap input length for ReDoS protection
+            let safeText = text.count > ContentFilterManager.maxRegexInputLength
+                ? String(text.prefix(ContentFilterManager.maxRegexInputLength))
+                : text
+            let range = NSRange(safeText.startIndex..., in: safeText)
+            return regex.firstMatch(in: safeText, options: [.withoutAnchoringBounds], range: range) != nil
         }
     }
     
