@@ -202,11 +202,12 @@ class ArticleSimilarityManager {
         
         refreshIDFIfNeeded()
         
-        let queryVector = tf.mapValues { $0 * (idfCache[$0.description] ?? 1.0) }
-        // Recompute properly: TF * IDF
+        // Build TF-IDF query vector. Use the same fallback IDF as
+        // tfidfVector(for:) (1.0) so cosine similarity is consistent
+        // between query terms and document terms.
         var properQuery: [String: Double] = [:]
         for (term, freq) in tf {
-            properQuery[term] = freq * (idfCache[term] ?? log(Double(max(documents.count, 1))))
+            properQuery[term] = freq * (idfCache[term] ?? 1.0)
         }
         
         var candidateLinks = Set<String>()
@@ -244,23 +245,31 @@ class ArticleSimilarityManager {
     func clusterArticles(threshold: Double = 0.15) -> [[String]] {
         refreshIDFIfNeeded()
         
+        // Pre-compute all TF-IDF vectors once. The previous implementation
+        // called tfidfVector(for:) inside a nested loop — each document's
+        // vector was recomputed O(n) times across different seed iterations,
+        // wasting CPU on redundant dictionary allocations and IDF lookups.
+        var vectorCache: [String: [String: Double]] = [:]
+        vectorCache.reserveCapacity(documents.count)
+        for (link, doc) in documents {
+            vectorCache[link] = tfidfVector(for: doc)
+        }
+        
         var unassigned = Set(documents.keys)
         var clusters: [[String]] = []
         
         while !unassigned.isEmpty {
-            guard let seed = unassigned.first,
-                  let seedDoc = documents[seed] else {
-                unassigned.removeFirst()
+            guard let seed = unassigned.first else { break }
+            guard let seedVector = vectorCache[seed] else {
+                unassigned.remove(seed)
                 continue
             }
             
-            let seedVector = tfidfVector(for: seedDoc)
             var cluster = [seed]
             unassigned.remove(seed)
             
             for link in unassigned {
-                guard let doc = documents[link] else { continue }
-                let docVector = tfidfVector(for: doc)
+                guard let docVector = vectorCache[link] else { continue }
                 let sim = cosineSimilarity(seedVector, docVector)
                 if sim >= threshold {
                     cluster.append(link)
