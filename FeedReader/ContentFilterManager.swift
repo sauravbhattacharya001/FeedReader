@@ -154,9 +154,14 @@ class ContentFilterManager {
     // MARK: - Matching
     
     /// Check if a story should be muted (matches any active filter).
-    /// Increments the matching filter's muted count and persists it.
+    /// Increments the matching filter's muted count and persists.
+    ///
+    /// Note: For batch operations, prefer `filteredStories(from:)` or
+    /// `mutedStories(from:)` which persist once at the end. This method
+    /// persists per call, suitable for single-story checks.
     func shouldMute(_ story: Story) -> Bool {
-        for filter in activeFilters {
+        let active = activeFilters
+        for filter in active {
             if matchesFilter(story, filter: filter) {
                 filter.mutedCount += 1
                 save()
@@ -166,12 +171,32 @@ class ContentFilterManager {
         return false
     }
     
+    /// Batch version: check which stories should be muted from a list.
+    /// Only persists once after processing all stories.
+    func shouldMute(_ stories: [Story]) -> [Story] {
+        let active = activeFilters
+        var didUpdate = false
+        let muted = stories.filter { story in
+            for filter in active {
+                if matchesFilter(story, filter: filter) {
+                    filter.mutedCount += 1
+                    didUpdate = true
+                    return true
+                }
+            }
+            return false
+        }
+        if didUpdate { save() }
+        return muted
+    }
+    
     /// Returns stories that would be hidden by active filters.
     /// Increments muted counts for each matching filter and persists.
     func mutedStories(from stories: [Story]) -> [Story] {
+        let active = activeFilters
         var didUpdate = false
         let result = stories.filter { story in
-            for filter in activeFilters {
+            for filter in active {
                 if matchesFilter(story, filter: filter) {
                     filter.mutedCount += 1
                     didUpdate = true
@@ -187,9 +212,10 @@ class ContentFilterManager {
     /// Returns stories that pass all active filters (not muted).
     /// Increments muted counts for filtered-out stories and persists.
     func filteredStories(from stories: [Story]) -> [Story] {
+        let active = activeFilters
         var didUpdate = false
         let result = stories.filter { story in
-            for filter in activeFilters {
+            for filter in active {
                 if matchesFilter(story, filter: filter) {
                     filter.mutedCount += 1
                     didUpdate = true
