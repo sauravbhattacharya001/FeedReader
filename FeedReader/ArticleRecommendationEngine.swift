@@ -103,7 +103,10 @@ class ArticleRecommendationEngine {
     
     /// Cached user reading profile, rebuilt when history changes.
     private var cachedProfile: ReadingProfile?
-    private var profileHistoryCount: Int = 0
+    /// Hash of history state used for cache invalidation. Using a content
+    /// hash instead of just count detects revisit-count changes, time-spent
+    /// updates, and entry replacements that don't change the array length.
+    private var profileHistoryHash: Int = 0
     
     // MARK: - Stop Words
     
@@ -167,7 +170,7 @@ class ArticleRecommendationEngine {
     /// Invalidate cached profile (call when history changes significantly).
     func invalidateCache() {
         cachedProfile = nil
-        profileHistoryCount = 0
+        profileHistoryHash = 0
     }
     
     /// Get a human-readable summary of the user's reading profile.
@@ -212,8 +215,11 @@ class ArticleRecommendationEngine {
     
     private func buildProfile(from history: [HistoryEntry],
                                options: RecommendationOptions) -> ReadingProfile {
-        // Use cache if history hasn't changed
-        if let cached = cachedProfile, profileHistoryCount == history.count {
+        // Use cache if history hasn't changed (content-aware hash, not just count).
+        // The old count-based check missed revisit-count bumps and time-spent
+        // updates that don't change array length but do change profile scores.
+        let historyHash = Self.computeHistoryHash(history)
+        if let cached = cachedProfile, profileHistoryHash == historyHash {
             return cached
         }
         
@@ -227,29 +233,26 @@ class ArticleRecommendationEngine {
             entries = history
         }
         
-        // Build feed preference scores
+        // Build feed preference scores and revisit rates in a single pass.
+        // feedCounts tracks articles per feed (used for both scoring and
+        // revisit rate denominator — the old code had a redundant
+        // feedArticleCounts dictionary that was always identical).
         var feedCounts: [String: Int] = [:]
         var feedVisitTotals: [String: Int] = [:]
-        var feedArticleCounts: [String: Int] = [:]
         
         for entry in entries {
             let feed = entry.feedName
             feedCounts[feed, default: 0] += 1
             feedVisitTotals[feed, default: 0] += entry.visitCount
-            feedArticleCounts[feed, default: 0] += 1
         }
         
         let maxFeedCount = Double(feedCounts.values.max() ?? 1)
         var feedScores: [String: Double] = [:]
+        var feedRevisitRates: [String: Double] = [:]
         for (feed, count) in feedCounts {
             feedScores[feed] = Double(count) / maxFeedCount
-        }
-        
-        // Build feed revisit rates
-        var feedRevisitRates: [String: Double] = [:]
-        for (feed, totalVisits) in feedVisitTotals {
-            let articleCount = feedArticleCounts[feed] ?? 1
-            feedRevisitRates[feed] = Double(totalVisits) / Double(articleCount)
+            let totalVisits = feedVisitTotals[feed] ?? count
+            feedRevisitRates[feed] = Double(totalVisits) / Double(count)
         }
         
         // Extract keywords from titles
@@ -285,7 +288,7 @@ class ArticleRecommendationEngine {
         )
         
         cachedProfile = profile
-        profileHistoryCount = history.count
+        profileHistoryHash = historyHash
         
         return profile
     }
@@ -355,5 +358,23 @@ class ArticleRecommendationEngine {
             from: text,
             minLength: options.minKeywordLength
         )
+    }
+
+    // MARK: - Cache Helpers
+
+    /// Compute a content-aware hash of history entries for cache invalidation.
+    /// Incorporates count, visit counts, and time spent — changes to any of
+    /// these (e.g., revisiting an article) will invalidate the cached profile.
+    private static func computeHistoryHash(_ history: [HistoryEntry]) -> Int {
+        var hasher = Hasher()
+        hasher.combine(history.count)
+        for entry in history {
+            hasher.combine(entry.link)
+            hasher.combine(entry.visitCount)
+            hasher.combine(entry.feedName)
+            // Round time to nearest second to avoid floating-point noise
+            hasher.combine(Int(entry.timeSpentSeconds))
+        }
+        return hasher.finalize()
     }
 }

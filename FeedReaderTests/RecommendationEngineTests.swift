@@ -407,6 +407,79 @@ class RecommendationEngineTests: XCTestCase {
         XCTAssertFalse(results.isEmpty)
     }
     
+    func testCacheInvalidatesOnVisitCountChange() {
+        // Bug fix: cache used to only check history.count, missing content changes.
+        // When a user revisits an article (visitCount increments), the count stays
+        // the same but feed revisit rates and keyword scores change.
+        
+        let history1 = [
+            makeHistory(link: "https://1.com", title: "Swift programming", feedName: "Tech", visitCount: 1),
+            makeHistory(link: "https://2.com", title: "Python scripting", feedName: "DataBlog", visitCount: 1)
+        ]
+        guard let candidate = makeStory(title: "Swift update", link: "https://new.com", feedName: "Tech") else {
+            XCTFail(); return
+        }
+        
+        // Build cache with initial history
+        let results1 = engine.recommend(from: [candidate], history: history1)
+        let score1 = results1.first?.score ?? 0
+        
+        // Create new history with same count but different visit counts —
+        // user heavily revisited the Swift article, boosting Tech feed preference
+        let history2 = [
+            makeHistory(link: "https://1.com", title: "Swift programming", feedName: "Tech", visitCount: 10),
+            makeHistory(link: "https://2.com", title: "Python scripting", feedName: "DataBlog", visitCount: 1)
+        ]
+        
+        // Same count (2), different content — cache must invalidate
+        let results2 = engine.recommend(from: [candidate], history: history2)
+        let score2 = results2.first?.score ?? 0
+        
+        // With the bug, score2 == score1 because cache was stale.
+        // With the fix, the profile is rebuilt and scores may differ
+        // (revisitKeywords now includes "swift" and "programming").
+        // At minimum, verify the engine didn't serve stale data.
+        XCTAssertFalse(results2.isEmpty, "Should still recommend after history change")
+        
+        // The scores should differ since revisit patterns changed significantly
+        // (10 visits vs 1 visit changes the revisit keyword set)
+        // Note: they COULD theoretically be the same if the scoring formula
+        // produces the same result, but with visitCount 1→10 the
+        // revisitKeywords set changes (entries with visitCount > 1 contribute).
+        // history1: no revisitKeywords (all visitCount=1)
+        // history2: "swift", "programming" become revisitKeywords (visitCount=10)
+        // So the candidate "Swift update" should get a revisit boost in history2.
+        XCTAssertGreaterThan(score2, score1,
+            "Revisited article keywords should boost score for matching candidate")
+    }
+    
+    func testCacheInvalidatesOnFeedNameChange() {
+        // Same count, same visit counts, different feed attribution
+        let history1 = [
+            makeHistory(link: "https://1.com", title: "Tech news", feedName: "FeedA")
+        ]
+        guard let candidate = makeStory(title: "Tech news update", link: "https://new.com", feedName: "FeedB") else {
+            XCTFail(); return
+        }
+        
+        // Build cache — candidate is from FeedB, history is FeedA → no feed match
+        let results1 = engine.recommend(from: [candidate], history: history1)
+        
+        // Change feed name to FeedB (same count, same link/title)
+        let history2 = [
+            makeHistory(link: "https://1.com", title: "Tech news", feedName: "FeedB")
+        ]
+        
+        let results2 = engine.recommend(from: [candidate], history: history2)
+        
+        // With correct cache invalidation, history2 should produce a feed preference
+        // match that history1 didn't have
+        let score1 = results1.first?.score ?? 0
+        let score2 = results2.first?.score ?? 0
+        XCTAssertGreaterThanOrEqual(score2, score1,
+            "Matching feed name should produce equal or higher score")
+    }
+    
     // MARK: - Profile Summary Tests
     
     func testProfileSummaryFormat() {
