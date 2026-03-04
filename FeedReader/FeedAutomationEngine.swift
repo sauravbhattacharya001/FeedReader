@@ -46,8 +46,19 @@ enum MatchMode: String, Codable {
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
                 return false
             }
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
-            return regex.firstMatch(in: text, range: range) != nil
+            // ReDoS protection: cap the text length to prevent catastrophic
+            // backtracking on adversarial input. Article titles/bodies can be
+            // arbitrarily long; capping at 10,000 chars is generous for any
+            // reasonable feed content while preventing worst-case O(2^n)
+            // backtracking on patterns like (a+)+$ against long strings.
+            let safeText: String
+            if text.count > 10_000 {
+                safeText = String(text.prefix(10_000))
+            } else {
+                safeText = text
+            }
+            let range = NSRange(safeText.startIndex..<safeText.endIndex, in: safeText)
+            return regex.firstMatch(in: safeText, range: range) != nil
         }
     }
 }
@@ -674,10 +685,12 @@ class FeedAutomationEngine {
             issues.append("Rule must have at least one action")
         }
         
-        // Check for invalid regex patterns
+        // Check for invalid regex patterns and ReDoS-prone patterns
         for condition in rule.conditionGroup.conditions where condition.mode == .regex {
             if (try? NSRegularExpression(pattern: condition.pattern)) == nil {
                 issues.append("Invalid regex pattern: '\(condition.pattern)'")
+            } else if Self.isReDoSRisk(condition.pattern) {
+                issues.append("Regex pattern may cause excessive backtracking (ReDoS risk): '\(condition.pattern)'. Avoid nested quantifiers like (a+)+.")
             }
         }
         
@@ -773,6 +786,39 @@ class FeedAutomationEngine {
         return rules.filter { $0.name.lowercased().contains(lower) }
     }
     
+    // MARK: - ReDoS Protection
+
+    /// Detect regex patterns prone to catastrophic backtracking (ReDoS).
+    /// Catches common dangerous patterns: nested quantifiers like (a+)+,
+    /// (a*)*,  (a+)*, and alternation with overlapping branches.
+    /// This is a heuristic — not exhaustive — but catches the most
+    /// common ReDoS patterns found in user-supplied rules.
+    static func isReDoSRisk(_ pattern: String) -> Bool {
+        // Nested quantifiers: (...)+ followed by +, *, or {n,}
+        // Examples: (a+)+, (\w*)+, ([a-z]+)*
+        let nestedQuantifier = try? NSRegularExpression(
+            pattern: #"\([^)]*[+*][^)]*\)[+*{]"#
+        )
+        if let regex = nestedQuantifier {
+            let range = NSRange(pattern.startIndex..<pattern.endIndex, in: pattern)
+            if regex.firstMatch(in: pattern, range: range) != nil {
+                return true
+            }
+        }
+        // Overlapping alternation with quantifiers: (a|a)+, (\w|\d)+
+        // Simplified: alternation inside a quantified group
+        let overlappingAlt = try? NSRegularExpression(
+            pattern: #"\([^)]*\|[^)]*\)[+*{]"#
+        )
+        if let regex = overlappingAlt {
+            let range = NSRange(pattern.startIndex..<pattern.endIndex, in: pattern)
+            if regex.firstMatch(in: pattern, range: range) != nil {
+                return true
+            }
+        }
+        return false
+    }
+
     // MARK: - Helpers
     
     /// Generate a stable key for deduplicating actions.

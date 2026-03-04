@@ -163,11 +163,12 @@ class OPMLManager {
         var skipped = 0
         
         for outline in outlines {
-            // Validate URL
-            guard let url = URL(string: outline.xmlUrl),
-                  let scheme = url.scheme?.lowercased(),
-                  (scheme == "https" || scheme == "http"),
-                  url.host != nil else {
+            // Validate URL — delegate to URLValidator for scheme, host,
+            // and SSRF checks (private/reserved/link-local addresses).
+            // Previous check only verified scheme + host != nil, which
+            // allowed empty hosts (http:///path) and private IPs
+            // (http://169.254.169.254, http://10.0.0.1) through.
+            guard URLValidator.validateFeedURL(outline.xmlUrl) != nil else {
                 skipped += 1
                 continue
             }
