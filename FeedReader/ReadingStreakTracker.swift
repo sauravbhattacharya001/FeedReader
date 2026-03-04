@@ -108,6 +108,10 @@ class ReadingStreakTracker {
         var cal = calendar ?? Calendar(identifier: .gregorian)
         cal.firstWeekday = 2 // Monday
         self.calendar = cal
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        fmt.calendar = cal
+        self.iso8601DayFormatter = fmt
         loadRecords()
     }
 
@@ -377,12 +381,13 @@ class ReadingStreakTracker {
     /// was previously allocated on every dateKey() / parseDate() call.
     /// computeStats() calls these in tight loops making the overhead
     /// significant (DateFormatter init involves locale + ICU setup).
-    private lazy var iso8601DayFormatter: DateFormatter = {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "yyyy-MM-dd"
-        fmt.calendar = calendar
-        return fmt
-    }()
+    /// Thread-safe date formatter — initialized once in init() rather
+    /// than using lazy var (which is not atomic in Swift and would be
+    /// a race condition on the shared singleton). DateFormatter itself
+    /// is also not thread-safe, but since ReadingStreakTracker's public
+    /// methods are only called from the main thread, a single instance
+    /// is safe. Fixes #21.
+    private let iso8601DayFormatter: DateFormatter
 
     private func dateKey(for date: Date) -> String {
         return iso8601DayFormatter.string(from: date)
