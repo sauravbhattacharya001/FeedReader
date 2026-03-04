@@ -39,6 +39,12 @@ class ContentFilterManager {
         return filters.filter { $0.isActive }
     }
     
+    /// Cached compiled regex patterns keyed by (keyword + mode rawValue).
+    /// Avoids recompiling NSRegularExpression on every match call — for a feed
+    /// with 100 stories and 10 regex/exactWord filters, this eliminates up to
+    /// 1000 redundant compilations per filter pass.
+    private var regexCache: [String: NSRegularExpression] = [:]
+    
     /// Number of filters.
     var filterCount: Int {
         return filters.count
@@ -80,7 +86,10 @@ class ContentFilterManager {
     @discardableResult
     func removeFilter(id: String) -> Bool {
         guard let index = filters.firstIndex(where: { $0.id == id }) else { return false }
-        filters.remove(at: index)
+        let removed = filters.remove(at: index)
+        // Evict stale cache entries for the removed filter's keyword
+        regexCache.removeValue(forKey: "exact:\(removed.keyword)")
+        regexCache.removeValue(forKey: "regex:\(removed.keyword)")
         save()
         postNotification()
         return true
@@ -123,6 +132,7 @@ class ContentFilterManager {
         filter.keyword = trimmed
         filter.matchScope = matchScope
         filter.matchMode = matchMode
+        invalidateRegexCache()
         save()
         postNotification()
         return true
@@ -136,6 +146,7 @@ class ContentFilterManager {
     /// Remove all filters.
     func clearAll() {
         filters.removeAll()
+        regexCache.removeAll()
         save()
         postNotification()
     }
@@ -212,6 +223,7 @@ class ContentFilterManager {
     }
     
     /// Internal: check if text matches keyword using the given mode.
+    /// Uses regexCache to avoid recompiling patterns on every call.
     private func matchesText(_ text: String, keyword: String, mode: ContentFilter.MatchMode) -> Bool {
         guard !text.isEmpty else { return false }
         
@@ -220,23 +232,35 @@ class ContentFilterManager {
             return text.range(of: keyword, options: .caseInsensitive) != nil
             
         case .exactWord:
-            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
-            do {
-                let regex = try NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
-                let range = NSRange(text.startIndex..., in: text)
-                return regex.firstMatch(in: text, options: [], range: range) != nil
-            } catch {
-                return false
+            let cacheKey = "exact:\(keyword)"
+            let regex: NSRegularExpression
+            if let cached = regexCache[cacheKey] {
+                regex = cached
+            } else {
+                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+                guard let compiled = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+                    return false
+                }
+                regexCache[cacheKey] = compiled
+                regex = compiled
             }
+            let range = NSRange(text.startIndex..., in: text)
+            return regex.firstMatch(in: text, options: [], range: range) != nil
             
         case .regex:
-            do {
-                let regex = try NSRegularExpression(pattern: keyword, options: [.caseInsensitive])
-                let range = NSRange(text.startIndex..., in: text)
-                return regex.firstMatch(in: text, options: [], range: range) != nil
-            } catch {
-                return false
+            let cacheKey = "regex:\(keyword)"
+            let regex: NSRegularExpression
+            if let cached = regexCache[cacheKey] {
+                regex = cached
+            } else {
+                guard let compiled = try? NSRegularExpression(pattern: keyword, options: [.caseInsensitive]) else {
+                    return false
+                }
+                regexCache[cacheKey] = compiled
+                regex = compiled
             }
+            let range = NSRange(text.startIndex..., in: text)
+            return regex.firstMatch(in: text, options: [], range: range) != nil
         }
     }
     
@@ -339,6 +363,11 @@ class ContentFilterManager {
     }
     
     // MARK: - Helpers
+    
+    /// Clear the compiled regex cache. Called when filter keywords change.
+    private func invalidateRegexCache() {
+        regexCache.removeAll()
+    }
     
     private func postNotification() {
         NotificationCenter.default.post(name: ContentFilterManager.contentFiltersDidChangeNotification, object: nil)
