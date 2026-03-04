@@ -28,7 +28,7 @@ class Story: NSObject, NSSecureCoding {
     
     /// Allowed URL schemes for links and images. Restricts to safe web protocols
     /// to prevent javascript:, file:, data:, or custom scheme injection.
-    private static let allowedSchemes: Set<String> = ["https", "http"]
+    // URL validation delegated to URLValidator (with SSRF protection).
     
     // MARK: - Archiving Paths
     
@@ -79,12 +79,7 @@ class Story: NSObject, NSSecureCoding {
     /// Rejects javascript:, file:, data:, tel:, and custom URL schemes
     /// to prevent injection and redirect attacks.
     static func isSafeURL(_ urlString: String?) -> Bool {
-        guard let urlString = urlString,
-              let url = URL(string: urlString),
-              let scheme = url.scheme?.lowercased() else {
-            return false
-        }
-        return allowedSchemes.contains(scheme)
+        return URLValidator.isSafe(urlString)
     }
     
     /// Strips HTML tags from a string to prevent rendering of injected markup.

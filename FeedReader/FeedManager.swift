@@ -64,15 +64,13 @@ class FeedManager {
         return true
     }
     
-    /// Add a custom feed by URL. Validates the URL format first.
+    /// Add a custom feed by URL. Validates the URL format and rejects
+    /// private/internal network addresses (SSRF protection).
     /// Returns the created Feed if successful, nil if URL is invalid or duplicate.
     @discardableResult
     func addCustomFeed(name: String, url: String) -> Feed? {
-        // Validate URL
-        guard let parsed = URL(string: url),
-              let scheme = parsed.scheme?.lowercased(),
-              (scheme == "https" || scheme == "http"),
-              parsed.host != nil else {
+        // Validate URL and check for SSRF
+        guard URLValidator.validateFeedURL(url) != nil else {
             return nil
         }
         
