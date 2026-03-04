@@ -258,8 +258,8 @@ class ReadingStreakTracker {
         let today = calendar.startOfDay(for: Date())
         let todayKey = dateKey(for: today)
 
-        // Sort all record dates
-        let sortedDates = records.keys.sorted()
+        // Sort all record dates (only active days — those with articlesRead > 0)
+        let sortedDates = records.filter { $0.value.articlesRead > 0 }.keys.sorted()
         guard !sortedDates.isEmpty else {
             return StreakStats(
                 currentStreak: 0, longestStreak: 0,
