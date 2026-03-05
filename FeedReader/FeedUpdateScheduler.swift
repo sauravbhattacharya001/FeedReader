@@ -258,15 +258,27 @@ class FeedUpdateScheduler {
         guard !schedules.isEmpty else {
             return (0, 0, 0, 0, 0)
         }
-        let total = schedules.values.reduce((checks: 0, articles: 0, intervals: 0.0)) { acc, s in
-            (acc.checks + s.totalChecks, acc.articles + s.totalNewArticles,
-             acc.intervals + s.currentInterval)
+        var totalChecks = 0
+        var totalArticles = 0
+        var totalIntervals = 0.0
+        var productiveChecks = 0
+
+        for schedule in schedules.values {
+            totalChecks += schedule.totalChecks
+            totalArticles += schedule.totalNewArticles
+            totalIntervals += schedule.currentInterval
+            // Count checks that actually found content from the history,
+            // not just `totalChecks - consecutiveEmpty` which only
+            // reflects the *current* empty streak per feed and
+            // under-counts total empty checks across the feed's lifetime.
+            productiveChecks += schedule.checkHistory.filter { $0.newArticleCount > 0 }.count
         }
-        let avgInterval = total.intervals / Double(schedules.count)
-        let efficiency = total.checks > 0
-            ? Double(total.checks - schedules.values.reduce(0) { $0 + $1.consecutiveEmpty }) / Double(total.checks)
+
+        let avgInterval = totalIntervals / Double(schedules.count)
+        let efficiency = totalChecks > 0
+            ? Double(productiveChecks) / Double(totalChecks)
             : 0
-        return (schedules.count, total.checks, total.articles, avgInterval, efficiency)
+        return (schedules.count, totalChecks, totalArticles, avgInterval, efficiency)
     }
 
     // MARK: - Manual Overrides
