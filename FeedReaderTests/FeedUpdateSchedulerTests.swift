@@ -268,6 +268,25 @@ class FeedUpdateSchedulerTests: XCTestCase {
         XCTAssertGreaterThan(agg.averageInterval, 0)
     }
 
+    func testAggregateStatsEfficiencyUsesHistoryWindow() {
+        // Issue #24: efficiency should use history-window counts for both
+        // numerator and denominator, not mix history with lifetime totals.
+        let url = "https://example.com/feed"
+        // Record many checks so totalChecks >> history window
+        for _ in 0..<60 {
+            scheduler.recordCheck(feedURL: url, newArticleCount: 0)
+        }
+        // Now record some productive checks (these stay in history)
+        for _ in 0..<25 {
+            scheduler.recordCheck(feedURL: url, newArticleCount: 1)
+        }
+        // History has 50 entries (last 25 empty + 25 productive),
+        // but totalChecks = 85. Efficiency should be 25/50 = 0.5,
+        // NOT 25/85 ≈ 0.29.
+        let agg = scheduler.aggregateStats()
+        XCTAssertEqual(agg.overallEfficiency, 0.5, accuracy: 0.01)
+    }
+
     func testAggregateStatsEmpty() {
         let agg = scheduler.aggregateStats()
         XCTAssertEqual(agg.totalFeeds, 0)

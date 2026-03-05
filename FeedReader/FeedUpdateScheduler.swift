@@ -262,21 +262,24 @@ class FeedUpdateScheduler {
         var totalArticles = 0
         var totalIntervals = 0.0
         var productiveChecks = 0
+        var totalHistoryChecks = 0
 
         for schedule in schedules.values {
             totalChecks += schedule.totalChecks
             totalArticles += schedule.totalNewArticles
             totalIntervals += schedule.currentInterval
-            // Count checks that actually found content from the history,
-            // not just `totalChecks - consecutiveEmpty` which only
-            // reflects the *current* empty streak per feed and
-            // under-counts total empty checks across the feed's lifetime.
+            // Use history window for both numerator and denominator so
+            // efficiency reflects *recent* behaviour rather than mixing
+            // a windowed productive count with a lifetime total count.
+            // See: https://github.com/sauravbhattacharya001/FeedReader/issues/24
+            let historyCount = schedule.checkHistory.count
+            totalHistoryChecks += historyCount
             productiveChecks += schedule.checkHistory.filter { $0.newArticleCount > 0 }.count
         }
 
         let avgInterval = totalIntervals / Double(schedules.count)
-        let efficiency = totalChecks > 0
-            ? Double(productiveChecks) / Double(totalChecks)
+        let efficiency = totalHistoryChecks > 0
+            ? Double(productiveChecks) / Double(totalHistoryChecks)
             : 0
         return (schedules.count, totalChecks, totalArticles, avgInterval, efficiency)
     }
