@@ -182,49 +182,93 @@ class ArticleDeduplicator {
     // MARK: - Duplicate Detection
 
     /// Scan all indexed articles and return duplicate groups.
+    ///
+    /// Uses union-find clustering with pairwise verification to avoid
+    /// the greedy single-pass problem where articles B and C can end up
+    /// grouped together via a shared neighbor A even though B and C
+    /// themselves are not similar (see issue #25).
     func findDuplicates() -> DeduplicationResult {
         let start = Date()
         let links = insertionOrder.filter { index[$0] != nil }
-        var visited = Set<String>()
-        var groups: [DuplicateGroup] = []
+
+        // Build a union-find structure over link indices
+        var parent = Array(0..<links.count)
+        var rank = Array(repeating: 0, count: links.count)
+
+        func find(_ x: Int) -> Int {
+            var x = x
+            while parent[x] != x {
+                parent[x] = parent[parent[x]]  // path compression
+                x = parent[x]
+            }
+            return x
+        }
+
+        func union(_ a: Int, _ b: Int) {
+            let ra = find(a), rb = find(b)
+            guard ra != rb else { return }
+            if rank[ra] < rank[rb] { parent[ra] = rb }
+            else if rank[ra] > rank[rb] { parent[rb] = ra }
+            else { parent[rb] = ra; rank[ra] += 1 }
+        }
+
+        // Pairwise similarity: only union articles that directly meet
+        // the threshold. This ensures every merged pair is genuinely
+        // similar — transitivity is explicit via the union-find edges.
+        var pairScores: [String: (Double, String)] = [:]
 
         for i in 0..<links.count {
-            let linkA = links[i]
-            guard !visited.contains(linkA) else { continue }
-            guard let fpA = index[linkA] else { continue }
-
-            var members = [linkA]
-            var bestConfidence = 0.0
-            var bestReason = ""
-
+            guard let fpA = index[links[i]] else { continue }
             for j in (i + 1)..<links.count {
-                let linkB = links[j]
-                guard !visited.contains(linkB) else { continue }
-                guard let fpB = index[linkB] else { continue }
-
+                guard let fpB = index[links[j]] else { continue }
                 let (score, reason) = computeSimilarity(fpA, fpB)
                 if score >= threshold {
-                    members.append(linkB)
-                    if score > bestConfidence {
-                        bestConfidence = score
-                        bestReason = reason
+                    union(i, j)
+                    let key = "\(i)-\(j)"
+                    pairScores[key] = (score, reason)
+                }
+            }
+        }
+
+        // Collect groups from union-find roots
+        var rootToMembers: [Int: [Int]] = [:]
+        for i in 0..<links.count {
+            let root = find(i)
+            rootToMembers[root, default: []].append(i)
+        }
+
+        var groups: [DuplicateGroup] = []
+        for (_, memberIndices) in rootToMembers {
+            guard memberIndices.count > 1 else { continue }
+
+            let memberLinks = memberIndices.map { links[$0] }
+
+            // Find best pairwise confidence within this group
+            var bestConfidence = 0.0
+            var bestReason = ""
+            for mi in 0..<memberIndices.count {
+                for mj in (mi + 1)..<memberIndices.count {
+                    let a = min(memberIndices[mi], memberIndices[mj])
+                    let b = max(memberIndices[mi], memberIndices[mj])
+                    if let (score, reason) = pairScores["\(a)-\(b)"] {
+                        if score > bestConfidence {
+                            bestConfidence = score
+                            bestReason = reason
+                        }
                     }
                 }
             }
 
-            if members.count > 1 {
-                for m in members { visited.insert(m) }
-                let canonical = selectCanonical(members)
-                let groupId = stableHash(canonical)
+            let canonical = selectCanonical(memberLinks)
+            let groupId = stableHash(canonical)
 
-                groups.append(DuplicateGroup(
-                    id: groupId,
-                    memberLinks: members,
-                    canonicalLink: canonical,
-                    confidence: bestConfidence,
-                    reason: bestReason
-                ))
-            }
+            groups.append(DuplicateGroup(
+                id: groupId,
+                memberLinks: memberLinks,
+                canonicalLink: canonical,
+                confidence: bestConfidence,
+                reason: bestReason
+            ))
         }
 
         let duration = Date().timeIntervalSince(start)
