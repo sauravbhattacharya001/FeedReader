@@ -22,8 +22,12 @@ class ReadStatusManager {
     
     // MARK: - Properties
     
-    /// Set of story links that have been read.
-    private var readLinks: Set<String>
+    /// Ordered list of story links that have been read (oldest first).
+    /// New entries are appended; pruning removes from the front (FIFO).
+    private var readLinksOrdered: [String]
+    
+    /// Set for O(1) lookup of read status.
+    private var readLinksSet: Set<String>
     
     /// UserDefaults key for persisting read links.
     private static let userDefaultsKey = "ReadStatusManager.readLinks"
@@ -35,19 +39,21 @@ class ReadStatusManager {
     // MARK: - Initialization
     
     private init() {
-        readLinks = ReadStatusManager.loadFromDefaults()
+        let loaded = ReadStatusManager.loadFromDefaults()
+        readLinksOrdered = loaded
+        readLinksSet = Set(loaded)
     }
     
     // MARK: - Public Methods
     
     /// Check if a story has been read.
     func isRead(_ story: Story) -> Bool {
-        return readLinks.contains(story.link)
+        return readLinksSet.contains(story.link)
     }
     
     /// Check if a story link has been read.
     func isRead(link: String) -> Bool {
-        return readLinks.contains(link)
+        return readLinksSet.contains(link)
     }
     
     /// Mark a story as read. Returns true if newly marked (was unread before).
@@ -59,13 +65,13 @@ class ReadStatusManager {
     /// Mark a story link as read. Returns true if newly marked.
     @discardableResult
     func markAsRead(link: String) -> Bool {
-        let inserted = readLinks.insert(link).inserted
-        if inserted {
-            pruneIfNeeded()
-            save()
-            NotificationCenter.default.post(name: .readStatusDidChange, object: nil)
-        }
-        return inserted
+        guard !readLinksSet.contains(link) else { return false }
+        readLinksSet.insert(link)
+        readLinksOrdered.append(link)
+        pruneIfNeeded()
+        save()
+        NotificationCenter.default.post(name: .readStatusDidChange, object: nil)
+        return true
     }
     
     /// Mark a story as unread. Returns true if was previously read.
@@ -77,12 +83,13 @@ class ReadStatusManager {
     /// Mark a story link as unread. Returns true if was previously read.
     @discardableResult
     func markAsUnread(link: String) -> Bool {
-        let removed = readLinks.remove(link) != nil
-        if removed {
-            save()
-            NotificationCenter.default.post(name: .readStatusDidChange, object: nil)
+        guard readLinksSet.remove(link) != nil else { return false }
+        if let idx = readLinksOrdered.firstIndex(of: link) {
+            readLinksOrdered.remove(at: idx)
         }
-        return removed
+        save()
+        NotificationCenter.default.post(name: .readStatusDidChange, object: nil)
+        return true
     }
     
     /// Toggle read/unread status. Returns true if now read.
@@ -101,7 +108,9 @@ class ReadStatusManager {
     func markAllAsRead(_ stories: [Story]) {
         var changed = false
         for story in stories {
-            if readLinks.insert(story.link).inserted {
+            if !readLinksSet.contains(story.link) {
+                readLinksSet.insert(story.link)
+                readLinksOrdered.append(story.link)
                 changed = true
             }
         }
@@ -115,7 +124,7 @@ class ReadStatusManager {
     /// Count unread stories from the given array.
     func unreadCount(in stories: [Story]) -> Int {
         return stories.reduce(0) { acc, story in
-            readLinks.contains(story.link) ? acc : acc + 1
+            readLinksSet.contains(story.link) ? acc : acc + 1
         }
     }
     
@@ -125,20 +134,21 @@ class ReadStatusManager {
         case .all:
             return stories
         case .unread:
-            return stories.filter { !readLinks.contains($0.link) }
+            return stories.filter { !readLinksSet.contains($0.link) }
         case .read:
-            return stories.filter { readLinks.contains($0.link) }
+            return stories.filter { readLinksSet.contains($0.link) }
         }
     }
     
     /// Total number of tracked read links.
     var readCount: Int {
-        return readLinks.count
+        return readLinksSet.count
     }
     
     /// Clear all read status data.
     func clearAll() {
-        readLinks.removeAll()
+        readLinksOrdered.removeAll()
+        readLinksSet.removeAll()
         save()
         NotificationCenter.default.post(name: .readStatusDidChange, object: nil)
     }
@@ -163,34 +173,35 @@ class ReadStatusManager {
     // MARK: - Persistence
     
     private func save() {
-        let array = Array(readLinks)
-        UserDefaults.standard.set(array, forKey: ReadStatusManager.userDefaultsKey)
+        // Save as ordered array — preserves insertion order for FIFO pruning
+        UserDefaults.standard.set(readLinksOrdered, forKey: ReadStatusManager.userDefaultsKey)
     }
     
-    private static func loadFromDefaults() -> Set<String> {
+    private static func loadFromDefaults() -> [String] {
         guard let array = UserDefaults.standard.stringArray(forKey: userDefaultsKey) else {
-            return Set<String>()
+            return []
         }
-        return Set(array)
+        return array
     }
     
-    /// Prune oldest entries if we exceed the max stored links.
-    /// Since Set doesn't have ordering, we just remove random excess entries.
-    /// This is acceptable because the pruned entries are the oldest (least
-    /// likely to appear in current feeds).
+    /// Prune oldest entries (FIFO) if we exceed the max stored links.
+    /// Removes from the front of the ordered array, which contains the
+    /// earliest-added entries.
     private func pruneIfNeeded() {
-        if readLinks.count > ReadStatusManager.maxStoredLinks {
-            let excess = readLinks.count - ReadStatusManager.maxStoredLinks
-            for _ in 0..<excess {
-                if let first = readLinks.first {
-                    readLinks.remove(first)
-                }
+        if readLinksOrdered.count > ReadStatusManager.maxStoredLinks {
+            let excess = readLinksOrdered.count - ReadStatusManager.maxStoredLinks
+            let pruned = Array(readLinksOrdered.prefix(excess))
+            readLinksOrdered.removeFirst(excess)
+            for link in pruned {
+                readLinksSet.remove(link)
             }
         }
     }
     
     /// Force a reload from UserDefaults (useful for testing).
     func reload() {
-        readLinks = ReadStatusManager.loadFromDefaults()
+        let loaded = ReadStatusManager.loadFromDefaults()
+        readLinksOrdered = loaded
+        readLinksSet = Set(loaded)
     }
 }
