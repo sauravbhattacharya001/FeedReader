@@ -14,7 +14,7 @@
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml/badge.svg" alt="Pages"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
-  <img src="https://img.shields.io/badge/tests-614-brightgreen?logo=swift" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-1941-brightgreen?logo=swift" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-enabled-brightgreen?logo=swift" alt="Code Coverage">
   <br>
   <!-- Platform / Language -->
@@ -80,14 +80,44 @@ FeedReader/
 │   ├── FeedManager.swift                # Feed source management singleton (CRUD + persistence)
 │   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
 │   ├── FeedHealthManager.swift          # Feed reliability tracking (uptime, response times, reports)
+│   ├── FeedPerformanceAnalyzer.swift    # Feed performance profiling (parse times, sizes, bottlenecks)
+│   ├── FeedUpdateScheduler.swift        # Scheduled feed refresh management
+│   ├── FeedBundleManager.swift          # Bundled feed collections (curated topic packs)
+│   ├── FeedMergeManager.swift           # Multi-feed story merging and conflict resolution
+│   ├── FeedCategoryManager.swift        # Feed categorization and grouping
+│   ├── FeedDiscoveryManager.swift       # Auto-discover RSS feeds from website URLs
+│   ├── FeedAutomationEngine.swift       # Rule-based feed automation (auto-bookmark, auto-tag, etc.)
 │   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
 │   ├── ReadStatusManager.swift          # Read/unread status tracking (UserDefaults, singleton)
 │   ├── ReadingStatsManager.swift        # Reading analytics engine (events, streaks, stats)
 │   ├── ReadingHistoryManager.swift      # Rich reading history with timestamps and sessions
+│   ├── ReadingSessionTracker.swift      # Per-session reading time tracking
+│   ├── ReadingStreakTracker.swift        # Reading streak calculation and persistence
+│   ├── ReadingGoalsManager.swift        # Configurable reading goals and progress tracking
+│   ├── ReadingAchievementsManager.swift # Gamification achievements for reading milestones
+│   ├── ReadingQueueManager.swift        # Read-later queue with priority ordering
 │   ├── ReadingStatsViewController.swift # Reading stats dashboard UI
 │   ├── ArticleNotesManager.swift        # Article note CRUD and persistence
+│   ├── ArticleHighlight.swift           # Article highlight data model
+│   ├── ArticleHighlightsManager.swift   # Text highlighting and annotation
+│   ├── ArticleTagManager.swift          # Article tagging and organization
+│   ├── ArticleSummarizer.swift          # Auto-generate article summaries
+│   ├── ArticleSimilarityManager.swift   # Find similar articles across feeds
+│   ├── ArticleSentimentAnalyzer.swift   # Sentiment analysis for article content
+│   ├── ArticleReadabilityAnalyzer.swift # Readability scoring (Flesch-Kincaid, etc.)
+│   ├── ArticleTrendDetector.swift       # Detect trending topics across feeds
+│   ├── ArticleVersionTracker.swift      # Track article content changes over time
+│   ├── ArticleCitationGenerator.swift   # Generate citations in various formats
+│   ├── ArticleDeduplicator.swift        # Cross-feed duplicate article detection
+│   ├── ArticleRecommendationEngine.swift # Personalized article recommendations
 │   ├── ContentFilterManager.swift       # Content filter management with JSON import/export
 │   ├── SmartFeedManager.swift           # Keyword-based auto-matching smart feeds
+│   ├── KeywordAlert.swift               # Keyword alert data model
+│   ├── KeywordAlertManager.swift        # Alert notifications for keyword matches
+│   ├── DigestGenerator.swift            # Generate periodic digest summaries
+│   ├── TextAnalyzer.swift               # Text analysis utilities (word count, reading time)
+│   ├── URLValidator.swift               # URL validation and sanitization
+│   ├── ShareManager.swift               # Sharing utilities (system share sheet)
 │   ├── OPMLManager.swift                # OPML import/export for feed subscriptions
 │   ├── OfflineCacheManager.swift        # Full-article offline caching with size management
 │   ├── OfflineArticlesViewController.swift  # Offline cached articles browsing UI
@@ -110,28 +140,7 @@ FeedReader/
 │   ├── FeedItem.swift                   # Feed source model with 10 built-in presets
 │   └── NetworkReachability.swift        # Network connectivity check
 ├── Tests/FeedReaderCoreTests/           # Swift Package tests
-└── FeedReaderTests/
-    ├── ArticleNotesTests.swift          # Article notes tests (51 cases)
-    ├── BookmarkTests.swift              # Bookmark manager tests (18 cases)
-    ├── ContentFilterTests.swift         # Content filter tests (67 cases)
-    ├── FeedHealthTests.swift            # Feed health monitor tests (73 cases)
-    ├── FeedManagerTests.swift           # Feed model + manager tests (36 cases)
-    ├── OfflineCacheTests.swift          # Offline cache tests (40 cases)
-    ├── OPMLTests.swift                  # OPML import/export tests (38 cases)
-    ├── ReadingHistoryTests.swift        # Reading history tests (62 cases)
-    ├── ReadingStatsTests.swift          # Reading statistics tests (34 cases)
-    ├── ReadStatusTests.swift            # Read/unread tracking tests (41 cases)
-    ├── RSSParserSecurityTests.swift     # RSS parser security tests (12 cases)
-    ├── SearchFilterTests.swift          # Search/filter tests (6 cases)
-    ├── SmartFeedTests.swift             # Smart feed tests (70 cases)
-    ├── StoryModelTests.swift            # Extended model tests (37 cases)
-    ├── StoryTests.swift                 # Model unit tests (2 cases)
-    ├── ViewControllerTests.swift        # View controller tests (3 cases)
-    ├── XMLParserTests.swift             # XML parser tests (19 cases)
-    ├── XXETests.swift                   # XXE prevention tests (5 cases)
-    ├── storiesTest.xml                  # Test fixture XML
-    ├── multiStoriesTest.xml             # Multi-story test fixture
-    └── malformedStoriesTest.xml         # Malformed XML test fixture
+└── FeedReaderTests/                     # 1941 test cases across 48 test suites
 ```
 
 ## How It Works

@@ -181,7 +181,10 @@ public class RSSParser: NSObject {
 
     /// Parse stories from a single feed URL using the given session.
     private func parseFeed(_ url: String, session: URLSession) {
-        guard let feedURL = URL(string: url) else {
+        guard let feedURL = URL(string: url),
+              let scheme = feedURL.scheme?.lowercased(),
+              scheme == "http" || scheme == "https" else {
+            // Reject non-HTTP(S) URLs to prevent SSRF (file://, ftp://, etc.)
             feedCompleted()
             return
         }
