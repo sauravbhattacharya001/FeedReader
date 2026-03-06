@@ -266,8 +266,7 @@ class ArticleClipboard {
 
         snippetsById[snippet.id] = snippet
         orderedIds.insert(snippet.id, at: 0)
-        save()
-        notify()
+        persistAndNotify()
         return snippet
     }
 
@@ -278,8 +277,7 @@ class ArticleClipboard {
     func remove(id: String) -> Bool {
         guard snippetsById.removeValue(forKey: id) != nil else { return false }
         orderedIds.removeAll { $0 == id }
-        save()
-        notify()
+        persistAndNotify()
         return true
     }
 
@@ -288,8 +286,7 @@ class ArticleClipboard {
         guard !snippetsById.isEmpty else { return }
         snippetsById.removeAll()
         orderedIds.removeAll()
-        save()
-        notify()
+        persistAndNotify()
     }
 
     // MARK: - Query
@@ -384,8 +381,7 @@ class ArticleClipboard {
         } else {
             snippet.note = nil
         }
-        save()
-        notify()
+        persistAndNotify()
         return true
     }
 
@@ -393,24 +389,18 @@ class ArticleClipboard {
     @discardableResult
     func addTag(id: String, tag: String) -> Bool {
         guard let snippet = snippetsById[id] else { return false }
-        let result = snippet.addTag(tag)
-        if result {
-            save()
-            notify()
-        }
-        return result
+        guard snippet.addTag(tag) else { return false }
+        persistAndNotify()
+        return true
     }
 
     /// Remove a tag from a snippet. Returns false if not found.
     @discardableResult
     func removeTag(id: String, tag: String) -> Bool {
         guard let snippet = snippetsById[id] else { return false }
-        let result = snippet.removeTag(tag)
-        if result {
-            save()
-            notify()
-        }
-        return result
+        guard snippet.removeTag(tag) else { return false }
+        persistAndNotify()
+        return true
     }
 
     // MARK: - Export
@@ -430,39 +420,60 @@ class ArticleClipboard {
     func export(snippets: [ClipboardSnippet]? = nil, format: ExportFormat = .markdown,
                 includeMetadata: Bool = true) -> String {
         let items = snippets ?? allSnippets
-        guard !items.isEmpty else { return "" }
+        guard !items.isEmpty else { return format == .json ? "[]" : "" }
 
         switch format {
         case .markdown:
-            return exportMarkdown(snippets: items, includeMetadata: includeMetadata)
+            return formatMarkdown(items: items, includeMetadata: includeMetadata)
         case .plainText:
-            return exportPlainText(snippets: items, includeMetadata: includeMetadata)
+            return formatPlainText(items: items, includeMetadata: includeMetadata)
         case .json:
-            return exportJSON(snippets: items)
+            return formatJSON(items: items)
         }
     }
 
     /// Export as Markdown document.
     func exportMarkdown(snippets: [ClipboardSnippet]? = nil,
                         includeMetadata: Bool = true) -> String {
-        let items = snippets ?? allSnippets
-        guard !items.isEmpty else { return "" }
+        export(snippets: snippets, format: .markdown, includeMetadata: includeMetadata)
+    }
 
-        // Group by source article
-        var grouped = [(url: String, title: String, snippets: [ClipboardSnippet])]()
+    /// Export as plain text.
+    func exportPlainText(snippets: [ClipboardSnippet]? = nil,
+                         includeMetadata: Bool = true) -> String {
+        export(snippets: snippets, format: .plainText, includeMetadata: includeMetadata)
+    }
+
+    /// Export as JSON string.
+    func exportJSON(snippets: [ClipboardSnippet]? = nil) -> String {
+        export(snippets: snippets, format: .json)
+    }
+
+    // MARK: - Export Formatting (Private)
+
+    /// Group snippets by source URL, preserving encounter order.
+    private func groupBySource(_ items: [ClipboardSnippet])
+        -> [(url: String, title: String, snippets: [ClipboardSnippet])] {
+
+        var groups = [(url: String, title: String, snippets: [ClipboardSnippet])]()
         var urlIndex = [String: Int]()
 
         for snippet in items {
             if let idx = urlIndex[snippet.sourceURL] {
-                grouped[idx].snippets.append(snippet)
+                groups[idx].snippets.append(snippet)
             } else {
-                urlIndex[snippet.sourceURL] = grouped.count
-                grouped.append((url: snippet.sourceURL, title: snippet.sourceTitle,
+                urlIndex[snippet.sourceURL] = groups.count
+                groups.append((url: snippet.sourceURL, title: snippet.sourceTitle,
                                snippets: [snippet]))
             }
         }
+        return groups
+    }
 
-var lines: [String] = ["# Research Clipboard", ""]
+    private func formatMarkdown(items: [ClipboardSnippet], includeMetadata: Bool) -> String {
+        let grouped = groupBySource(items)
+
+        var lines: [String] = ["# Research Clipboard", ""]
         lines.append("\(items.count) snippet\(items.count == 1 ? "" : "s") from \(grouped.count) source\(grouped.count == 1 ? "" : "s")")
         lines.append("")
 
@@ -494,12 +505,7 @@ var lines: [String] = ["# Research Clipboard", ""]
         return lines.joined(separator: "\n")
     }
 
-    /// Export as plain text.
-    func exportPlainText(snippets: [ClipboardSnippet]? = nil,
-                         includeMetadata: Bool = true) -> String {
-        let items = snippets ?? allSnippets
-        guard !items.isEmpty else { return "" }
-
+    private func formatPlainText(items: [ClipboardSnippet], includeMetadata: Bool) -> String {
         var lines: [String] = ["RESEARCH CLIPBOARD", String(repeating: "=", count: 20), ""]
 
         for (index, snippet) in items.enumerated() {
@@ -521,12 +527,7 @@ var lines: [String] = ["# Research Clipboard", ""]
         return lines.joined(separator: "\n")
     }
 
-    /// Export as JSON string.
-    func exportJSON(snippets: [ClipboardSnippet]? = nil) -> String {
-        let items = snippets ?? allSnippets
-        guard !items.isEmpty else { return "[]" }
-
-        let df = ISO8601DateFormatter()
+    private func formatJSON(items: [ClipboardSnippet]) -> String {
         var jsonArray: [[String: Any]] = []
 
         for snippet in items {
@@ -591,12 +592,15 @@ guard let oldest = oldestClip, let newest = newestClip else { return "N/A" }
 
     // MARK: - Persistence
 
-    private func save() {
+    /// Persist to UserDefaults and post change notification.
+    /// All mutation methods call this instead of separate save()+notify().
+    private func persistAndNotify() {
         guard let data = try? NSKeyedArchiver.archivedData(
             withRootObject: allSnippets as NSArray,
             requiringSecureCoding: true
         ) else { return }
         UserDefaults.standard.set(data, forKey: ArticleClipboard.userDefaultsKey)
+        NotificationCenter.default.post(name: .articleClipboardDidChange, object: self)
     }
 
     private static func loadFromDefaults() -> (byId: [String: ClipboardSnippet], ordered: [String]) {
@@ -614,9 +618,5 @@ guard let oldest = oldestClip, let newest = newestClip else { return "N/A" }
             ordered.append(snippet.id)
         }
         return (byId: byId, ordered: ordered)
-    }
-
-    private func notify() {
-        NotificationCenter.default.post(name: .articleClipboardDidChange, object: self)
     }
 }
