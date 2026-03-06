@@ -395,6 +395,7 @@ class ReadingAchievementsManager {
     @discardableResult
     func updateProgress(from snapshot: ReadingActivitySnapshot, now: Date = Date()) -> [String] {
         var newlyUnlocked: [String] = []
+        var didChange = false
 
         let updates: [(String, Int)] = [
             // Volume
@@ -452,19 +453,23 @@ class ReadingAchievementsManager {
         ]
 
         for (id, value) in updates {
-            if let unlocked = setProgress(id: id, value: value, now: now) {
+            if let unlocked = setProgress(id: id, value: value, now: now, didChange: &didChange) {
                 if unlocked { newlyUnlocked.append(id) }
             }
         }
 
         // Special: mas_allcats — check if all categories are read
         if snapshot.uniqueCategoriesRead >= 10 {
-            if let unlocked = setProgress(id: "mas_allcats", value: 1, now: now) {
+            if let unlocked = setProgress(id: "mas_allcats", value: 1, now: now, didChange: &didChange) {
                 if unlocked { newlyUnlocked.append("mas_allcats") }
             }
         }
 
-        if !newlyUnlocked.isEmpty {
+        // Persist whenever progress values changed — not just on unlocks.
+        // Previously only saved when newlyUnlocked was non-empty, causing
+        // intermediate progress (e.g., 45→50 toward a 100-article target)
+        // to revert on app restart.
+        if didChange {
             saveProgress()
         }
 
@@ -570,15 +575,25 @@ class ReadingAchievementsManager {
     // MARK: - Private Helpers
 
     /// Set progress, returns nil if achievement unknown, true if newly unlocked, false otherwise.
-    private func setProgress(id: String, value: Int, now: Date) -> Bool? {
+    /// Set progress for an achievement.
+    /// Returns: `nil` if achievement not found, `true` if newly unlocked,
+    ///          `false` if updated without unlocking, or `false` if already
+    ///          unlocked (no change). Sets `didChange` to true when the
+    ///          underlying value actually changed.
+    private func setProgress(id: String, value: Int, now: Date, didChange: inout Bool) -> Bool? {
         guard let def = AchievementRegistry.definition(for: id) else { return nil }
         guard var p = progressMap[id] else { return nil }
         guard !p.isUnlocked else { return false }
+
+        if p.currentValue != value {
+            didChange = true
+        }
 
         p.currentValue = value
         if value >= def.targetValue {
             p.isUnlocked = true
             p.unlockedDate = now
+            didChange = true
             progressMap[id] = p
             NotificationCenter.default.post(name: .achievementUnlocked, object: self, userInfo: ["achievement": def])
             return true
