@@ -174,58 +174,50 @@ class ContentFilterManager {
     /// Batch version: check which stories should be muted from a list.
     /// Only persists once after processing all stories.
     func shouldMute(_ stories: [Story]) -> [Story] {
-        let active = activeFilters
-        var didUpdate = false
-        let muted = stories.filter { story in
-            for filter in active {
-                if matchesFilter(story, filter: filter) {
-                    filter.mutedCount += 1
-                    didUpdate = true
-                    return true
-                }
-            }
-            return false
-        }
-        if didUpdate { save() }
-        return muted
+        return mutedStories(from: stories)
     }
     
     /// Returns stories that would be hidden by active filters.
     /// Increments muted counts for each matching filter and persists.
     func mutedStories(from stories: [Story]) -> [Story] {
-        let active = activeFilters
-        var didUpdate = false
-        let result = stories.filter { story in
-            for filter in active {
-                if matchesFilter(story, filter: filter) {
-                    filter.mutedCount += 1
-                    didUpdate = true
-                    return true
-                }
-            }
-            return false
-        }
-        if didUpdate { save() }
-        return result
+        let (muted, _) = _partitionByFilters(stories)
+        return muted
     }
     
     /// Returns stories that pass all active filters (not muted).
     /// Increments muted counts for filtered-out stories and persists.
     func filteredStories(from stories: [Story]) -> [Story] {
+        let (_, passed) = _partitionByFilters(stories)
+        return passed
+    }
+    
+    /// Partition stories into (muted, passed) by active filters.
+    /// Increments muted counts and persists once at the end.
+    private func _partitionByFilters(_ stories: [Story]) -> (muted: [Story], passed: [Story]) {
         let active = activeFilters
         var didUpdate = false
-        let result = stories.filter { story in
+        var muted: [Story] = []
+        var passed: [Story] = []
+        
+        for story in stories {
+            var matched = false
             for filter in active {
                 if matchesFilter(story, filter: filter) {
                     filter.mutedCount += 1
                     didUpdate = true
-                    return false
+                    matched = true
+                    break
                 }
             }
-            return true
+            if matched {
+                muted.append(story)
+            } else {
+                passed.append(story)
+            }
         }
+        
         if didUpdate { save() }
-        return result
+        return (muted, passed)
     }
     
     /// Check if a story matches a specific filter.
@@ -271,44 +263,36 @@ class ContentFilterManager {
             return text.range(of: keyword, options: .caseInsensitive) != nil
             
         case .exactWord:
-            let cacheKey = "exact:\(keyword)"
-            let regex: NSRegularExpression
-            if let cached = regexCache[cacheKey] {
-                regex = cached
-            } else {
-                let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
-                guard let compiled = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
-                    return false
-                }
-                regexCache[cacheKey] = compiled
-                regex = compiled
-            }
-            // Cap input length for ReDoS protection
-            let safeText = text.count > ContentFilterManager.maxRegexInputLength
-                ? String(text.prefix(ContentFilterManager.maxRegexInputLength))
-                : text
-            let range = NSRange(safeText.startIndex..., in: safeText)
-            return regex.firstMatch(in: safeText, options: [.withoutAnchoringBounds], range: range) != nil
+            let pattern = "\\b\(NSRegularExpression.escapedPattern(for: keyword))\\b"
+            return _cachedRegexMatch(text: text, pattern: pattern,
+                                     cacheKey: "exact:\(keyword)")
             
         case .regex:
-            let cacheKey = "regex:\(keyword)"
-            let regex: NSRegularExpression
-            if let cached = regexCache[cacheKey] {
-                regex = cached
-            } else {
-                guard let compiled = try? NSRegularExpression(pattern: keyword, options: [.caseInsensitive]) else {
-                    return false
-                }
-                regexCache[cacheKey] = compiled
-                regex = compiled
-            }
-            // Cap input length for ReDoS protection
-            let safeText = text.count > ContentFilterManager.maxRegexInputLength
-                ? String(text.prefix(ContentFilterManager.maxRegexInputLength))
-                : text
-            let range = NSRange(safeText.startIndex..., in: safeText)
-            return regex.firstMatch(in: safeText, options: [.withoutAnchoringBounds], range: range) != nil
+            return _cachedRegexMatch(text: text, pattern: keyword,
+                                     cacheKey: "regex:\(keyword)")
         }
+    }
+    
+    /// Compile-and-cache a regex, then match against length-capped text.
+    private func _cachedRegexMatch(text: String, pattern: String,
+                                   cacheKey: String) -> Bool {
+        let regex: NSRegularExpression
+        if let cached = regexCache[cacheKey] {
+            regex = cached
+        } else {
+            guard let compiled = try? NSRegularExpression(
+                pattern: pattern, options: [.caseInsensitive]
+            ) else { return false }
+            regexCache[cacheKey] = compiled
+            regex = compiled
+        }
+        // Cap input length for ReDoS protection
+        let safeText = text.count > ContentFilterManager.maxRegexInputLength
+            ? String(text.prefix(ContentFilterManager.maxRegexInputLength))
+            : text
+        let range = NSRange(safeText.startIndex..., in: safeText)
+        return regex.firstMatch(in: safeText, options: [.withoutAnchoringBounds],
+                                range: range) != nil
     }
     
     // MARK: - Statistics
