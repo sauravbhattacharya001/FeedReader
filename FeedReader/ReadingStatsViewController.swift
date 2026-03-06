@@ -512,10 +512,14 @@ class ReadingStatsViewController: UIViewController {
     
     // MARK: - Helpers
     
+    private static let displayDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, yyyy"
+        return f
+    }()
+
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+        return Self.displayDateFormatter.string(from: date)
     }
 }
 

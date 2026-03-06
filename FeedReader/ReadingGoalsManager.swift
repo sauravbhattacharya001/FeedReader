@@ -205,10 +205,14 @@ class ReadingGoalsManager {
     
     // MARK: - Helpers
     
+    private static let iso8601DayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
     private func dateString(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        return Self.iso8601DayFormatter.string(from: date)
     }
     
     private func weekString(_ date: Date) -> String {

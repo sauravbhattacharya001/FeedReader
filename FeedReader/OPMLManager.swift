@@ -42,6 +42,22 @@ struct OPMLOutline {
 }
 
 class OPMLManager {
+
+    // MARK: - Cached Date Formatters
+
+    private static let rfc822Formatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
+
+    private static let iso8601DayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f
+    }()
     
     // MARK: - Singleton
     
@@ -63,10 +79,7 @@ class OPMLManager {
     
     /// Generate OPML from an arbitrary list of feeds (for testing).
     func generateOPML(feeds: [Feed]) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        let dateString = dateFormatter.string(from: Date())
+        let dateString = Self.rfc822Formatter.string(from: Date())
         
         var xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
         xml += "<opml version=\"2.0\">\n"
@@ -205,10 +218,7 @@ class OPMLManager {
     }
     
     private func dateStamp() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: Date())
+        return Self.iso8601DayFormatter.string(from: Date())
     }
 }
 

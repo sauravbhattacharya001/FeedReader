@@ -866,11 +866,15 @@ class ArticleFlashcardGenerator {
         return sentences
     }
 
+    private static let iso8601DayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.timeZone = TimeZone.current
+        return f
+    }()
+
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        return Self.iso8601DayFormatter.string(from: date)
     }
 
     private func calculateStreak() -> Int {
@@ -904,12 +908,9 @@ class ArticleFlashcardGenerator {
 
         var longest = 1
         var current = 1
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        for i in 1..<reviewDates.count {
-            guard let prev = formatter.date(from: reviewDates[i - 1]),
-                  let curr = formatter.date(from: reviewDates[i]) else { continue }
+                for i in 1..<reviewDates.count {
+            guard let prev = Self.iso8601DayFormatter.date(from: reviewDates[i - 1]),
+                  let curr = Self.iso8601DayFormatter.date(from: reviewDates[i]) else { continue }
 
             let diff = Calendar.current.dateComponents([.day], from: prev, to: curr).day ?? 0
             if diff == 1 {

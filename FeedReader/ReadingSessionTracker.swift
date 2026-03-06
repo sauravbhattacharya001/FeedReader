@@ -379,18 +379,21 @@ class ReadingSessionTracker {
         return try? encoder.encode(sessions)
     }
 
+    private static let mediumDateShortTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
     /// Export session history as formatted text.
     func exportAsText() -> String {
         var lines: [String] = ["Reading Session History", String(repeating: "=", count: 40), ""]
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
-
         for session in sessions {
             let tag = session.tag.map { " [\($0)]" } ?? ""
             let duration = formatSessionDuration(session.activeDuration)
-            lines.append("Session\(tag) — \(dateFormatter.string(from: session.startedAt))")
+            lines.append("Session\(tag) — \(Self.mediumDateShortTimeFormatter.string(from: session.startedAt))")
             lines.append("  Duration: \(duration) | Articles: \(session.articleCount)")
 
             if let avg = session.averageTimePerArticle {

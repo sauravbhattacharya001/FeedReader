@@ -196,6 +196,26 @@ struct BudgetPace: Equatable {
 /// Manages reading time budgets, tracking, and reporting.
 class ReadingTimeBudgetManager {
 
+    // MARK: - Cached Date Formatters
+
+    private static let dayOfWeekFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEEE"
+        return f
+    }()
+
+    private static let shortMonthDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return f
+    }()
+
+    private static let shortDayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "EEE"
+        return f
+    }()
+
     // MARK: - Storage
 
     private var config: TimeBudgetConfig
@@ -444,8 +464,6 @@ class ReadingTimeBudgetManager {
 
         // Busiest/quietest
         let activeDays = dailySummaries.filter { $0.usedMinutes > 0 }
-        let dayFormatter = DateFormatter()
-        dayFormatter.dateFormat = "EEEE"
         let busiest = activeDays.max(by: { $0.usedMinutes < $1.usedMinutes })
         let quietest = dailySummaries.min(by: { $0.usedMinutes < $1.usedMinutes })
 
@@ -461,8 +479,8 @@ class ReadingTimeBudgetManager {
             streak: current,
             longestStreak: longest,
             averageDailyMinutes: avgDaily,
-            busiestDay: busiest.map { dayFormatter.string(from: $0.date) },
-            quietestDay: quietest.map { dayFormatter.string(from: $0.date) }
+            busiestDay: busiest.map { Self.dayOfWeekFormatter.string(from: $0.date) },
+            quietestDay: quietest.map { Self.dayOfWeekFormatter.string(from: $0.date) }
         )
     }
 
@@ -548,12 +566,9 @@ class ReadingTimeBudgetManager {
     /// Generate a human-readable text report for the current week.
     func textReport(containing date: Date = Date()) -> String {
         let report = weeklyReport(containing: date)
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MMM d"
-
         var lines: [String] = []
         lines.append("📊 Reading Time Budget Report")
-        lines.append("Week of \(dateFormatter.string(from: report.weekStartDate)) - \(dateFormatter.string(from: report.weekEndDate))")
+        lines.append("Week of \(Self.shortMonthDayFormatter.string(from: report.weekStartDate)) - \(Self.shortMonthDayFormatter.string(from: report.weekEndDate))")
         lines.append("")
 
         if report.totalBudgetMinutes > 0 {
@@ -565,10 +580,8 @@ class ReadingTimeBudgetManager {
         lines.append("")
 
         lines.append("Daily Breakdown:")
-        let dayFmt = DateFormatter()
-        dayFmt.dateFormat = "EEE"
         for summary in report.dailySummaries {
-            let day = dayFmt.string(from: summary.date)
+            let day = Self.shortDayFormatter.string(from: summary.date)
             let bar = summary.budgetMinutes > 0
                 ? " [\(summary.grade)]"
                 : ""

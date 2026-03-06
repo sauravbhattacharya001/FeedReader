@@ -169,6 +169,12 @@ struct ImportCounts {
 
 /// Exports and imports reading data for backup and portability.
 class ReadingDataExporter {
+
+    private static let iso8601DayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
     
     private let bookmarkManager: BookmarkManager
     private let highlightsManager: ArticleHighlightsManager
@@ -567,10 +573,8 @@ class ReadingDataExporter {
             currentStreak: stats.currentStreak,
             longestStreak: stats.longestStreak,
             totalArticlesRead: stats.totalArticlesRead,
-            dailyRecords: records.compactMap { rec in
-                let df = DateFormatter()
-                df.dateFormat = "yyyy-MM-dd"
-                guard let date = df.date(from: rec.date) else { return nil }
+                        dailyRecords: records.compactMap { rec in
+                guard let date = Self.iso8601DayFormatter.date(from: rec.date) else { return nil }
                 return DailyRecordExport(
                     date: date,
                     articlesRead: rec.articlesRead,

@@ -11,6 +11,13 @@ import UIKit
 
 class OfflineArticlesViewController: UITableViewController {
 
+    private static let cellDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
     // MARK: - Properties
 
     private var articles: [CachedArticle] = []
@@ -150,10 +157,7 @@ class OfflineArticlesViewController: UITableViewController {
         content.textProperties.numberOfLines = 2
 
         // Subtitle: feed name + save date
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .medium
-        dateFormatter.timeStyle = .short
-        var subtitle = dateFormatter.string(from: article.savedDate)
+        var subtitle = Self.cellDateFormatter.string(from: article.savedDate)
         if let feedName = article.story.sourceFeedName {
             subtitle = feedName + " · " + subtitle
         }

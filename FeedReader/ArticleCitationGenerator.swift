@@ -560,11 +560,15 @@ class ArticleCitationGenerator {
         }
     }
 
+    private static let ieeeDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "MMM. d, yyyy"
+        return f
+    }()
+
     private func formatIEEEDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM. d, yyyy"
-        return formatter.string(from: date)
+        return Self.ieeeDateFormatter.string(from: date)
     }
 
     // MARK: - Harvard
@@ -623,11 +627,15 @@ class ArticleCitationGenerator {
         }
     }
 
+    private static let harvardDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "d MMMM yyyy"
+        return f
+    }()
+
     private func formatHarvardAccessDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "d MMMM yyyy"
-        return formatter.string(from: date)
+        return Self.harvardDateFormatter.string(from: date)
     }
 
     // MARK: - BibTeX

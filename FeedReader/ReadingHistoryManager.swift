@@ -130,6 +130,22 @@ struct HistorySummary {
 // MARK: - ReadingHistoryManager
 
 class ReadingHistoryManager {
+
+    // MARK: - Cached Date Formatters
+
+    private static let mediumDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .none
+        return f
+    }()
+
+    private static let shortTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f
+    }()
     
     // MARK: - Singleton
     
@@ -431,14 +447,6 @@ class ReadingHistoryManager {
         guard !entries.isEmpty else { return "No reading history." }
         
         let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        
-        let timeFormatter = DateFormatter()
-        timeFormatter.dateStyle = .none
-        timeFormatter.timeStyle = .short
-        
         // Group entries by day
         var grouped: [Date: [HistoryEntry]] = [:]
         for entry in entries {
@@ -450,10 +458,10 @@ class ReadingHistoryManager {
         var lines: [String] = []
         
         for day in sortedDays {
-            lines.append("## \(formatter.string(from: day))")
+            lines.append("## \(Self.mediumDateFormatter.string(from: day))")
             if let dayEntries = grouped[day] {
                 for entry in dayEntries {
-                    let time = timeFormatter.string(from: entry.lastVisitedAt)
+                    let time = timeSelf.mediumDateFormatter.string(from: entry.lastVisitedAt)
                     var line = "- [\(time)] \(entry.title) (\(entry.feedName))"
                     if entry.visitCount > 1 {
                         line += " — \(entry.visitCount) visits"

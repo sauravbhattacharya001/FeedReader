@@ -17,7 +17,22 @@ extension Notification.Name {
 // MARK: - ClipboardSnippet
 
 /// A single clipped snippet from an article.
-class ClipboardSnippet: NSObject, NSSecureCoding {
+class ClipboardSnippet {
+
+    // MARK: - Cached Date Formatters
+
+    private static let mediumDateShortTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        f.timeStyle = .short
+        return f
+    }()
+
+    private static let mediumDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .medium
+        return f
+    }()
     static var supportsSecureCoding: Bool { true }
 
     /// Unique identifier.
@@ -447,11 +462,7 @@ class ArticleClipboard {
             }
         }
 
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .short
-
-        var lines: [String] = ["# Research Clipboard", ""]
+var lines: [String] = ["# Research Clipboard", ""]
         lines.append("\(items.count) snippet\(items.count == 1 ? "" : "s") from \(grouped.count) source\(grouped.count == 1 ? "" : "s")")
         lines.append("")
 
@@ -473,7 +484,7 @@ class ArticleClipboard {
                     if !snippet.tags.isEmpty {
                         meta.append("Tags: \(snippet.tags.map { "#\($0)" }.joined(separator: " "))")
                     }
-                    meta.append("Clipped: \(df.string(from: snippet.clippedDate))")
+                    meta.append("Clipped: \(Self.mediumDateShortTimeFormatter.string(from: snippet.clippedDate))")
                     lines.append("*\(meta.joined(separator: " · "))*")
                     lines.append("")
                 }
@@ -525,7 +536,7 @@ class ArticleClipboard {
                 "sourceTitle": snippet.sourceTitle,
                 "text": snippet.text,
                 "tags": snippet.tags,
-                "clippedDate": df.string(from: snippet.clippedDate),
+                "clippedDate": Self.mediumDateShortTimeFormatter.string(from: snippet.clippedDate),
                 "wordCount": snippet.wordCount
             ]
             if let note = snippet.note {
@@ -555,13 +566,11 @@ class ArticleClipboard {
         let newestClip: Date?
 
         var dateRange: String {
-            let df = DateFormatter()
-            df.dateStyle = .medium
-            guard let oldest = oldestClip, let newest = newestClip else { return "N/A" }
+guard let oldest = oldestClip, let newest = newestClip else { return "N/A" }
             if Calendar.current.isDate(oldest, inSameDayAs: newest) {
-                return df.string(from: oldest)
+                return Self.mediumDateFormatter.string(from: oldest)
             }
-            return "\(df.string(from: oldest)) – \(df.string(from: newest))"
+            return "\(Self.mediumDateFormatter.string(from: oldest)) – \(Self.mediumDateFormatter.string(from: newest))"
         }
     }
 
