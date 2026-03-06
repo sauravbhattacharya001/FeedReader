@@ -252,21 +252,7 @@ class FeedPerformanceAnalyzer {
     /// Score weights for composite calculation.
     let weights: FeedScoreWeights
 
-    /// Stop words excluded from keyword extraction.
-    private static let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
-        "for", "of", "with", "by", "from", "is", "it", "that", "this",
-        "was", "are", "be", "has", "had", "have", "will", "would",
-        "could", "should", "may", "might", "can", "do", "does", "did",
-        "not", "no", "so", "if", "than", "too", "very", "just", "about",
-        "also", "into", "over", "after", "before", "between", "through",
-        "been", "being", "its", "their", "our", "your", "his", "her",
-        "they", "them", "we", "us", "he", "she", "who", "which", "what",
-        "when", "where", "how", "all", "each", "every", "both", "more",
-        "most", "other", "some", "such", "only", "own", "same", "then",
-        "up", "out", "new", "one", "two", "now", "way", "many", "any",
-        "said", "like", "get", "got", "make", "made", "see", "use"
-    ]
+    // Stop words: delegates to TextAnalyzer.stopWords (canonical list).
 
     // MARK: - Initialization
 
@@ -494,18 +480,22 @@ class FeedPerformanceAnalyzer {
             let words = Self.extractWords(from: text)
             wordCounts.append(words.count)
 
-            // Flesch Reading Ease (simplified)
+            // Flesch Reading Ease — delegates syllable/sentence counting
+            // to ArticleReadabilityAnalyzer for consistency
             let sentences = max(1, Self.countSentences(in: text))
             let syllables = words.reduce(0) { $0 + Self.estimateSyllables($1) }
             let asl = Double(words.count) / Double(sentences)
             let asw = Double(syllables) / Double(max(1, words.count))
-            let flesch = 206.835 - 1.015 * asl - 84.6 * asw
+            let flesch = ArticleReadabilityAnalyzer.shared.fleschReadingEase(
+                avgWordsPerSentence: asl,
+                avgSyllablesPerWord: asw
+            )
             readabilityScores.append(max(0, min(100, flesch)))
 
             // Keyword extraction
             for word in words {
                 let lower = word.lowercased()
-                if lower.count >= 3 && !Self.stopWords.contains(lower) {
+                if lower.count >= 3 && !TextAnalyzer.stopWords.contains(lower) {
                     keywordFreq[lower, default: 0] += 1
                 }
             }
@@ -735,45 +725,22 @@ class FeedPerformanceAnalyzer {
 
     // MARK: - Text Utilities
 
-    /// Extract words from text, stripping punctuation.
+    /// Extract words from text, splitting on non-alphanumeric boundaries.
+    /// Preserves original casing (unlike ArticleReadabilityAnalyzer.tokenize
+    /// which lowercases). Used for keyword extraction where case matters.
     static func extractWords(from text: String) -> [String] {
         let separated = text.components(separatedBy: CharacterSet.alphanumerics.inverted)
         return separated.filter { !$0.isEmpty }
     }
 
-    /// Count sentences using period, question mark, exclamation mark.
+    /// Count sentences — delegates to ArticleReadabilityAnalyzer.
     static func countSentences(in text: String) -> Int {
-        let terminators = CharacterSet(charactersIn: ".!?")
-        let parts = text.unicodeScalars.split { terminators.contains($0) }
-        return max(1, parts.count)
+        return ArticleReadabilityAnalyzer.shared.countSentences(text)
     }
 
-    /// Estimate syllable count for an English word.
+    /// Estimate syllable count — delegates to ArticleReadabilityAnalyzer.
     static func estimateSyllables(_ word: String) -> Int {
-        let w = word.lowercased()
-        if w.count <= 2 { return 1 }
-
-        let vowels: Set<Character> = ["a", "e", "i", "o", "u", "y"]
-        var count = 0
-        var prevVowel = false
-
-        for ch in w {
-            if vowels.contains(ch) {
-                if !prevVowel { count += 1 }
-                prevVowel = true
-            } else {
-                prevVowel = false
-            }
-        }
-
-        // Silent e
-        if w.hasSuffix("e") && count > 1 { count -= 1 }
-        // -le at end is a syllable
-        if w.hasSuffix("le") && w.count > 2 && !vowels.contains(w[w.index(w.endIndex, offsetBy: -3)]) {
-            count += 1
-        }
-
-        return max(1, count)
+        return ArticleReadabilityAnalyzer.shared.countSyllables(word)
     }
 
     /// Simple lexicon-based sentiment scoring.
