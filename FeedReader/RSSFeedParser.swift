@@ -36,6 +36,7 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
     private var insideItem = false
     private var storyTitle = NSMutableString()
     private var storyDescription = NSMutableString()
+    private var storyContentEncoded = NSMutableString()  // from <content:encoded> (full article body)
     private var storyLink = NSMutableString()  // from <link> element (preferred)
     private var storyGuid = NSMutableString()  // from <guid> element (fallback)
     private var imagePath = NSMutableString()
@@ -62,6 +63,7 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             insideItem = true
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
+            storyContentEncoded = NSMutableString()
             storyLink = NSMutableString()
             storyGuid = NSMutableString()
             imagePath = NSMutableString()
@@ -86,6 +88,8 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             storyLink.append(string)
         } else if currentElement.isEqual(to: "guid") {
             storyGuid.append(string)
+        } else if currentElement.isEqual(to: "content:encoded") || currentElement.isEqual(to: "encoded") {
+            storyContentEncoded.append(string)
         }
     }
 
@@ -107,6 +111,7 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             // Skip stories with unsafe links entirely
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
+            storyContentEncoded = NSMutableString()
             storyLink = NSMutableString()
             storyGuid = NSMutableString()
             imagePath = NSMutableString()
@@ -125,10 +130,14 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             sanitizedImagePath = nil  // Strip unsafe image URLs silently
         }
 
+        // Prefer content:encoded (full article body) over description (often truncated)
+        let trimmedContentEncoded = storyContentEncoded.trimmingCharacters(in: .whitespacesAndNewlines)
+        let articleBody = trimmedContentEncoded.isEmpty ? storyDescription as String : trimmedContentEncoded
+
         if let story = Story(
             title: storyTitle as String,
             photo: UIImage(named: "sample")!,
-            description: storyDescription as String,
+            description: articleBody,
             link: linkCandidate,
             imagePath: sanitizedImagePath
         ) {

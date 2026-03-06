@@ -493,10 +493,13 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "ShowDetail" {
-            let storyDetailViewController = segue.destination as! StoryViewController
+            guard let storyDetailViewController = segue.destination as? StoryViewController else {
+                return
+            }
             
-            if let selectedStoryCell = sender as? StoryTableViewCell {
-                let indexPath = tableView.indexPath(for: selectedStoryCell)!
+            if let selectedStoryCell = sender as? StoryTableViewCell,
+               let indexPath = tableView.indexPath(for: selectedStoryCell),
+               indexPath.row < displayedStories.count {
                 let selectedStory = displayedStories[indexPath.row]
                 storyDetailViewController.story = selectedStory as Story
                 
