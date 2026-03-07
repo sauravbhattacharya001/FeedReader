@@ -389,17 +389,22 @@ class ReadingJournalManager {
     }
 
     /// Longest journaling streak ever.
+    ///
+    /// Only counts days where articles were actually read
+    /// (matching currentStreak's articleCount > 0 check).
     var longestStreak: Int {
-        let sortedKeys = entriesByDate.keys.sorted()
-        guard !sortedKeys.isEmpty else { return 0 }
+        let activeKeys = entriesByDate
+            .filter { $0.value.articleCount > 0 }
+            .keys.sorted()
+        guard !activeKeys.isEmpty else { return 0 }
 
         let calendar = Calendar.current
         var longest = 1
         var current = 1
 
-        for i in 1..<sortedKeys.count {
-            guard let prev = date(from: sortedKeys[i - 1]),
-                  let curr = date(from: sortedKeys[i]) else { continue }
+        for i in 1..<activeKeys.count {
+            guard let prev = date(from: activeKeys[i - 1]),
+                  let curr = date(from: activeKeys[i]) else { continue }
             let diff = calendar.dateComponents([.day], from: prev, to: curr).day ?? 0
             if diff == 1 {
                 current += 1
