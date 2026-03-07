@@ -137,7 +137,7 @@ class ImageCache {
         let diskPath = ImageCache.diskPath(for: urlString)
         diskQueue.async { [weak self] in
             if let data = try? Data(contentsOf: diskPath),
-               let diskImage = UIImage(data: data) {
+               let diskImage = ImageCache.downsampledImage(data: data) {
                 self?.setImage(diskImage, forKey: urlString)
                 DispatchQueue.main.async { completion(diskImage) }
                 return
