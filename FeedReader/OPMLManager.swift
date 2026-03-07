@@ -78,6 +78,10 @@ class OPMLManager {
     }
     
     /// Generate OPML from an arbitrary list of feeds (for testing).
+    ///
+    /// Feeds that have a `category` are grouped inside folder `<outline>`
+    /// elements so that categories survive an export → import round-trip.
+    /// Uncategorised feeds are emitted at the top level.
     func generateOPML(feeds: [Feed]) -> String {
         let dateString = Self.rfc822Formatter.string(from: Date())
         
@@ -89,8 +93,37 @@ class OPMLManager {
         xml += "    <docs>http://opml.org/spec2.opml</docs>\n"
         xml += "  </head>\n"
         xml += "  <body>\n"
-        
+
+        // Group feeds by category, preserving original order within each group.
+        var uncategorised: [Feed] = []
+        var categoryOrder: [String] = []
+        var grouped: [String: [Feed]] = [:]
+
         for feed in feeds {
+            if let cat = feed.category, !cat.isEmpty {
+                if grouped[cat] == nil {
+                    categoryOrder.append(cat)
+                    grouped[cat] = []
+                }
+                grouped[cat]!.append(feed)
+            } else {
+                uncategorised.append(feed)
+            }
+        }
+
+        // Emit folder outlines for each category.
+        for cat in categoryOrder {
+            xml += "    <outline text=\"\(escapeXML(cat))\" title=\"\(escapeXML(cat))\">\n"
+            for feed in grouped[cat]! {
+                xml += "      <outline type=\"rss\" text=\"\(escapeXML(feed.name))\" "
+                xml += "title=\"\(escapeXML(feed.name))\" "
+                xml += "xmlUrl=\"\(escapeXML(feed.url))\"/>\n"
+            }
+            xml += "    </outline>\n"
+        }
+
+        // Emit uncategorised feeds at the top level.
+        for feed in uncategorised {
             xml += "    <outline type=\"rss\" text=\"\(escapeXML(feed.name))\" "
             xml += "title=\"\(escapeXML(feed.name))\" "
             xml += "xmlUrl=\"\(escapeXML(feed.url))\"/>\n"
@@ -187,6 +220,7 @@ class OPMLManager {
             }
             
             let feed = Feed(name: outline.title, url: outline.xmlUrl, isEnabled: enableAll)
+            feed.category = outline.category
             
             if FeedManager.shared.feedExists(url: outline.xmlUrl) {
                 duplicates.append(feed)
