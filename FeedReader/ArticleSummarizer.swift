@@ -112,12 +112,10 @@ class ArticleSummarizer {
 
     // MARK: - Tokenization
 
-    /// Tokenize a sentence into lowercased words, filtering stop words and short terms.
+    /// Tokenize text into lowercased words, filtering stop words and short terms.
+    /// Delegates to `TextAnalyzer.shared` for consistent tokenization across modules.
     private func tokenize(_ text: String, minLength: Int = TextAnalyzer.defaultMinTermLength) -> [String] {
-        let lower = text.lowercased()
-        let words = lower.components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count >= minLength && !TextAnalyzer.stopWords.contains($0) }
-        return words
+        return TextAnalyzer.shared.tokenize(text, minLength: minLength)
     }
 
     // MARK: - TF-IDF

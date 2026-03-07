@@ -360,47 +360,29 @@ class FeedComparisonManager {
     
     // MARK: - Text Processing
     
-    /// Stop words to filter out from keyword extraction.
-    private let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "its", "this", "that", "was",
-        "are", "be", "has", "had", "have", "will", "would", "could", "should",
-        "may", "can", "do", "did", "not", "no", "if", "so", "as", "up", "out",
-        "all", "one", "new", "also", "about", "more", "some", "than", "other",
-        "into", "over", "after", "been", "said", "who", "what", "when", "where",
-        "how", "which", "their", "there", "then", "them", "they", "he", "she",
-        "his", "her", "we", "our", "your", "you", "my", "me", "us", "just",
-        "like", "get", "got", "make", "made", "very", "most", "many", "much",
-        "way", "even", "back", "only", "well", "still", "here", "being",
-        "while", "those", "these", "such", "any", "each", "every", "own",
-        "between", "through", "before", "during", "under", "around", "among"
-    ]
-    
+    /// Normalize a story title for deduplication comparison.
+    /// Delegates stop word filtering to `TextAnalyzer.shared`.
     private func normalizeTitle(_ title: String) -> String {
-        return title.lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty && !stopWords.contains($0) }
+        return TextAnalyzer.shared.tokenize(title, minLength: 1)
             .joined(separator: " ")
     }
     
+    /// Extract unique words from text, filtering stop words.
+    /// Delegates to `TextAnalyzer.shared` for consistent tokenization.
     private func extractWords(from text: String) -> Set<String> {
-        return Set(
-            text.lowercased()
-                .components(separatedBy: CharacterSet.alphanumerics.inverted)
-                .filter { $0.count > 2 && !stopWords.contains($0) }
-        )
+        return Set(TextAnalyzer.shared.tokenize(text))
     }
     
+    /// Extract keyword document-frequency counts from a set of stories.
+    /// Uses `TextAnalyzer.shared` for tokenization and stop word filtering.
     private func extractKeywords(from stories: [Story]) -> [String: Int] {
         var freq: [String: Int] = [:]
         
         for story in stories {
-            let words = (story.title + " " + story.body).lowercased()
-                .components(separatedBy: CharacterSet.alphanumerics.inverted)
-                .filter { $0.count > 3 && !stopWords.contains($0) }
+            let tokens = TextAnalyzer.shared.tokenize(story.title + " " + story.body, minLength: 4)
             
             // Count unique words per article (document frequency)
-            for word in Set(words) {
+            for word in Set(tokens) {
                 freq[word, default: 0] += 1
             }
         }

@@ -76,24 +76,8 @@ struct TrendConfig {
     /// Maximum number of trends to return.
     var maxTrends: Int = 20
     /// Words to exclude from trend detection.
-    var stopWords: Set<String> = TrendConfig.defaultStopWords
-
-    static let defaultStopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "that", "this", "was", "are",
-        "be", "has", "have", "had", "not", "no", "do", "does", "did", "will",
-        "would", "could", "should", "may", "might", "can", "shall", "been",
-        "being", "were", "am", "as", "if", "then", "than", "so", "up", "out",
-        "about", "into", "over", "after", "before", "between", "under",
-        "through", "during", "each", "some", "all", "any", "most", "other",
-        "its", "his", "her", "their", "our", "my", "your", "he", "she", "they",
-        "we", "you", "me", "him", "them", "us", "who", "what", "which", "when",
-        "where", "how", "why", "new", "also", "just", "more", "very", "much",
-        "said", "says", "like", "get", "got", "one", "two", "first", "last",
-        "many", "well", "back", "even", "still", "way", "take", "come", "make",
-        "know", "see", "think", "look", "want", "give", "use", "find", "tell",
-        "only", "now", "here", "there", "these", "those", "such", "both"
-    ]
+    /// Defaults to `TextAnalyzer.stopWords` for consistency across modules.
+    var stopWords: Set<String> = TextAnalyzer.stopWords
 }
 
 // MARK: - ArticleTrendDetector
@@ -304,12 +288,18 @@ class ArticleTrendDetector {
 
     // MARK: - Private Helpers
 
+    /// Extract keywords from text using the shared tokenizer.
+    /// Uses `config.stopWords` if customized, otherwise delegates
+    /// fully to `TextAnalyzer.shared.tokenize()`.
     private func extractKeywords(from text: String) -> [String] {
+        // If using the default TextAnalyzer stop words, delegate directly.
+        // Otherwise, apply the custom stop word set for backward compatibility.
+        if config.stopWords == TextAnalyzer.stopWords {
+            return TextAnalyzer.shared.tokenize(text)
+        }
         let lowered = text.lowercased()
-        // Split on non-alphanumeric, filter short words and stop words
-        let words = lowered.components(separatedBy: CharacterSet.alphanumerics.inverted)
+        return lowered.components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { $0.count >= 3 && !config.stopWords.contains($0) }
-        return words
     }
 
     private func aggregateCounts(from start: Date, to end: Date) -> [String: Int] {
