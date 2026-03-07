@@ -311,6 +311,11 @@ class ReadingAchievementsManager {
     /// Achievement ID → progress
     private var progressMap: [String: AchievementProgress]
 
+    /// Persistence store.
+    private let store = UserDefaultsCodableStore<[AchievementProgress]>(
+        key: ReadingAchievementsManager.userDefaultsKey
+    )
+
     // MARK: - Init
 
     init() {
@@ -605,18 +610,11 @@ class ReadingAchievementsManager {
     // MARK: - Persistence
 
     private func saveProgress() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(Array(progressMap.values)) {
-            UserDefaults.standard.set(data, forKey: Self.userDefaultsKey)
-        }
+        store.save(Array(progressMap.values))
     }
 
     private func loadProgress() {
-        guard let data = UserDefaults.standard.data(forKey: Self.userDefaultsKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let entries = try? decoder.decode([AchievementProgress].self, from: data) {
+        if let entries = store.load() {
             for entry in entries {
                 progressMap[entry.achievementId] = entry
             }

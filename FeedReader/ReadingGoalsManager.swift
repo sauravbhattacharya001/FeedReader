@@ -70,6 +70,12 @@ class ReadingGoalsManager {
     private static let achievedThisWeekKey = "ReadingGoalsManager.achievedThisWeek"
     private static let achievedDateKey = "ReadingGoalsManager.achievedDate"
     private static let achievedWeekKey = "ReadingGoalsManager.achievedWeek"
+
+    /// Persistence store for goals.
+    private let goalsStore = UserDefaultsCodableStore<ReadingGoals>(
+        key: ReadingGoalsManager.goalsKey,
+        dateStrategy: .deferredToDate
+    )
     
     // MARK: - Initialization
     
@@ -224,14 +230,11 @@ class ReadingGoalsManager {
     // MARK: - Persistence
     
     private func saveGoals() {
-        if let data = try? JSONEncoder().encode(goals) {
-            UserDefaults.standard.set(data, forKey: ReadingGoalsManager.goalsKey)
-        }
+        goalsStore.save(goals)
     }
     
     private func loadGoals() {
-        guard let data = UserDefaults.standard.data(forKey: ReadingGoalsManager.goalsKey),
-              let loaded = try? JSONDecoder().decode(ReadingGoals.self, from: data) else {
+        guard let loaded = goalsStore.load() else {
             goals = .default
             return
         }

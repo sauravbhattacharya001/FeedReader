@@ -264,6 +264,11 @@ class ReadingChallengeManager {
     /// Calendar used for date calculations.
     private let calendar: Calendar
 
+    /// Persistence store.
+    private let store = UserDefaultsCodableStore<[ReadingChallenge]>(
+        key: ReadingChallengeManager.storageKey
+    )
+
     /// Date formatter for day strings.
     private let dayFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -790,18 +795,11 @@ class ReadingChallengeManager {
     // MARK: - Persistence
 
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(challenges) {
-            UserDefaults.standard.set(data, forKey: ReadingChallengeManager.storageKey)
-        }
+        store.save(challenges)
     }
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: ReadingChallengeManager.storageKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode([ReadingChallenge].self, from: data) {
+        if let loaded = store.load() {
             challenges = loaded
         }
     }

@@ -163,6 +163,11 @@ class ReadingSpeedTracker {
     /// UserDefaults persistence key.
     private static let userDefaultsKey = "ReadingSpeedTracker.samples"
 
+    /// Persistence store.
+    private let store = UserDefaultsCodableStore<[SpeedSample]>(
+        key: ReadingSpeedTracker.userDefaultsKey
+    )
+
     // MARK: - Init
 
     init() {
@@ -494,19 +499,11 @@ class ReadingSpeedTracker {
     // MARK: - Persistence
 
     private func saveToDefaults() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(samples) {
-            UserDefaults.standard.set(data, forKey: ReadingSpeedTracker.userDefaultsKey)
-        }
+        store.save(samples)
     }
 
     private func loadFromDefaults() {
-        guard let data = UserDefaults.standard.data(forKey: ReadingSpeedTracker.userDefaultsKey)
-        else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode([SpeedSample].self, from: data) {
+        if let loaded = store.load() {
             samples = loaded
         }
     }

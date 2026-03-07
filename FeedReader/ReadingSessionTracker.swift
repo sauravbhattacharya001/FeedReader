@@ -152,6 +152,9 @@ class ReadingSessionTracker {
     private let maxStoredSessions = 500
     private var sessions: [ReadingSession] = []
 
+    /// Persistence store.
+    private lazy var store = UserDefaultsCodableStore<[ReadingSession]>(key: storageKey)
+
     /// The currently active session, if any.
     private(set) var activeSession: ReadingSession?
 
@@ -456,18 +459,11 @@ class ReadingSessionTracker {
     }
 
     private func saveSessions() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(sessions) {
-            UserDefaults.standard.set(data, forKey: storageKey)
-        }
+        store.save(sessions)
     }
 
     private func loadSessions() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode([ReadingSession].self, from: data) {
+        if let loaded = store.load() {
             sessions = loaded
         }
     }
