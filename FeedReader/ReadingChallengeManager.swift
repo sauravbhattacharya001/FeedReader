@@ -437,6 +437,11 @@ class ReadingChallengeManager {
         for i in 0..<challenges.count {
             guard challenges[i].status == .active else { continue }
             guard date >= challenges[i].startDate else { continue }
+            // Don't count readings past the challenge deadline — without
+            // this check, readings recorded after expiry (but before
+            // checkExpiration() runs) could inflate progress or even
+            // flip a failed challenge to completed.
+            guard date <= challenges[i].endDate else { continue }
 
             // Update auxiliary tracking regardless of type
             challenges[i].distinctFeedURLs.insert(feedURL)
