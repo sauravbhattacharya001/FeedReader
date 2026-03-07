@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Analytics — FeedReader</title>
+    <meta name="description" content="Reading analytics features in FeedReader: speed tracking, mood tracking, streaks, insights, journal, time budget, sessions, achievements, and data export.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="smart-features.html">Smart Features</a></li>
+            <li><a href="content-management.html">Content Management</a></li>
+            <li><a href="reading-analytics.html" class="active">Reading Analytics</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="docs-page">
+
+<div class="page-header">
+    <h1>📊 Reading Analytics</h1>
+    <p>Understand your reading habits with speed tracking, mood analysis, streak monitoring, personalized insights, journaling, time budgets, session management, achievements, and full data export/import.</p>
+</div>
+
+<!-- Table of Contents -->
+<section class="doc-section">
+    <h2 id="overview">Overview</h2>
+    <p>FeedReader includes nine analytics modules that work together to give you a complete picture of your reading life. Every module stores data locally on-device with no cloud dependency.</p>
+    <table class="feature-table">
+        <thead>
+            <tr><th>Module</th><th>Purpose</th><th>Key Metric</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><a href="#speed-tracker">Speed Tracker</a></td><td>Measure and predict reading speed</td><td>Words per minute (WPM)</td></tr>
+            <tr><td><a href="#mood-tracker">Mood Tracker</a></td><td>Log mood and correlate with feeds</td><td>Mood level (1–5)</td></tr>
+            <tr><td><a href="#streak-tracker">Streak Tracker</a></td><td>Daily reading consistency</td><td>Consecutive days reading</td></tr>
+            <tr><td><a href="#insights">Insights Generator</a></td><td>Weekly/monthly reading summaries</td><td>Reader personality archetype</td></tr>
+            <tr><td><a href="#journal">Reading Journal</a></td><td>Auto-generated daily reading diary</td><td>Entries with reflections</td></tr>
+            <tr><td><a href="#time-budget">Time Budget</a></td><td>Set and track reading time limits</td><td>Minutes per day</td></tr>
+            <tr><td><a href="#sessions">Session Tracker</a></td><td>Individual reading session logging</td><td>Duration, articles, pauses</td></tr>
+            <tr><td><a href="#achievements">Achievements</a></td><td>Gamified reading milestones</td><td>40 badges, 5 tiers</td></tr>
+            <tr><td><a href="#data-export">Data Export</a></td><td>Full backup and restore</td><td>JSON archive with validation</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- Speed Tracker -->
+<section class="doc-section">
+    <h2 id="speed-tracker">📖 Speed Tracker</h2>
+    <p>Tracks your words-per-minute (WPM) across articles, adjusted for article length, and provides personalized reading time estimates.</p>
+
+    <h3>How It Works</h3>
+    <p>When you finish an article, FeedReader records a speed sample with the article's word count, time spent, feed name, and category. Samples are filtered using IQR outlier detection (valid range: 50–1200 WPM) so unusually fast skims or long idle pauses don't skew your stats.</p>
+
+    <h3>Length-Adjusted WPM</h3>
+    <p>People read short and long articles at different speeds. The tracker maintains separate WPM buckets:</p>
+    <table class="feature-table">
+        <thead><tr><th>Bucket</th><th>Word Count</th><th>Min Samples</th></tr></thead>
+        <tbody>
+            <tr><td>Short</td><td>&lt; 500 words</td><td>3</td></tr>
+            <tr><td>Medium</td><td>500 – 1,500 words</td><td>3</td></tr>
+            <tr><td>Long</td><td>&gt; 1,500 words</td><td>3</td></tr>
+        </tbody>
+    </table>
+    <p><code>estimatedReadingTime(wordCount:)</code> picks the right bucket for the given article length, falling back to your global average if there aren't enough samples in that bucket yet.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let tracker = ReadingSpeedTracker.shared
+
+// Record a reading sample
+tracker.recordSample(
+    articleTitle: "AI in 2026",
+    feedName: "TechCrunch",
+    wordCount: 1200,
+    readingTimeSeconds: 300
+)
+
+// Get estimated reading time for a new article
+let estimate = tracker.estimatedReadingTime(wordCount: 800)  // TimeInterval
+let formatted = tracker.formattedEstimate(wordCount: 800)    // "3 min read"
+
+// Trend analysis
+let trend = tracker.speedTrend(days: 30)  // .improving, .declining, .stable
+
+// Breakdowns
+let byFeed = tracker.feedBreakdown()      // [SpeedBreakdown]
+let byCat = tracker.categoryBreakdown()   // [SpeedBreakdown]
+
+// Where you stand
+let percentile = tracker.populationPercentile()  // 0-100
+let label = tracker.speedLabel()                  // "Fast reader"
+
+// Full profile
+let profile = tracker.buildProfile()  // SpeedProfile</code></pre>
+    </div>
+
+    <h3>Speed Labels</h3>
+    <table class="feature-table">
+        <thead><tr><th>WPM Range</th><th>Label</th></tr></thead>
+        <tbody>
+            <tr><td>&lt; 150</td><td>Careful reader</td></tr>
+            <tr><td>150 – 250</td><td>Average reader</td></tr>
+            <tr><td>250 – 400</td><td>Fast reader</td></tr>
+            <tr><td>&gt; 400</td><td>Speed reader</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- Mood Tracker -->
+<section class="doc-section">
+    <h2 id="mood-tracker">😊 Mood Tracker</h2>
+    <p>Log how you feel while reading and discover which feeds boost or drain your mood.</p>
+
+    <h3>Mood Levels</h3>
+    <table class="feature-table">
+        <thead><tr><th>Level</th><th>Value</th><th>Emoji</th></tr></thead>
+        <tbody>
+            <tr><td>Very Low</td><td>1</td><td>😢</td></tr>
+            <tr><td>Low</td><td>2</td><td>😕</td></tr>
+            <tr><td>Neutral</td><td>3</td><td>😐</td></tr>
+            <tr><td>Good</td><td>4</td><td>🙂</td></tr>
+            <tr><td>Great</td><td>5</td><td>😄</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Feed Impact Analysis</h3>
+    <p>The tracker correlates mood changes with what you were reading. <code>feedMoodImpact()</code> returns a per-feed breakdown showing average mood delta — positive means the feed tends to improve your mood, negative means the opposite. <code>moodBoosterFeeds(minSessions:)</code> filters to feeds with consistently positive impact.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let mood = ReadingMoodTracker.shared
+
+// Log a mood entry
+mood.logMood(
+    level: .good,
+    note: "Interesting AI article",
+    feedName: "Hacker News",
+    articleLink: "https://..."
+)
+
+// Query
+let today = mood.todayEntries()
+let current = mood.currentMood()
+let avg = mood.averageMood(from: weekAgo)  // Double?
+let shifts = mood.moodShifts()             // [MoodShift]
+
+// Discover mood-boosting feeds
+let impacts = mood.feedMoodImpact()          // [FeedMoodImpact]
+let boosters = mood.moodBoosterFeeds()       // positive-delta feeds only
+let suggestions = mood.moodBasedSuggestions() // feed suggestions by mood
+
+// Export
+let report = mood.moodReport(from: monthAgo, to: Date())
+let export = mood.exportEntries()  // JSON-compatible</code></pre>
+    </div>
+</section>
+
+<!-- Streak Tracker -->
+<section class="doc-section">
+    <h2 id="streak-tracker">🔥 Streak Tracker</h2>
+    <p>Build a daily reading habit with streak tracking and weekly summaries.</p>
+
+    <h3>How Streaks Work</h3>
+    <p>A streak increments each consecutive day you read at least one article. Missing a day resets the streak counter to zero, but your <em>best streak</em> record is preserved. The optional <code>goalTarget</code> parameter lets you set a daily article count goal — the streak only counts days where you meet or exceed the target.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let streak = ReadingStreakTracker.shared
+
+// Record reading activity (returns updated stats)
+let stats = streak.recordArticleRead(goalTarget: 3)
+// or record multiple at once:
+let stats2 = streak.recordArticles(count: 5, goalTarget: 3)
+
+// Current stats
+let s = streak.getStats()
+// s.currentStreak     — consecutive days reading
+// s.bestStreak        — all-time longest streak
+// s.totalArticlesRead — cumulative total
+// s.todayCount        — articles read today
+// s.goalMetToday      — whether today's goal is met
+
+// Historical data
+let record = streak.record(for: someDate)   // DailyReadingRecord?
+let range = streak.records(from: start, to: end)
+
+// Weekly summaries (articles per day, average, best day)
+let weeks = streak.weeklySummaries(weeks: 4)
+
+// Goal-based streak (days in a row meeting the goal)
+let goalStreak = streak.goalStreakDays(last: 30)</code></pre>
+    </div>
+</section>
+
+<!-- Insights Generator -->
+<section class="doc-section">
+    <h2 id="insights">💡 Insights Generator</h2>
+    <p>Generates personalized weekly and monthly reading reports with reader personality profiling.</p>
+
+    <h3>Report Contents</h3>
+    <ul>
+        <li><strong>Volume:</strong> articles read, total words, time spent</li>
+        <li><strong>Velocity:</strong> average WPM, speed trend</li>
+        <li><strong>Diversity:</strong> how many different feeds/categories you read across</li>
+        <li><strong>Consistency:</strong> days active, streak data</li>
+        <li><strong>Top feeds and categories:</strong> ranked by article count</li>
+        <li><strong>Trend comparison:</strong> change versus previous period</li>
+        <li><strong>Reader personality:</strong> one of 8 archetypes</li>
+    </ul>
+
+    <h3>Reader Archetypes</h3>
+    <table class="feature-table">
+        <thead><tr><th>Archetype</th><th>Profile</th></tr></thead>
+        <tbody>
+            <tr><td>📚 Scholar</td><td>High volume, high diversity, consistent</td></tr>
+            <tr><td>🎯 Specialist</td><td>High volume, low diversity (deep in one area)</td></tr>
+            <tr><td>🦋 Explorer</td><td>Moderate volume, high diversity</td></tr>
+            <tr><td>⚡ Speedster</td><td>Very high WPM, skims widely</td></tr>
+            <tr><td>🧘 Contemplator</td><td>Low WPM, few articles, reads deeply</td></tr>
+            <tr><td>📰 News Junkie</td><td>High volume, mostly news feeds</td></tr>
+            <tr><td>🌊 Casual</td><td>Light reader, sporadic schedule</td></tr>
+            <tr><td>🏃 Commuter</td><td>Reads in concentrated bursts (peak hours)</td></tr>
+        </tbody>
+    </table>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let insights = ReadingInsightsGenerator.shared
+
+// Generate a report
+let report = insights.generateWeeklyInsight(
+    from: readEvents,
+    endDate: Date()
+)
+
+let monthly = insights.generateMonthlyInsight(
+    from: readEvents,
+    endDate: Date()
+)
+
+// Latest saved report
+let last = insights.latestReport(for: .weekly)
+
+// Export
+let text = insights.exportAsText(report)
+let json = insights.exportAsJSON(report)</code></pre>
+    </div>
+</section>
+
+<!-- Reading Journal -->
+<section class="doc-section">
+    <h2 id="journal">📓 Reading Journal</h2>
+    <p>An auto-generated daily diary of your reading activity — articles read, highlights saved, notes taken, and personal reflections.</p>
+
+    <h3>Journal Entry Structure</h3>
+    <ul>
+        <li><strong>Articles read:</strong> title, feed, time spent, word count</li>
+        <li><strong>Highlights:</strong> excerpts saved from articles, with color codes</li>
+        <li><strong>Notes:</strong> personal annotations on articles</li>
+        <li><strong>Reflections:</strong> free-form daily thoughts</li>
+        <li><strong>Mood tags:</strong> emotional context for the day</li>
+        <li><strong>Statistics:</strong> total reading time, articles count, words read</li>
+    </ul>
+
+    <h3>Export Formats</h3>
+    <p>Journal entries can be exported as <strong>Markdown</strong> (suitable for Obsidian, Notion, or GitHub) or <strong>JSON</strong>. Supports single-day, date-range, or full-history export.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let journal = ReadingJournalManager.shared
+
+// Automatic recording (called by FeedReader internally)
+journal.recordArticleRead(
+    link: url, title: title,
+    feedName: feed, timeSpent: seconds
+)
+journal.recordHighlight(text: excerpt, articleTitle: title)
+journal.recordNote(text: note, articleTitle: title)
+
+// Manual entries
+journal.addReflection("Great deep-dive day")
+journal.addMoodTag(.positive)
+
+// Query
+let today = journal.todayEntry()
+let entry = journal.entry(for: someDate)
+let range = journal.entries(from: start, to: end)
+
+// Export
+let md = journal.exportMarkdown(for: someDate)
+let mdRange = journal.exportMarkdownRange(from: start, to: end)
+let json = journal.exportJSON()
+
+// Digests
+let weekly = journal.weeklyDigest()
+let monthly = journal.monthlyDigest()
+
+// Streaks
+let streak = journal.currentStreak  // consecutive days with entries</code></pre>
+    </div>
+</section>
+
+<!-- Time Budget -->
+<section class="doc-section">
+    <h2 id="time-budget">⏱️ Time Budget</h2>
+    <p>Set daily reading time goals and track how your time is distributed across feeds and categories.</p>
+
+    <h3>Configuration</h3>
+    <div class="code-block">
+        <pre><code>let budget = ReadingTimeBudget.shared
+
+// Set a daily target (in minutes)
+var config = budget.getConfig()
+config.dailyTargetMinutes = 30
+config.warningThresholdPercent = 80  // warn at 80% of budget
+budget.updateConfig(config)</code></pre>
+    </div>
+
+    <h3>Session Tracking</h3>
+    <p>Start a session when the user begins reading and stop it when they leave. Sessions automatically record duration, article context, and word count.</p>
+    <div class="code-block">
+        <pre><code>// Start/stop reading
+budget.startSession(
+    articleTitle: "AI Safety in Practice",
+    feedName: "Alignment Forum",
+    wordCount: 2400
+)
+let entry = budget.stopSession()
+
+// Query entries
+let todayEntries = budget.entries(on: Date())
+let weekEntries = budget.entries(from: weekAgo, to: Date())
+
+// Time analysis
+let todayTotal = budget.todayTotal()       // TimeInterval
+let remaining = budget.remainingToday()     // TimeInterval
+let progress = budget.dailyProgress()       // 0.0 – 1.0+
+let exceeded = budget.isOverBudget()        // Bool
+
+// Breakdowns
+let byFeed = budget.feedBreakdown(from: weekAgo, to: Date())
+let byCat = budget.categoryBreakdown(from: weekAgo, to: Date())
+let byHour = budget.hourlyDistribution(days: 7)
+let trend = budget.dailyTrend(days: 14)
+
+// Suggestions
+let suggestions = budget.budgetSuggestions()  // personalized tips</code></pre>
+    </div>
+</section>
+
+<!-- Session Tracker -->
+<section class="doc-section">
+    <h2 id="sessions">🎧 Session Tracker</h2>
+    <p>Track individual reading sessions with pause/resume support and per-article timing.</p>
+
+    <h3>Session Lifecycle</h3>
+    <ol>
+        <li><code>startSession()</code> — begins a new session (optional tag for context)</li>
+        <li><code>startArticle(link:title:feedName:)</code> — mark when an article is opened</li>
+        <li><code>finishArticle()</code> — mark when the article is closed or scrolled past</li>
+        <li><code>pauseSession()</code> / <code>resumeSession()</code> — handle app backgrounding</li>
+        <li><code>endSession()</code> — finalize and persist the session</li>
+    </ol>
+    <p>Sessions record total duration, active reading time (excluding pauses), articles read with per-article time, and optional tags for categorization.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let sessions = ReadingSessionTracker.shared
+
+// Basic flow
+let session = sessions.startSession(tag: "morning-reading")
+sessions.startArticle(link: url, title: title, feedName: feed)
+sessions.finishArticle()
+let completed = sessions.endSession()
+
+// Query
+let recent = sessions.sessions(lastDays: 7)
+let tagged = sessions.sessions(withTag: "morning-reading")
+let byId = sessions.session(byId: sessionId)
+
+// Summaries
+let summary = sessions.summary(for: recent)
+// summary.totalDuration, summary.activeTime, summary.totalArticles,
+// summary.avgArticlesPerSession, summary.avgSessionDuration</code></pre>
+    </div>
+</section>
+
+<!-- Achievements -->
+<section class="doc-section">
+    <h2 id="achievements">🏆 Achievements</h2>
+    <p>Gamified reading milestones with 40 badges across 12 categories and 5 rarity tiers.</p>
+
+    <h3>Rarity Tiers</h3>
+    <table class="feature-table">
+        <thead><tr><th>Tier</th><th>Points</th><th>Difficulty</th></tr></thead>
+        <tbody>
+            <tr><td>🟢 Common</td><td>10</td><td>Easy milestones (read 1 article)</td></tr>
+            <tr><td>🔵 Uncommon</td><td>25</td><td>Regular effort (7-day streak)</td></tr>
+            <tr><td>🟣 Rare</td><td>50</td><td>Dedicated readers (100 articles)</td></tr>
+            <tr><td>🟠 Epic</td><td>100</td><td>Exceptional (30-day streak)</td></tr>
+            <tr><td>🔴 Legendary</td><td>250</td><td>Elite (1000+ articles, 100-day streak)</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Categories</h3>
+    <p>Achievements span reading volume, consistency (streaks), speed, diversity, bookmarking, sharing, time-of-day patterns, and more. Secret achievements are hidden until unlocked.</p>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let achievements = ReadingAchievementsManager.shared
+
+// Check progress
+let all = achievements.allProgress()
+let unlocked = achievements.unlockedAchievements()
+let locked = achievements.lockedAchievements(includeSecrets: true)
+
+// Filter
+let streakBadges = achievements.achievements(in: .consistency)
+let epics = achievements.achievements(ofRarity: .epic)
+
+// Leveling
+let level = achievements.currentLevel()
+let points = achievements.totalPoints()
+let toNext = achievements.pointsToNextLevel()
+
+// Text summary
+let summary = achievements.textSummary()</code></pre>
+    </div>
+</section>
+
+<!-- Data Export -->
+<section class="doc-section">
+    <h2 id="data-export">💾 Data Export &amp; Import</h2>
+    <p>Full backup and restore for all reading data — speed samples, mood entries, streaks, journal, time budget, sessions, achievements, bookmarks, highlights, notes, tags, and more.</p>
+
+    <h3>Export Options</h3>
+    <p>You can export everything (<code>.all</code>) or a specific subset:</p>
+    <table class="feature-table">
+        <thead><tr><th>Option</th><th>Data Included</th></tr></thead>
+        <tbody>
+            <tr><td><code>.all</code></td><td>Every data category below</td></tr>
+            <tr><td><code>.readingHistory</code></td><td>Articles read, timestamps, durations</td></tr>
+            <tr><td><code>.bookmarks</code></td><td>Saved articles</td></tr>
+            <tr><td><code>.highlights</code></td><td>Article highlights with colors</td></tr>
+            <tr><td><code>.notes</code></td><td>Personal annotations</td></tr>
+            <tr><td><code>.tags</code></td><td>Article tags</td></tr>
+            <tr><td><code>.goals</code></td><td>Reading goals and progress</td></tr>
+            <tr><td><code>.analytics</code></td><td>Speed, mood, streaks, sessions</td></tr>
+            <tr><td><code>.journal</code></td><td>Journal entries with reflections</td></tr>
+            <tr><td><code>.achievements</code></td><td>Badge progress and unlock dates</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Import Strategies</h3>
+    <table class="feature-table">
+        <thead><tr><th>Strategy</th><th>Behavior</th></tr></thead>
+        <tbody>
+            <tr><td><code>.skip</code></td><td>Keep existing data, skip conflicts</td></tr>
+            <tr><td><code>.overwrite</code></td><td>Replace existing with imported data</td></tr>
+            <tr><td><code>.merge</code></td><td>Combine both, preferring newer timestamps</td></tr>
+        </tbody>
+    </table>
+
+    <h3>API</h3>
+    <div class="code-block">
+        <pre><code>let exporter = ReadingDataExporter.shared
+
+// Export
+let (data, error) = exporter.exportData(options: .all)
+let (fileSize, err) = exporter.exportToFile(url: backupUrl)
+
+// Validate before importing
+let warnings = exporter.validateArchive(data)
+let preview = exporter.previewArchive(data)
+// preview.version, preview.exportDate, preview.itemCounts
+
+// Import
+let result = exporter.importData(data, strategy: .merge)
+// result.imported, result.skipped, result.errors</code></pre>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div class="footer-inner">
+        <p>FeedReader &mdash; iOS RSS Feed Reader</p>
+        <p><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
