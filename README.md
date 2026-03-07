@@ -66,6 +66,7 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 📜 **Reading History** — Rich reading history with timestamped entries, source tracking, session duration, and history summaries with date-range filtering
 - 🧠 **Smart Feeds** — Create saved keyword-based filters that auto-match stories across all feeds. Supports AND/OR match modes and search across title, description, or both
 - 🔒 **Security Hardening** — RSS parser security: XXE prevention, URL validation (blocks javascript:/data:/file: schemes), HTML sanitization, and protocol enforcement
+- 📓 **Reading Journal** — Auto-generated daily reading journal combining articles read, highlights, and notes into rich entries. Features reflection prompts, mood tagging, journaling streaks, weekly/monthly digests, full-text search across entries, and Markdown/JSON export
 
 ## Architecture
 
@@ -96,6 +97,7 @@ FeedReader/
 │   ├── ReadingGoalsManager.swift        # Configurable reading goals and progress tracking
 │   ├── ReadingAchievementsManager.swift # Gamification achievements for reading milestones
 │   ├── ReadingQueueManager.swift        # Read-later queue with priority ordering
+│   ├── ReadingJournalManager.swift      # Auto-generated daily reading journal with Markdown export
 │   ├── ReadingStatsViewController.swift # Reading stats dashboard UI
 │   ├── ArticleNotesManager.swift        # Article note CRUD and persistence
 │   ├── ArticleHighlight.swift           # Article highlight data model
