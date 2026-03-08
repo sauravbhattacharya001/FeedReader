@@ -170,6 +170,23 @@ struct ImportCounts {
 /// Exports and imports reading data for backup and portability.
 class ReadingDataExporter {
 
+    // MARK: - Import Safety Limits
+
+    /// Maximum import file/data size (50 MB). Prevents memory exhaustion
+    /// from oversized archives — a crafted multi-GB JSON payload could OOM
+    /// the app during JSONDecoder.decode(). 50 MB is generous for reading
+    /// data (typical exports are <1 MB).
+    static let maxImportSizeBytes = 50 * 1024 * 1024
+
+    /// Maximum items per archive section. Prevents resource exhaustion from
+    /// archives with millions of entries in a single section (e.g., 10M
+    /// bookmarks that each create a Story object and call into BookmarkManager).
+    static let maxItemsPerSection = 50_000
+
+    /// Maximum article links per collection. Prevents memory exhaustion from
+    /// a single collection with millions of link entries.
+    static let maxArticleLinksPerCollection = 10_000
+
     private static let iso8601DayFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
@@ -312,6 +329,19 @@ class ReadingDataExporter {
     
     /// Import reading data from JSON Data.
     func importData(_ data: Data, strategy: ImportConflictStrategy = .skip) -> ImportResult {
+        // Guard: reject oversized archives to prevent OOM during parsing
+        guard data.count <= ReadingDataExporter.maxImportSizeBytes else {
+            let sizeMB = String(format: "%.1f", Double(data.count) / 1_048_576.0)
+            let limitMB = ReadingDataExporter.maxImportSizeBytes / 1_048_576
+            return ImportResult(
+                success: false,
+                message: "Archive too large (\(sizeMB) MB). Maximum allowed: \(limitMB) MB.",
+                imported: ImportCounts(),
+                skipped: ImportCounts(),
+                errors: ["Archive exceeds maximum import size of \(limitMB) MB"]
+            )
+        }
+
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
@@ -337,7 +367,48 @@ class ReadingDataExporter {
                 errors: ["Unsupported archive version"]
             )
         }
-        
+
+        // Guard: reject archives with oversized sections to prevent
+        // resource exhaustion during import (each item triggers manager
+        // operations — Story creation, duplicate checks, persistence).
+        let sectionCounts: [(String, Int)] = [
+            ("bookmarks", archive.sections.bookmarks?.count ?? 0),
+            ("highlights", archive.sections.highlights?.count ?? 0),
+            ("notes", archive.sections.notes?.count ?? 0),
+            ("history", archive.sections.history?.count ?? 0),
+            ("collections", archive.sections.collections?.count ?? 0),
+            ("feeds", archive.sections.feeds?.count ?? 0),
+            ("streakRecords", archive.sections.streaks?.dailyRecords.count ?? 0),
+        ]
+        let limit = ReadingDataExporter.maxItemsPerSection
+        for (section, count) in sectionCounts {
+            if count > limit {
+                return ImportResult(
+                    success: false,
+                    message: "Section '\(section)' has \(count) items, exceeding the maximum of \(limit).",
+                    imported: ImportCounts(),
+                    skipped: ImportCounts(),
+                    errors: ["Section '\(section)' exceeds maximum item count (\(count) > \(limit))"]
+                )
+            }
+        }
+
+        // Guard: reject collections with oversized article link arrays
+        if let collections = archive.sections.collections {
+            let linkLimit = ReadingDataExporter.maxArticleLinksPerCollection
+            for (i, col) in collections.enumerated() {
+                if col.articleLinks.count > linkLimit {
+                    return ImportResult(
+                        success: false,
+                        message: "Collection[\(i)] '\(col.name)' has \(col.articleLinks.count) article links, exceeding the maximum of \(linkLimit).",
+                        imported: ImportCounts(),
+                        skipped: ImportCounts(),
+                        errors: ["Collection '\(col.name)' exceeds maximum article links (\(col.articleLinks.count) > \(linkLimit))"]
+                    )
+                }
+            }
+        }
+
         var imported = ImportCounts()
         var skipped = ImportCounts()
         var errors: [String] = []
@@ -390,6 +461,27 @@ class ReadingDataExporter {
     
     /// Import from a file URL.
     func importFromFile(url: URL, strategy: ImportConflictStrategy = .skip) -> ImportResult {
+        // Check file size before loading into memory — prevents OOM
+        // from multi-GB files that would be rejected by importData()
+        // anyway but only after allocating the full Data buffer.
+        do {
+            let attrs = try FileManager.default.attributesOfItem(atPath: url.path)
+            if let fileSize = attrs[.size] as? Int,
+               fileSize > ReadingDataExporter.maxImportSizeBytes {
+                let sizeMB = String(format: "%.1f", Double(fileSize) / 1_048_576.0)
+                let limitMB = ReadingDataExporter.maxImportSizeBytes / 1_048_576
+                return ImportResult(
+                    success: false,
+                    message: "File too large (\(sizeMB) MB). Maximum allowed: \(limitMB) MB.",
+                    imported: ImportCounts(),
+                    skipped: ImportCounts(),
+                    errors: ["File exceeds maximum import size of \(limitMB) MB"]
+                )
+            }
+        } catch {
+            // Fall through — file read below will report the error
+        }
+
         do {
             let data = try Data(contentsOf: url)
             return importData(data, strategy: strategy)
@@ -406,6 +498,13 @@ class ReadingDataExporter {
     
     /// Validate an archive without importing. Returns validation errors (empty = valid).
     func validateArchive(_ data: Data) -> [String] {
+        // Guard: reject oversized archives
+        if data.count > ReadingDataExporter.maxImportSizeBytes {
+            let sizeMB = String(format: "%.1f", Double(data.count) / 1_048_576.0)
+            let limitMB = ReadingDataExporter.maxImportSizeBytes / 1_048_576
+            return ["Archive too large (\(sizeMB) MB). Maximum allowed: \(limitMB) MB."]
+        }
+
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
@@ -416,6 +515,22 @@ class ReadingDataExporter {
             
             if archive.version > ReadingDataArchive.currentVersion {
                 errors.append("Archive version \(archive.version) is newer than supported (\(ReadingDataArchive.currentVersion)).")
+            }
+
+            // Validate section sizes
+            let limit = ReadingDataExporter.maxItemsPerSection
+            let sectionCounts: [(String, Int)] = [
+                ("bookmarks", archive.sections.bookmarks?.count ?? 0),
+                ("highlights", archive.sections.highlights?.count ?? 0),
+                ("notes", archive.sections.notes?.count ?? 0),
+                ("history", archive.sections.history?.count ?? 0),
+                ("collections", archive.sections.collections?.count ?? 0),
+                ("feeds", archive.sections.feeds?.count ?? 0),
+            ]
+            for (section, count) in sectionCounts {
+                if count > limit {
+                    errors.append("\(section): \(count) items exceeds maximum of \(limit)")
+                }
             }
             
             // Validate bookmarks
@@ -458,9 +573,27 @@ class ReadingDataExporter {
                 if ids.count != uniqueIds.count {
                     errors.append("Collections: duplicate IDs found")
                 }
+                let linkLimit = ReadingDataExporter.maxArticleLinksPerCollection
                 for (i, col) in collections.enumerated() {
                     if col.name.isEmpty {
                         errors.append("Collection[\(i)]: empty name")
+                    }
+                    if col.articleLinks.count > linkLimit {
+                        errors.append("Collection[\(i)]: \(col.articleLinks.count) links exceeds maximum of \(linkLimit)")
+                    }
+                }
+            }
+
+            // Validate feed URLs — imported feeds bypass the normal
+            // FeedManager.addFeed() flow which validates URLs, so we
+            // must check here to prevent SSRF (e.g., file://, ftp://,
+            // or internal IP feeds being imported from a malicious archive).
+            if let feeds = archive.sections.feeds {
+                for (i, feed) in feeds.enumerated() {
+                    if feed.url.isEmpty {
+                        errors.append("Feed[\(i)]: empty URL")
+                    } else if !URLValidator.isSafe(feed.url) {
+                        errors.append("Feed[\(i)]: unsafe or invalid URL '\(feed.url)'")
                     }
                 }
             }
