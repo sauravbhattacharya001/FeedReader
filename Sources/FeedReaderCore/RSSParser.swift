@@ -145,6 +145,9 @@ public class RSSParser: NSObject {
     /// Cancels in-flight loads when a new `loadFeeds` call arrives.
     private var currentSession: URLSession?
 
+    /// Generation counter to ignore callbacks from cancelled sessions.
+    private var loadGeneration: UInt64 = 0
+
     // MARK: - Public API
 
     public override init() {
@@ -168,24 +171,27 @@ public class RSSParser: NSObject {
         let session = URLSession(configuration: .default)
         currentSession = session
 
+        var generation: UInt64 = 0
         parseQueue.sync {
+            loadGeneration += 1
+            generation = loadGeneration
             stories = []
             seenLinks = Set<String>()
             pendingFeedCount = urls.count
         }
 
         for url in urls {
-            parseFeed(url, session: session)
+            parseFeed(url, session: session, generation: generation)
         }
     }
 
     /// Parse stories from a single feed URL using the given session.
-    private func parseFeed(_ url: String, session: URLSession) {
+    private func parseFeed(_ url: String, session: URLSession, generation: UInt64) {
         guard let feedURL = URL(string: url),
               let scheme = feedURL.scheme?.lowercased(),
               scheme == "http" || scheme == "https" else {
             // Reject non-HTTP(S) URLs to prevent SSRF (file://, ftp://, etc.)
-            feedCompleted()
+            feedCompleted(generation: generation)
             return
         }
 
@@ -194,13 +200,13 @@ public class RSSParser: NSObject {
 
             guard let data = data, error == nil else {
                 if (error as? URLError)?.code == .cancelled { return }
-                self.feedCompleted()
+                self.feedCompleted(generation: generation)
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
-                self.feedCompleted()
+                self.feedCompleted(generation: generation)
                 return
             }
 
@@ -210,6 +216,8 @@ public class RSSParser: NSObject {
 
             // Merge results on the serial queue.
             self.parseQueue.async {
+                // Discard results from a stale generation (previous loadFeeds call).
+                guard generation == self.loadGeneration else { return }
                 for story in feedStories {
                     if !self.seenLinks.contains(story.link) {
                         self.seenLinks.insert(story.link)
@@ -234,8 +242,11 @@ public class RSSParser: NSObject {
     // MARK: - Private
 
     /// Called from arbitrary threads — bounces to the serial queue.
-    private func feedCompleted() {
-        parseQueue.async { self.feedCompletedOnQueue() }
+    private func feedCompleted(generation: UInt64) {
+        parseQueue.async {
+            guard generation == self.loadGeneration else { return }
+            self.feedCompletedOnQueue()
+        }
     }
 
     /// Must be called on `parseQueue`.
