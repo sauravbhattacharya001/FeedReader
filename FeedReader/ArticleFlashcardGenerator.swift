@@ -194,7 +194,8 @@ class ArticleFlashcardGenerator {
     private var cards: [String: Flashcard] = [:]
     private var decks: [String: FlashcardDeck] = [:]
     private var sessionHistory: [ReviewSessionResult] = []
-    private var reviewDates: [String] = [] // YYYY-MM-DD for streak tracking
+    private var reviewDates: [String] = [] // YYYY-MM-DD for streak tracking (sorted)
+    private var reviewDatesSet: Set<String> = [] // O(1) companion for contains() lookups
 
     // MARK: - Configuration
 
@@ -427,7 +428,8 @@ class ArticleFlashcardGenerator {
 
         // Track review date for streaks
         let dateStr = formatDate(reviewDate)
-        if !reviewDates.contains(dateStr) {
+        if !reviewDatesSet.contains(dateStr) {
+            reviewDatesSet.insert(dateStr)
             reviewDates.append(dateStr)
             reviewDates.sort()
         }
@@ -642,7 +644,8 @@ class ArticleFlashcardGenerator {
         }
         sessionHistory.append(contentsOf: data.sessionHistory)
         for date in data.reviewDates {
-            if !reviewDates.contains(date) {
+            if !reviewDatesSet.contains(date) {
+                reviewDatesSet.insert(date)
                 reviewDates.append(date)
             }
         }
@@ -883,16 +886,16 @@ class ArticleFlashcardGenerator {
         let yesterday = formatDate(Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date())
 
         // Must have reviewed today or yesterday to have an active streak
-        guard reviewDates.contains(today) || reviewDates.contains(yesterday) else { return 0 }
+        guard reviewDatesSet.contains(today) || reviewDatesSet.contains(yesterday) else { return 0 }
 
         var streak = 0
-        let startDate = reviewDates.contains(today) ? Date() :
+        let startDate = reviewDatesSet.contains(today) ? Date() :
             (Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date())
 
         var checkDate = startDate
         while true {
             let dateStr = formatDate(checkDate)
-            if reviewDates.contains(dateStr) {
+            if reviewDatesSet.contains(dateStr) {
                 streak += 1
                 checkDate = Calendar.current.date(byAdding: .day, value: -1, to: checkDate) ?? checkDate
             } else {
