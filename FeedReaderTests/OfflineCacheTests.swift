@@ -437,4 +437,28 @@ class OfflineCacheTests: XCTestCase {
         XCTAssertTrue(savedAgain)
         XCTAssertTrue(manager.isCached(story))
     }
+
+    // MARK: - Oversized Article Rejection
+
+    func testOversizedArticleIsRejectedAndDoesNotDrainCache() {
+        // Save a normal article first
+        let normalStory = makeStory(title: "Normal", body: "Short body", link: "https://example.com/normal")
+        manager.saveForOffline(normalStory)
+        XCTAssertEqual(manager.count, 1)
+
+        // Create a story whose body alone exceeds maxCacheSizeBytes (10 MB)
+        let hugeBody = String(repeating: "x", count: OfflineCacheManager.maxCacheSizeBytes + 1)
+        let hugeStory = makeStory(title: "Huge", body: hugeBody, link: "https://example.com/huge")
+        let saved = manager.saveForOffline(hugeStory)
+
+        // The oversized article should be rejected
+        XCTAssertFalse(saved)
+        XCTAssertFalse(manager.isCached(hugeStory))
+
+        // The existing normal article should NOT have been evicted
+        // (previously, the while-loop would drain the entire cache
+        // trying to make room for an article that can never fit)
+        XCTAssertTrue(manager.isCached(normalStory))
+        XCTAssertEqual(manager.count, 1)
+    }
 }
