@@ -164,6 +164,10 @@ class ReadingSessionTracker {
     /// The article currently being read (tracked for time-per-article).
     private var currentArticleIndex: Int?
 
+    /// When the current article's active reading started (reset on resume).
+    /// Used for incremental time accumulation to avoid counting pause durations.
+    private var articleActiveStartDate: Date?
+
     // MARK: - Init
 
     init() {
@@ -209,6 +213,12 @@ class ReadingSessionTracker {
         let pauseDuration = Date().timeIntervalSince(paused)
         activeSession?.totalPauseTime += pauseDuration
         pausedAt = nil
+
+        // Reset article active start so time-per-article tracking
+        // doesn't include the pause duration
+        if currentArticleIndex != nil {
+            articleActiveStartDate = Date()
+        }
 
         NotificationCenter.default.post(name: .readingSessionDidChange, object: self)
     }
@@ -275,12 +285,14 @@ class ReadingSessionTracker {
         let article = SessionArticle(link: link, title: title, feedName: feedName)
         activeSession?.articles.append(article)
         currentArticleIndex = (activeSession?.articles.count ?? 1) - 1
+        articleActiveStartDate = Date()
     }
 
     /// Mark the current article as finished and stop timing it.
     func finishArticle() {
         finalizeCurrentArticleTime()
         currentArticleIndex = nil
+        articleActiveStartDate = nil
     }
 
     /// Number of articles in the current session.
@@ -444,12 +456,15 @@ class ReadingSessionTracker {
     private func finalizeCurrentArticleTime() {
         guard let idx = currentArticleIndex,
               var session = activeSession,
-              idx < session.articles.count else { return }
+              idx < session.articles.count,
+              let activeStart = articleActiveStartDate else { return }
 
-        let elapsed = Date().timeIntervalSince(session.articles[idx].startedAt)
-        let alreadyTracked = session.articles[idx].timeSpent
-        session.articles[idx].timeSpent = max(alreadyTracked, elapsed)
+        // Accumulate only the time since the last active start (excludes pauses)
+        let elapsed = Date().timeIntervalSince(activeStart)
+        session.articles[idx].timeSpent += elapsed
         activeSession = session
+        // Reset so the next active period starts fresh
+        articleActiveStartDate = Date()
     }
 
     private func trimSessions() {
