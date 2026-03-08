@@ -461,7 +461,7 @@ class ReadingHistoryManager {
             lines.append("## \(Self.mediumDateFormatter.string(from: day))")
             if let dayEntries = grouped[day] {
                 for entry in dayEntries {
-                    let time = timeSelf.mediumDateFormatter.string(from: entry.lastVisitedAt)
+                    let time = Self.shortTimeFormatter.string(from: entry.lastVisitedAt)
                     var line = "- [\(time)] \(entry.title) (\(entry.feedName))"
                     if entry.visitCount > 1 {
                         line += " — \(entry.visitCount) visits"
