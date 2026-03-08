@@ -31,6 +31,11 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
     /// Stories parsed from this single feed.
     private(set) var parsedStories: [Story] = []
 
+    /// Maximum number of stories to parse per feed. Prevents memory
+    /// exhaustion from maliciously crafted feeds with millions of items
+    /// (CWE-400: Uncontrolled Resource Consumption).
+    static let maxStoriesPerFeed = 500
+
     // Per-item XML parsing state — fully isolated per feed.
     private var currentElement: NSString = ""
     private var insideItem = false
@@ -60,6 +65,11 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
         currentElement = elementName as NSString
 
         if (elementName as NSString).isEqual(to: "item") {
+            // Stop parsing if we've already collected enough stories
+            if parsedStories.count >= FeedParseContext.maxStoriesPerFeed {
+                parser.abortParsing()
+                return
+            }
             insideItem = true
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
@@ -170,6 +180,13 @@ class RSSFeedParser: NSObject {
     /// step is serialized.
     private let parseQueue = DispatchQueue(label: "com.feedreader.parseQueue")
 
+    /// Maximum response body size in bytes (10 MB). Prevents memory
+    /// exhaustion from malicious or misconfigured feeds that return
+    /// extremely large payloads (CWE-400). Legitimate RSS feeds rarely
+    /// exceed 1 MB; 10 MB provides ample headroom for content-heavy feeds
+    /// with full-text articles and embedded media URLs.
+    private static let maxResponseSize = 10 * 1024 * 1024
+
     /// Reusable URL session for feed fetching. Created once and reused
     /// across loads to avoid the overhead of session creation (TLS
     /// session cache, connection pool, delegate setup) on every refresh.
@@ -247,6 +264,14 @@ class RSSFeedParser: NSObject {
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
                 print("RSSFeedParser: HTTP \(httpResponse.statusCode)")
+                self.feedCompleted(generation: generation)
+                return
+            }
+
+            // Reject oversized responses to prevent memory exhaustion
+            // from malicious or misconfigured feeds (CWE-400).
+            if data.count > RSSFeedParser.maxResponseSize {
+                print("RSSFeedParser: response too large (\(data.count) bytes), skipping")
                 self.feedCompleted(generation: generation)
                 return
             }
