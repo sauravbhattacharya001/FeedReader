@@ -113,8 +113,32 @@ public class RSSStory: NSObject, @unchecked Sendable {
                     }
                 }
                 if !matched {
-                    result.append(input[i])
-                    i = input.index(after: i)
+                    // Decode numeric character references: &#123; or &#x1F;
+                    if remaining.hasPrefix("&#") {
+                        if let semiIdx = remaining.firstIndex(of: ";"),
+                           semiIdx > remaining.index(remaining.startIndex, offsetBy: 2) {
+                            let numStr = remaining[remaining.index(remaining.startIndex, offsetBy: 2)..<semiIdx]
+                            let scalar: UInt32?
+                            if numStr.hasPrefix("x") || numStr.hasPrefix("X") {
+                                scalar = UInt32(numStr.dropFirst(), radix: 16)
+                            } else {
+                                scalar = UInt32(numStr)
+                            }
+                            if let s = scalar, let u = Unicode.Scalar(s) {
+                                result.append(Character(u))
+                                i = input.index(after: semiIdx)
+                            } else {
+                                result.append(input[i])
+                                i = input.index(after: i)
+                            }
+                        } else {
+                            result.append(input[i])
+                            i = input.index(after: i)
+                        }
+                    } else {
+                        result.append(input[i])
+                        i = input.index(after: i)
+                    }
                 }
             } else {
                 result.append(input[i])

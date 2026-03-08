@@ -165,14 +165,14 @@ public class RSSParser: NSObject {
             return
         }
 
-        // Cancel any previous in-flight session.
-        currentSession?.invalidateAndCancel()
-
-        let session = URLSession(configuration: .default)
-        currentSession = session
-
         var generation: UInt64 = 0
+        let session = URLSession(configuration: .default)
+
+        // Protect currentSession and all shared state on the serial queue
+        // to prevent races when loadFeeds is called from multiple threads.
         parseQueue.sync {
+            currentSession?.invalidateAndCancel()
+            currentSession = session
             loadGeneration += 1
             generation = loadGeneration
             stories = []
