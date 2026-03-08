@@ -170,20 +170,17 @@ class ReadingStreakTracker {
     }
 
     /// Get records for a date range (inclusive).
+    ///
+    /// Filters the records dictionary directly instead of iterating
+    /// day-by-day through the range. For sparse data over long ranges
+    /// (e.g., 365-day queries with 30 active days), this avoids
+    /// creating ~335 unnecessary Date objects and string conversions.
     func records(from startDate: Date, to endDate: Date) -> [DailyReadingRecord] {
-        let start = calendar.startOfDay(for: startDate)
-        let end = calendar.startOfDay(for: endDate)
-        var result: [DailyReadingRecord] = []
-        var current = start
-        while current <= end {
-            let key = dateKey(for: current)
-            if let rec = records[key] {
-                result.append(rec)
-            }
-            guard let next = calendar.date(byAdding: .day, value: 1, to: current) else { break }
-            current = next
-        }
-        return result
+        let startKey = dateKey(for: calendar.startOfDay(for: startDate))
+        let endKey = dateKey(for: calendar.startOfDay(for: endDate))
+        return records.values
+            .filter { $0.date >= startKey && $0.date <= endKey }
+            .sorted { $0.date < $1.date }
     }
 
     /// Get weekly summaries for the last N weeks.

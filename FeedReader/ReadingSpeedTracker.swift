@@ -288,9 +288,15 @@ class ReadingSpeedTracker {
     /// less cognitive load) and longer pieces slower (deeper material,
     /// fatigue). This method returns bucket-specific averages when
     /// enough samples exist.
+    ///
+    /// Uses IQR-filtered samples to exclude outliers, consistent with
+    /// `currentWPM` and `buildProfile()`. Previously used raw `samples`
+    /// which could skew estimates when idle/skimming outliers clustered
+    /// in a particular length bucket.
     func lengthAdjustedWPM(wordCount: Int) -> Double? {
         let bucket = lengthBucket(wordCount: wordCount)
-        let bucketSamples = samples.filter { lengthBucket(wordCount: $0.wordCount) == bucket }
+        let filtered = validSamples()
+        let bucketSamples = filtered.filter { lengthBucket(wordCount: $0.wordCount) == bucket }
         guard bucketSamples.count >= 3 else { return nil }
         return averageWPM(of: bucketSamples)
     }
