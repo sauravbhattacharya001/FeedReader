@@ -227,19 +227,20 @@ class ReadingSessionTracker {
     /// - Returns: The completed session, or nil if no active session.
     @discardableResult
     func endSession() -> ReadingSession? {
-        guard var session = activeSession else { return nil }
+        guard activeSession != nil else { return nil }
 
         // If paused, account for final pause
         if let paused = pausedAt {
             let pauseDuration = Date().timeIntervalSince(paused)
-            session.totalPauseTime += pauseDuration
+            activeSession?.totalPauseTime += pauseDuration
             pausedAt = nil
         }
 
-        // Close out current article time
+        // Close out current article time — this mutates activeSession directly
         finalizeCurrentArticleTime()
-        session.articles = activeSession?.articles ?? session.articles
 
+        // Now snapshot the fully-updated session
+        guard var session = activeSession else { return nil }
         session.endedAt = Date()
         activeSession = nil
         currentArticleIndex = nil
