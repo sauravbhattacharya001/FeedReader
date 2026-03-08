@@ -141,6 +141,11 @@ class OfflineCacheManager {
             removeOldest()
         }
 
+        // Reject article if it alone exceeds the cache size budget
+        if article.estimatedSizeBytes > OfflineCacheManager.maxCacheSizeBytes {
+            return false
+        }
+
         cachedArticles.insert(article, at: 0) // newest first
         cacheIndex.insert(story.link)
         _totalSizeBytes += article.estimatedSizeBytes
