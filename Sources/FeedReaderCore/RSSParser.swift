@@ -73,6 +73,19 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCharacters string: String) {
         guard insideItem else { return }
 
+        appendToCurrentElement(string)
+    }
+
+    func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+        guard insideItem else { return }
+        guard let string = String(data: CDATABlock, encoding: .utf8) else { return }
+
+        appendToCurrentElement(string)
+    }
+
+    /// Appends text to whichever element buffer is currently active.
+    /// Shared by `foundCharacters` and `foundCDATA` to avoid duplication.
+    private func appendToCurrentElement(_ string: String) {
         if currentElement.isEqual(to: "title") {
             storyTitle.append(string)
         } else if currentElement.isEqual(to: "description") {
@@ -161,7 +174,9 @@ public class RSSParser: NSObject {
     /// - Parameter urls: Array of RSS feed URL strings.
     public func loadFeeds(_ urls: [String]) {
         guard !urls.isEmpty else {
-            delegate?.parserDidFinishLoading(stories: [])
+            DispatchQueue.main.async { [weak self] in
+                self?.delegate?.parserDidFinishLoading(stories: [])
+            }
             return
         }
 
