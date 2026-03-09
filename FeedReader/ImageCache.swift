@@ -144,7 +144,14 @@ class ImageCache {
             }
 
             // 3. Fetch from network
-            self?.imageSession.dataTask(with: url) { [weak self] data, _, _ in
+            // Guard against self being deallocated — if the cache is gone,
+            // still call completion(nil) so callers aren't left waiting
+            // indefinitely (fixes leaked completion handlers).
+            guard let self = self else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            self.imageSession.dataTask(with: url) { [weak self] data, _, _ in
                 guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
                     DispatchQueue.main.async { completion(nil) }
                     return
