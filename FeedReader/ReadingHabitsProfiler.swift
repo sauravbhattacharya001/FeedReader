@@ -667,18 +667,14 @@ class ReadingHabitsProfiler {
     /// Export profile as JSON string.
     func exportProfileJSON() -> String? {
         let profile = generateProfile()
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(profile) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
     /// Export events as JSON string.
     func exportEventsJSON() -> String? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(events) else { return nil }
         return String(data: data, encoding: .utf8)
     }

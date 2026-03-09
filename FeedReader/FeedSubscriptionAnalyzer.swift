@@ -696,9 +696,7 @@ class FeedSubscriptionAnalyzer {
 
     /// Export subscription timeline as JSON data.
     func exportTimeline() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(data)
     }
 
@@ -730,8 +728,7 @@ class FeedSubscriptionAnalyzer {
     // MARK: - Persistence
 
     private func saveData() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let encoded = try? encoder.encode(data) {
             UserDefaults.standard.set(encoded, forKey: storageKey)
         }
@@ -739,8 +736,7 @@ class FeedSubscriptionAnalyzer {
 
     private func loadData() {
         guard let saved = UserDefaults.standard.data(forKey: storageKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         if let decoded = try? decoder.decode(SubscriptionData.self, from: saved) {
             data = decoded
         }

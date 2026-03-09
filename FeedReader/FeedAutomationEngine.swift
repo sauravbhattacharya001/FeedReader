@@ -618,9 +618,7 @@ class FeedAutomationEngine {
     
     /// Export all rules as JSON data.
     func exportRules() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(rules)
     }
     
@@ -634,8 +632,7 @@ class FeedAutomationEngine {
     /// Set `replace` to true to clear existing rules first.
     @discardableResult
     func importRules(from data: Data, replace: Bool = false) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([AutomationRule].self, from: data) else {
             return 0
         }

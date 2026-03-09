@@ -451,9 +451,7 @@ class SentimentTrendsTracker {
 
     /// Export all samples as JSON.
     func exportJSON() -> String? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(samples) else { return nil }
         return String(data: data, encoding: .utf8)
     }

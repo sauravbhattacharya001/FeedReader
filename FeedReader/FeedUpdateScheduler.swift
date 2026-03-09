@@ -322,15 +322,13 @@ class FeedUpdateScheduler {
 
     /// Encodes all schedules to JSON data for storage.
     func serialize() throws -> Data {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         return try encoder.encode(schedules)
     }
 
     /// Restores schedules from JSON data.
     static func deserialize(from data: Data, dateProvider: @escaping () -> Date = { Date() }) throws -> FeedUpdateScheduler {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         let schedules = try decoder.decode([String: FeedSchedule].self, from: data)
         return FeedUpdateScheduler(schedules: schedules, dateProvider: dateProvider)
     }

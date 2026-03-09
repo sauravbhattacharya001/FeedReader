@@ -544,9 +544,7 @@ class FeedHealthManager {
     // MARK: - Persistence
     
     private func saveData() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
-        
+        let encoder = JSONCoding.epochEncoder
         if let recordsData = try? encoder.encode(records) {
             UserDefaults.standard.set(recordsData, forKey: FeedHealthManager.recordsKey)
         }
@@ -562,9 +560,7 @@ class FeedHealthManager {
     }
     
     private func loadData() {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
-        
+        let decoder = JSONCoding.epochDecoder
         if let data = UserDefaults.standard.data(forKey: FeedHealthManager.recordsKey),
            let loaded = try? decoder.decode([String: [FetchRecord]].self, from: data) {
             records = loaded

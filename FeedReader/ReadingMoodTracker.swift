@@ -370,9 +370,7 @@ final class ReadingMoodTracker {
             totalEntries: entries.count,
             entries: entries.sorted { $0.date > $1.date }
         )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(export)
     }
 
@@ -452,14 +450,12 @@ final class ReadingMoodTracker {
     private func loadEntries() {
         guard FileManager.default.fileExists(atPath: storageURL.path),
               let data = try? Data(contentsOf: storageURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         entries = (try? decoder.decode([MoodEntry].self, from: data)) ?? []
     }
 
     private func saveEntries() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(entries) {
             try? data.write(to: storageURL)
         }

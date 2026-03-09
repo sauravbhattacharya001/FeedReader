@@ -315,9 +315,7 @@ class ContentFilterManager {
     
     /// Export all filters as JSON string.
     func exportFilters() -> String {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
+        let encoder = JSONCoding.iso8601PrettyUnsortedEncoder
         guard let data = try? encoder.encode(filters),
               let json = String(data: data, encoding: .utf8) else {
             return "[]"
@@ -334,9 +332,7 @@ class ContentFilterManager {
             return result
         }
         
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
+        let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([ContentFilter].self, from: data) else {
             result.errors = 1
             return result
