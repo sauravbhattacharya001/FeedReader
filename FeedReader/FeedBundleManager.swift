@@ -356,16 +356,13 @@ class FeedBundleManager {
     /// Export a bundle to JSON data.
     func exportBundle(id: String) -> Data? {
         guard let bundle = bundle(withId: id) else { return nil }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.epochPrettyEncoder
         return try? encoder.encode(bundle)
     }
 
     /// Import a bundle from JSON data.
     func importBundle(from data: Data) -> FeedBundle? {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
+        let decoder = JSONCoding.epochDecoder
         guard var bundle = try? decoder.decode(FeedBundle.self, from: data) else {
             return nil
         }
@@ -417,8 +414,7 @@ class FeedBundleManager {
 
     private func saveCustomBundles() {
         let custom = bundles.filter { !$0.isBuiltIn }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
+        let encoder = JSONCoding.epochEncoder
         if let data = try? encoder.encode(custom) {
             UserDefaults.standard.set(data, forKey: FeedBundleManager.customBundlesKey)
         }
@@ -427,8 +423,7 @@ class FeedBundleManager {
     private func loadCustomBundles() {
         guard let data = UserDefaults.standard.data(
             forKey: FeedBundleManager.customBundlesKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
+        let decoder = JSONCoding.epochDecoder
         if let custom = try? decoder.decode([FeedBundle].self, from: data) {
             bundles.append(contentsOf: custom)
         }

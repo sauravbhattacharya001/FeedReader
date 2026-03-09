@@ -292,8 +292,7 @@ class ReadingDataExporter {
             )
         )
         
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if options.prettyPrint {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         }
@@ -338,9 +337,7 @@ class ReadingDataExporter {
             )
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
+        let decoder = JSONCoding.iso8601Decoder
         let archive: ReadingDataArchive
         do {
             archive = try decoder.decode(ReadingDataArchive.self, from: data)
@@ -501,9 +498,7 @@ class ReadingDataExporter {
             return ["Archive too large (\(sizeMB) MB). Maximum allowed: \(limitMB) MB."]
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
+        let decoder = JSONCoding.iso8601Decoder
         var errors: [String] = []
         
         do {
@@ -603,9 +598,7 @@ class ReadingDataExporter {
     
     /// Get a summary of what's in an archive without importing.
     func previewArchive(_ data: Data) -> ArchivePreview? {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
+        let decoder = JSONCoding.iso8601Decoder
         guard let archive = try? decoder.decode(ReadingDataArchive.self, from: data) else {
             return nil
         }

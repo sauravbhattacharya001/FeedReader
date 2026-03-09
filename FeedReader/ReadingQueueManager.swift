@@ -431,8 +431,7 @@ class ReadingQueueManager {
     // MARK: - Persistence
 
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .secondsSince1970
+        let encoder = JSONCoding.epochEncoder
         if let data = try? encoder.encode(items) {
             UserDefaults.standard.set(data, forKey: ReadingQueueManager.storageKey)
         }
@@ -441,8 +440,7 @@ class ReadingQueueManager {
     private func loadQueue() {
         guard let data = UserDefaults.standard.data(
             forKey: ReadingQueueManager.storageKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .secondsSince1970
+        let decoder = JSONCoding.epochDecoder
         if let loaded = try? decoder.decode([QueueItem].self, from: data) {
             items = loaded
             rebuildIndex()

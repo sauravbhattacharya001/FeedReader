@@ -549,9 +549,7 @@ class ContentCalendar {
     /// Export calendar data as JSON.
     func exportJSON(referenceDate: Date = Date()) -> String? {
         let report = generateReport(referenceDate: referenceDate)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(report) else { return nil }
         return String(data: data, encoding: .utf8)
     }

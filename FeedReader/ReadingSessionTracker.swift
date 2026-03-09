@@ -389,9 +389,7 @@ class ReadingSessionTracker {
 
     /// Export session history as JSON data.
     func exportAsJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(sessions)
     }
 

@@ -789,17 +789,14 @@ class FeedPrivacyGuard {
     /// Export scans as JSON data.
     func exportJSON() -> Data? {
         let exportable = scanCache.values.map { ArticlePrivacyScanData(from: $0) }
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(exportable)
     }
 
     /// Import scans from JSON data.
     @discardableResult
     func importJSON(_ data: Data) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([ArticlePrivacyScanData].self, from: data) else {
             return 0
         }

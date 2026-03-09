@@ -716,8 +716,7 @@ class ReadingChallengeManager {
 
     /// Export all challenges as a JSON string.
     func exportJSON(prettyPrint: Bool = true) -> String? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if prettyPrint {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         }
@@ -729,8 +728,7 @@ class ReadingChallengeManager {
     /// - Returns: Number of challenges imported (skips duplicates by ID).
     @discardableResult
     func importJSON(_ jsonString: String) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let data = jsonString.data(using: .utf8),
               let imported = try? decoder.decode([ReadingChallenge].self, from: data) else {
             return 0

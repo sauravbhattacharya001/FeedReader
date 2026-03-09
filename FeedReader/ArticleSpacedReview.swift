@@ -484,10 +484,7 @@ class ArticleSpacedReview {
     /// Export all review data as JSON.
     func exportJSON() -> String {
         let allItems = self.allItems()
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(allItems),
               let json = String(data: data, encoding: .utf8) else {
             return "[]"
@@ -594,8 +591,7 @@ class ArticleSpacedReview {
             reviewDates: Array(reviewDates),
             longestStreak: longestStreak
         )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(model) {
             try? data.write(to: Self.fileURL, options: .atomic)
         }
@@ -603,8 +599,7 @@ class ArticleSpacedReview {
 
     private func load() {
         guard let data = try? Data(contentsOf: Self.fileURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let model = try? decoder.decode(StorageModel.self, from: data) else { return }
 
         items = [:]

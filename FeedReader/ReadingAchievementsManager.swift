@@ -555,17 +555,14 @@ class ReadingAchievementsManager {
 
     /// Export progress as JSON data.
     func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(Array(progressMap.values))
     }
 
     /// Import progress from JSON data. Returns number of entries imported.
     @discardableResult
     func importJSON(_ data: Data) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let entries = try? decoder.decode([AchievementProgress].self, from: data) else { return 0 }
         var count = 0
         for entry in entries {

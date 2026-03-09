@@ -622,9 +622,7 @@ class ArticleFlashcardGenerator {
             sessionHistory: sessionHistory,
             reviewDates: reviewDates
         )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
+        let encoder = JSONCoding.iso8601PrettyUnsortedEncoder
         guard let jsonData = try? encoder.encode(data) else { return nil }
         return String(data: jsonData, encoding: .utf8)
     }
@@ -632,8 +630,7 @@ class ArticleFlashcardGenerator {
     /// Import data from JSON.
     func importJSON(_ json: String) -> Bool {
         guard let jsonData = json.data(using: .utf8) else { return false }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let data = try? decoder.decode(PersistenceData.self, from: jsonData) else { return false }
 
         for card in data.cards {

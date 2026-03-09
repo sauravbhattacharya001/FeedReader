@@ -467,17 +467,14 @@ class ReadingHistoryManager {
     
     /// Export history as JSON data.
     func exportAsJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = .prettyPrinted
+        let encoder = JSONCoding.iso8601PrettyUnsortedEncoder
         return try? encoder.encode(entries)
     }
     
     // MARK: - Persistence
     
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(entries) {
             UserDefaults.standard.set(data, forKey: ReadingHistoryManager.userDefaultsKey)
         }
@@ -489,8 +486,7 @@ class ReadingHistoryManager {
             entryIndex = [:]
             return
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         if let loaded = try? decoder.decode([HistoryEntry].self, from: data) {
             entries = loaded.sorted { $0.lastVisitedAt > $1.lastVisitedAt }
             rebuildIndex()

@@ -330,9 +330,7 @@ class ArticleCollectionManager {
 
     /// Export all collections as JSON data.
     func exportAsJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(collections)
     }
 
@@ -340,8 +338,7 @@ class ArticleCollectionManager {
     /// Returns the number of collections imported.
     @discardableResult
     func importFromJSON(_ data: Data) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([ArticleCollection].self, from: data) else { return 0 }
 
         var importedCount = 0
@@ -435,8 +432,7 @@ class ArticleCollectionManager {
     // MARK: - Persistence
 
     private func saveCollections() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(collections) {
             UserDefaults.standard.set(data, forKey: metadataKey)
         }
@@ -449,8 +445,7 @@ class ArticleCollectionManager {
             return
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         if let loaded = try? decoder.decode([ArticleCollection].self, from: data) {
             collections = loaded
             rebuildArticleIndex()

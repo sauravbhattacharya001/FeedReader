@@ -363,16 +363,13 @@ class FeedMergeManager {
 
     /// Export all merged feeds as JSON data.
     func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         return try? encoder.encode(mergedFeeds)
     }
 
     /// Import merged feeds from JSON data. Appends to existing, skipping duplicates by id.
     func importJSON(_ data: Data) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([MergedFeed].self, from: data) else { return 0 }
         let existingIds = Set(mergedFeeds.map { $0.id })
         var count = 0
@@ -389,16 +386,14 @@ class FeedMergeManager {
     // MARK: - Persistence
 
     func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(mergedFeeds) {
             try? data.write(to: Self.storageURL, options: .atomic)
         }
     }
 
     func load() {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let data = try? Data(contentsOf: Self.storageURL),
               let feeds = try? decoder.decode([MergedFeed].self, from: data) else { return }
         self.mergedFeeds = feeds

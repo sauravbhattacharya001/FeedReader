@@ -242,8 +242,7 @@ class ReadingStatsManager {
     // MARK: - Persistence
     
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(events) {
             UserDefaults.standard.set(data, forKey: ReadingStatsManager.userDefaultsKey)
         }
@@ -254,8 +253,7 @@ class ReadingStatsManager {
             events = []
             return
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         if let loaded = try? decoder.decode([ReadEvent].self, from: data) {
             events = loaded
         } else {

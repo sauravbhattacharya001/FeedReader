@@ -433,17 +433,14 @@ class ReadingSpeedTracker {
 
     /// Export speed data as JSON.
     func exportJSON() -> String? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(samples) else { return nil }
         return String(data: data, encoding: .utf8)
     }
 
     /// Import speed data from JSON (merges with existing, deduplicates by ID).
     func importJSON(_ jsonString: String) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        let decoder = JSONCoding.iso8601Decoder
         guard let data = jsonString.data(using: .utf8),
               let imported = try? decoder.decode([SpeedSample].self, from: data)
         else { return 0 }

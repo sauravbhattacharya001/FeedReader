@@ -409,9 +409,7 @@ class ReadingInsightsGenerator {
 
     /// Export a report as a JSON string.
     func exportAsJSON(_ report: InsightReport) -> String? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let encoder = JSONCoding.iso8601PrettyEncoder
         guard let data = try? encoder.encode(report) else { return nil }
         return String(data: data, encoding: .utf8)
     }
@@ -719,8 +717,7 @@ class ReadingInsightsGenerator {
 
     private func save() {
         let storage = Storage(reports: reports)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = JSONCoding.iso8601Encoder
         guard let data = try? encoder.encode(storage) else { return }
         try? data.write(to: fileURL, options: .atomic)
     }
