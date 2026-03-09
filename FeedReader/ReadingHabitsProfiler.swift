@@ -465,8 +465,7 @@ class ReadingHabitsProfiler {
 
         // Group events by date (day granularity)
         var daySet = Set<String>()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+        let formatter = DateFormatting.isoDate
 
         var minDate = events[0].date
         var maxDate = events[0].date

@@ -211,11 +211,7 @@ class ReadingGoalsManager {
     
     // MARK: - Helpers
     
-    private static let iso8601DayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
+    private static let iso8601DayFormatter = DateFormatting.isoDate
 
     private func dateString(_ date: Date) -> String {
         return Self.iso8601DayFormatter.string(from: date)

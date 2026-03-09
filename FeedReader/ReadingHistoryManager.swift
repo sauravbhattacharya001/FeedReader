@@ -133,19 +133,9 @@ class ReadingHistoryManager {
 
     // MARK: - Cached Date Formatters
 
-    private static let mediumDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
+    private static let mediumDateFormatter = DateFormatting.mediumDate
 
-    private static let shortTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .none
-        f.timeStyle = .short
-        return f
-    }()
+    private static let shortTimeFormatter = DateFormatting.shortTime
     
     // MARK: - Singleton
     

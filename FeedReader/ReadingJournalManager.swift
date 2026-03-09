@@ -234,9 +234,7 @@ class ReadingJournalManager {
 
     private init() {
         self.entriesByDate = [:]
-        self.dateFormatter = DateFormatter()
-        self.dateFormatter.dateFormat = "yyyy-MM-dd"
-        self.dateFormatter.timeZone = TimeZone.current
+        self.dateFormatter = DateFormatting.isoDate
         loadEntries()
     }
 

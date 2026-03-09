@@ -198,23 +198,11 @@ class ReadingTimeBudgetManager {
 
     // MARK: - Cached Date Formatters
 
-    private static let dayOfWeekFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEEE"
-        return f
-    }()
+    private static let dayOfWeekFormatter = DateFormatting.fullWeekday
 
-    private static let shortMonthDayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMM d"
-        return f
-    }()
+    private static let shortMonthDayFormatter = DateFormatting.monthDay
 
-    private static let shortDayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE"
-        return f
-    }()
+    private static let shortDayFormatter = DateFormatting.shortWeekday
 
     // MARK: - Storage
 

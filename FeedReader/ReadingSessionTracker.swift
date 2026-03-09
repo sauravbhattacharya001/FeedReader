@@ -395,12 +395,7 @@ class ReadingSessionTracker {
         return try? encoder.encode(sessions)
     }
 
-    private static let mediumDateShortTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
+    private static let mediumDateShortTimeFormatter = DateFormatting.mediumDateTime
 
     /// Export session history as formatted text.
     func exportAsText() -> String {

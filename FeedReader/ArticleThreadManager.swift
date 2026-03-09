@@ -389,9 +389,7 @@ class ArticleThreadManager {
         md += "---\n\n"
 
         let calendar = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        let formatter = DateFormatting.mediumDateTime
 
         // Group by day
         var dayGroups: [Date: [ThreadEntry]] = [:]

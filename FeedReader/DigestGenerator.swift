@@ -239,19 +239,9 @@ class DigestGenerator {
     
     // MARK: - Date Formatting
     
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .none
-        return f
-    }()
+    private static let dateFormatter = DateFormatting.mediumDate
     
-    private static let dateTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
+    private static let dateTimeFormatter = DateFormatting.mediumDateTime
     
     // MARK: - Generation
     

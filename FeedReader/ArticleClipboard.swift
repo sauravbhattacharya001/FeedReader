@@ -21,18 +21,9 @@ class ClipboardSnippet {
 
     // MARK: - Cached Date Formatters
 
-    private static let mediumDateShortTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
+    private static let mediumDateShortTimeFormatter = DateFormatting.mediumDateTime
 
-    private static let mediumDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        return f
-    }()
+    private static let mediumDateFormatter = DateFormatting.mediumDate
     static var supportsSecureCoding: Bool { true }
 
     /// Unique identifier.

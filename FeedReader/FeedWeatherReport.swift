@@ -275,18 +275,9 @@ struct FeedWeatherReport: Codable {
         return parts.joined(separator: "\n")
     }
 
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
+    private static let dateFormatter = DateFormatting.mediumDateTime
 
-    private static let shortDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE"
-        return f
-    }()
+    private static let shortDateFormatter = DateFormatting.shortWeekday
 }
 
 // MARK: - Feed Weather Reporter

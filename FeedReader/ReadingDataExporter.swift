@@ -187,11 +187,7 @@ class ReadingDataExporter {
     /// a single collection with millions of link entries.
     static let maxArticleLinksPerCollection = 10_000
 
-    private static let iso8601DayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
+    private static let iso8601DayFormatter = DateFormatting.isoDate
     
     private let bookmarkManager: BookmarkManager
     private let highlightsManager: ArticleHighlightsManager

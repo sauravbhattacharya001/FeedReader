@@ -345,9 +345,7 @@ class ReadingInsightsGenerator {
 
     /// Export a report as a human-readable plain text summary.
     func exportAsText(_ report: InsightReport) -> String {
-        let df = DateFormatter()
-        df.dateStyle = .medium
-        df.timeStyle = .none
+        let df = DateFormatting.mediumDate
 
         var lines: [String] = []
         let title = report.period == .weekly ? "Weekly" : "Monthly"
@@ -549,8 +547,7 @@ class ReadingInsightsGenerator {
         let totalWords = events.reduce(0) { $0 + ($1.wordCount ?? avgWords) }
 
         // Daily counts for streak and busiest day
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
+        let df = DateFormatting.isoDate
         var dailyCounts: [String: Int] = [:]
         for e in events {
             let key = df.string(from: e.timestamp)
@@ -613,8 +610,7 @@ class ReadingInsightsGenerator {
     private func computeConsistency(_ events: [InsightReadEvent],
                                      start: Date, end: Date) -> Double {
         let cal = Calendar.current
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
+        let df = DateFormatting.isoDate
 
         var dailyCounts: [Int] = []
         var date = start

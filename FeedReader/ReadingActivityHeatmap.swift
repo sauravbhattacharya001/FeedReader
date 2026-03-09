@@ -110,8 +110,7 @@ struct HeatmapMonthSummary: Codable, Equatable {
     let peakCount: Int
 
     var monthLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
+        let formatter = DateFormatting.monthYear
         var components = DateComponents()
         components.year = year
         components.month = month
@@ -138,7 +137,7 @@ struct WeekdayDistribution: Codable, Equatable {
     let averagePerActiveDay: Double
 
     var weekdayLabel: String {
-        let formatter = DateFormatter()
+        let formatter = DateFormatting.shortWeekday
         return formatter.shortWeekdaySymbols[weekday - 1]
     }
 }
@@ -198,12 +197,7 @@ final class ReadingActivityHeatmap {
 
     private(set) var state: HeatmapState
     private let calendar = Calendar.current
-    private let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private let dateFormatter = DateFormatting.isoDate
 
     private var persistenceURL: URL? {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)

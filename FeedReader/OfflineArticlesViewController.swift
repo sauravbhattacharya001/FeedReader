@@ -11,12 +11,7 @@ import UIKit
 
 class OfflineArticlesViewController: UITableViewController {
 
-    private static let cellDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateStyle = .medium
-        f.timeStyle = .short
-        return f
-    }()
+    private static let cellDateFormatter = DateFormatting.mediumDateTime
 
     // MARK: - Properties
 
