@@ -351,7 +351,7 @@ class ReadingSpeedTracker {
             return SpeedBreakdown(
                 label: key,
                 sampleCount: values.count,
-                averageWPM: wpms.reduce(0, +) / Double(wpms.count),
+                averageWPM: wpms.isEmpty ? 0.0 : wpms.reduce(0, +) / Double(wpms.count),
                 minWPM: wpms.min() ?? 0,
                 maxWPM: wpms.max() ?? 0
             )
@@ -365,7 +365,7 @@ class ReadingSpeedTracker {
             return SpeedBreakdown(
                 label: key,
                 sampleCount: values.count,
-                averageWPM: wpms.reduce(0, +) / Double(wpms.count),
+                averageWPM: wpms.isEmpty ? 0.0 : wpms.reduce(0, +) / Double(wpms.count),
                 minWPM: wpms.min() ?? 0,
                 maxWPM: wpms.max() ?? 0
             )

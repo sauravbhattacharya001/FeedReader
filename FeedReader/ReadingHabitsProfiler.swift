@@ -596,7 +596,7 @@ class ReadingHabitsProfiler {
         let deepCount = (categories[SessionCategory.deepRead.rawValue] ?? 0) +
                         (categories[SessionCategory.marathon.rawValue] ?? 0)
 
-        if Double(quickCount) / Double(events.count) > 0.7 {
+        if !events.isEmpty && Double(quickCount) / Double(events.count) > 0.7 {
             recs.append(HabitRecommendation(
                 category: "Depth",
                 message: "Most of your sessions are quick scans. Try allocating one 20-minute deep reading block per day.",
@@ -604,7 +604,7 @@ class ReadingHabitsProfiler {
             ))
         }
 
-        if Double(deepCount) / Double(events.count) > 0.7 {
+        if !events.isEmpty && Double(deepCount) / Double(events.count) > 0.7 {
             recs.append(HabitRecommendation(
                 category: "Balance",
                 message: "You favor long sessions. Consider shorter check-ins during the day to catch breaking stories.",
@@ -616,7 +616,7 @@ class ReadingHabitsProfiler {
         let slotStats = computeTimeSlotDistribution()
         let lateNight = slotStats.first { $0.slot == .lateNight }
         if let late = lateNight, late.eventCount > 0,
-           Double(late.eventCount) / Double(events.count) > 0.3 {
+           !events.isEmpty && Double(late.eventCount) / Double(events.count) > 0.3 {
             recs.append(HabitRecommendation(
                 category: "Timing",
                 message: "You read a lot late at night (1-5am). Consider shifting to morning reading for better retention.",

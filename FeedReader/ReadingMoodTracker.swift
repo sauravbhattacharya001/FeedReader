@@ -274,7 +274,7 @@ final class ReadingMoodTracker {
         let byFeed = Dictionary(grouping: shifts.filter { $0.feedURL != nil }, by: { $0.feedURL! })
 
         return byFeed.map { (url, feedShifts) in
-            let avgDelta = Double(feedShifts.reduce(0) { $0 + $1.delta }) / Double(feedShifts.count)
+            let avgDelta = feedShifts.isEmpty ? 0.0 : Double(feedShifts.reduce(0) { $0 + $1.delta }) / Double(feedShifts.count)
             return FeedMoodImpact(
                 feedURL: url,
                 feedTitle: feedShifts.first?.feedTitle ?? url,
@@ -321,7 +321,7 @@ final class ReadingMoodTracker {
     func moodByTimeOfDay() -> [MoodTimePattern] {
         let byHour = Dictionary(grouping: entries) { calendar.component(.hour, from: $0.date) }
         return byHour.map { (hour, hourEntries) in
-            let avg = Double(hourEntries.reduce(0) { $0 + $1.mood.rawValue }) / Double(hourEntries.count)
+            let avg = hourEntries.isEmpty ? 0.0 : Double(hourEntries.reduce(0) { $0 + $1.mood.rawValue }) / Double(hourEntries.count)
             return MoodTimePattern(hour: hour, averageMood: avg, entryCount: hourEntries.count)
         }.sorted { $0.hour < $1.hour }
     }
@@ -330,7 +330,7 @@ final class ReadingMoodTracker {
     func moodByDayOfWeek() -> [MoodDayPattern] {
         let byDay = Dictionary(grouping: entries) { calendar.component(.weekday, from: $0.date) }
         return byDay.map { (day, dayEntries) in
-            let avg = Double(dayEntries.reduce(0) { $0 + $1.mood.rawValue }) / Double(dayEntries.count)
+            let avg = dayEntries.isEmpty ? 0.0 : Double(dayEntries.reduce(0) { $0 + $1.mood.rawValue }) / Double(dayEntries.count)
             return MoodDayPattern(weekday: day, averageMood: avg, entryCount: dayEntries.count)
         }.sorted { $0.weekday < $1.weekday }
     }

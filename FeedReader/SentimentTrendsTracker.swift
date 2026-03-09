@@ -493,7 +493,7 @@ class SentimentTrendsTracker {
     private func aggregate(_ group: [SentimentSample], label: String, start: Date) -> SentimentAggregate {
         let scores = group.map { $0.score }
         let sorted = scores.sorted()
-        let avg = scores.reduce(0, +) / Double(scores.count)
+        let avg = scores.isEmpty ? 0.0 : scores.reduce(0, +) / Double(scores.count)
         let median: Double
         if sorted.count % 2 == 0 {
             median = (sorted[sorted.count / 2 - 1] + sorted[sorted.count / 2]) / 2.0
@@ -512,7 +512,7 @@ class SentimentTrendsTracker {
             medianScore: median,
             minScore: sorted.first ?? 0,
             maxScore: sorted.last ?? 0,
-            positivityRatio: Double(group.filter { $0.score > 0 }.count) / Double(group.count),
+            positivityRatio: group.isEmpty ? 0.0 : Double(group.filter { $0.score > 0 }.count) / Double(group.count),
             dominantEmotion: dominant,
             articleCount: group.count
         )
@@ -521,7 +521,7 @@ class SentimentTrendsTracker {
     private func buildFeedProfile(feedName: String, feedSamples: [SentimentSample]) -> FeedSentimentProfile {
         let scores = feedSamples.map { $0.score }
         let sorted = scores.sorted()
-        let avg = scores.reduce(0, +) / Double(scores.count)
+        let avg = scores.isEmpty ? 0.0 : scores.reduce(0, +) / Double(scores.count)
         let median: Double
         if sorted.count % 2 == 0 {
             median = (sorted[sorted.count / 2 - 1] + sorted[sorted.count / 2]) / 2.0
@@ -532,7 +532,7 @@ class SentimentTrendsTracker {
         let emotionCounts = Dictionary(grouping: feedSamples, by: { $0.dominantEmotion })
         let dominant = emotionCounts.max(by: { $0.value.count < $1.value.count })?.key ?? "None"
 
-        let posRatio = Double(feedSamples.filter { $0.score > 0 }.count) / Double(feedSamples.count)
+        let posRatio = feedSamples.isEmpty ? 0.0 : Double(feedSamples.filter { $0.score > 0 }.count) / Double(feedSamples.count)
 
         let recent = Array(feedSamples.prefix(5))
         let recentAvg = recent.isEmpty ? nil : averageScore(recent)

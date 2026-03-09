@@ -277,7 +277,7 @@ class FeedUpdateScheduler {
             productiveChecks += schedule.checkHistory.filter { $0.newArticleCount > 0 }.count
         }
 
-        let avgInterval = totalIntervals / Double(schedules.count)
+        let avgInterval = schedules.isEmpty ? 0.0 : totalIntervals / Double(schedules.count)
         let efficiency = totalHistoryChecks > 0
             ? Double(productiveChecks) / Double(totalHistoryChecks)
             : 0
