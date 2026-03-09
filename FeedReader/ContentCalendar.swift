@@ -324,36 +324,36 @@ class ContentCalendar {
         // Check if inactive (very low rate over long period)
         if avgPerDay < 0.05 && totalDays > 30 { return .inactive }
         
-        // Multiple times daily
-        if avgPerDay >= 2.0 { return .multipleDaily }
-        
-        // Daily
-        if avgPerDay >= 0.8 { return .daily }
-        
-        // Check weekday/weekend patterns
+        // Check weekday/weekend patterns early — a feed publishing only on
+        // weekdays at ~1/day has avgPerDay ≈ 0.71 and would previously be
+        // misclassified as "daily" before reaching this check. We need
+        // enough history (>14 days) to detect the pattern reliably.
         let weekdayKeys: Set<Weekday> = [.monday, .tuesday, .wednesday, .thursday, .friday]
         let weekendKeys: Set<Weekday> = [.saturday, .sunday]
         
         let weekdayArticles = weekdayCounts.filter { weekdayKeys.contains($0.key) }.values.reduce(0, +)
         let weekendArticles = weekdayCounts.filter { weekendKeys.contains($0.key) }.values.reduce(0, +)
         
-        if weekdayArticles > 0 && weekendArticles == 0 && totalDays > 14 {
-            return .weekdays
+        if totalDays > 14 {
+            if weekdayArticles > 0 && weekendArticles == 0 {
+                return .weekdays
+            }
+            if weekendArticles > 0 && weekdayArticles == 0 {
+                return .weekends
+            }
         }
-        if weekendArticles > 0 && weekdayArticles == 0 && totalDays > 14 {
-            return .weekends
-        }
+        
+        // Multiple times daily
+        if avgPerDay >= 2.0 { return .multipleDaily }
+        
+        // Daily
+        if avgPerDay >= 0.8 { return .daily }
         
         // Weekly
         if avgPerDay >= 0.1 && avgPerDay < 0.3 { return .weekly }
         
         // Bi-weekly
         if avgPerDay >= 0.03 && avgPerDay < 0.1 { return .biweekly }
-        
-        // Weekdays (higher weekday ratio)
-        if totalDays > 14 && weekdayArticles > 0 && weekendArticles == 0 {
-            return .weekdays
-        }
         
         return .irregular
     }
