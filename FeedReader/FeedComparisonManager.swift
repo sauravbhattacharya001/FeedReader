@@ -269,23 +269,33 @@ class FeedComparisonManager {
     private func analyzeOverlap(a: FeedSnapshot, b: FeedSnapshot) -> OverlapAnalysis {
         let linksA = Set(a.articles.map { $0.link.lowercased() })
         let linksB = Set(b.articles.map { $0.link.lowercased() })
-        let exactMatches = linksA.intersection(linksB).count
+        let exactMatchLinks = linksA.intersection(linksB)
+        let exactMatches = exactMatchLinks.count
         
-        // Title similarity matching
+        // Build sets of indices already matched by URL so title matching
+        // doesn't double-count them.
+        let urlMatchedA = Set(a.articles.indices.filter {
+            exactMatchLinks.contains(a.articles[$0].link.lowercased())
+        })
+        let urlMatchedB = Set(b.articles.indices.filter {
+            exactMatchLinks.contains(b.articles[$0].link.lowercased())
+        })
+        
+        // Title similarity matching — skip articles already matched by URL
         var titleMatches = 0
         var matchedPairs: [(String, String)] = []
-        var matchedB = Set<Int>()
+        var matchedB = urlMatchedB // start with URL-matched B indices excluded
         
-        for articleA in a.articles {
-            for (idx, articleB) in b.articles.enumerated() {
-                guard !matchedB.contains(idx) else { continue }
-                if articleA.link.lowercased() == articleB.link.lowercased() { continue }
+        for (idxA, articleA) in a.articles.enumerated() {
+            guard !urlMatchedA.contains(idxA) else { continue }
+            for (idxB, articleB) in b.articles.enumerated() {
+                guard !matchedB.contains(idxB) else { continue }
                 
                 let similarity = titleSimilarity(articleA.normalizedTitle, articleB.normalizedTitle)
                 if similarity > 0.8 {
                     titleMatches += 1
                     matchedPairs.append((articleA.title, articleB.title))
-                    matchedB.insert(idx)
+                    matchedB.insert(idxB)
                     break
                 }
             }
@@ -295,12 +305,18 @@ class FeedComparisonManager {
         let minCount = min(a.articleCount, b.articleCount)
         let overlapRatio = minCount > 0 ? Double(totalOverlap) / Double(minCount) : 0.0
         
+        // Unique counts: total articles minus those matched (by URL or title).
+        // Each feed's matched count is bounded by totalOverlap but also by
+        // the feed's own article count, so unique is always >= 0.
+        let matchedInA = urlMatchedA.count + (titleMatches)  // A articles consumed
+        let matchedInB = matchedB.count                       // B articles consumed (URL + title)
+        
         return OverlapAnalysis(
             exactMatches: exactMatches,
             titleMatches: titleMatches,
             overlapRatio: min(overlapRatio, 1.0),
-            uniqueToA: a.articleCount - totalOverlap,
-            uniqueToB: b.articleCount - totalOverlap,
+            uniqueToA: max(0, a.articleCount - matchedInA),
+            uniqueToB: max(0, b.articleCount - matchedInB),
             matchedPairs: matchedPairs
         )
     }
