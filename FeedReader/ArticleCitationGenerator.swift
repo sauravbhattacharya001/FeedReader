@@ -163,12 +163,7 @@ class ArticleCitationGenerator {
 
     // MARK: - Date Formatters
 
-    private let yearFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private let yearFormatter = DateFormatting.yearOnly
 
     private let apaDateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -198,12 +193,7 @@ class ArticleCitationGenerator {
         return f
     }()
 
-    private let bibtexDateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private let bibtexDateFormatter = DateFormatting.isoDate
 
     // MARK: - Public API
 

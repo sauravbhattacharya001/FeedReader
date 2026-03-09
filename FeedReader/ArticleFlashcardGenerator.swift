@@ -869,12 +869,7 @@ class ArticleFlashcardGenerator {
         return sentences
     }
 
-    private static let iso8601DayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.timeZone = TimeZone.current
-        return f
-    }()
+    private static let iso8601DayFormatter = DateFormatting.isoDate
 
     private func formatDate(_ date: Date) -> String {
         return Self.iso8601DayFormatter.string(from: date)

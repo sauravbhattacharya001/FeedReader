@@ -270,12 +270,7 @@ class ReadingChallengeManager {
     )
 
     /// Date formatter for day strings.
-    private let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private let dayFormatter = DateFormatting.isoDate
 
     // MARK: - Templates
 

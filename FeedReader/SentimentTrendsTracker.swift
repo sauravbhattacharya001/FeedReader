@@ -161,26 +161,11 @@ class SentimentTrendsTracker {
 
     // MARK: - Date Formatters (Cached)
 
-    private static let dayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static let dayFormatter = DateFormatting.isoDate
 
-    private static let weekFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-'W'ww"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static let weekFormatter = DateFormatting.yearWeek
 
-    private static let monthFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static let monthFormatter = DateFormatting.yearMonth
 
     // MARK: - State
 

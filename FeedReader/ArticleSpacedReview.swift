@@ -583,10 +583,7 @@ class ArticleSpacedReview {
     // MARK: - Helpers
 
     private static func dateString(from date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone.current
-        return formatter.string(from: date)
+        return DateFormatting.isoDate.string(from: date)
     }
 
     // MARK: - Persistence

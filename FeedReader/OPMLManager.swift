@@ -45,19 +45,9 @@ class OPMLManager {
 
     // MARK: - Cached Date Formatters
 
-    private static let rfc822Formatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss Z"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static let rfc822Formatter = DateFormatting.rfc2822
 
-    private static let iso8601DayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "yyyy-MM-dd"
-        f.locale = Locale(identifier: "en_US_POSIX")
-        return f
-    }()
+    private static let iso8601DayFormatter = DateFormatting.isoDate
     
     // MARK: - Singleton
     
