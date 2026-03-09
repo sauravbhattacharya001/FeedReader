@@ -76,10 +76,10 @@ enum FeedGrade: String, CaseIterable, Comparable {
     }
 }
 
-// MARK: - FeedHealthStatus
+// MARK: - FeedActivityStatus
 
 /// Whether a feed appears active, slowing down, or dead.
-enum FeedHealthStatus: String {
+enum FeedActivityStatus: String {
     case active     = "Active"
     case slowing    = "Slowing Down"
     case stale      = "Stale"
@@ -103,7 +103,7 @@ struct PublishingMetrics: Equatable {
     /// Longest gap between articles in hours.
     let longestGapHours: Double
     /// Health status based on recency and frequency.
-    let healthStatus: FeedHealthStatus
+    let healthStatus: FeedActivityStatus
 }
 
 // MARK: - ContentQualityMetrics
@@ -436,7 +436,7 @@ class FeedPerformanceAnalyzer {
         // Consistency: 1.0 = perfectly consistent, 0.0 = wildly inconsistent
         let consistency = mean > 0 ? max(0, 1.0 - stdDev / mean) : 0
 
-        let healthStatus: FeedHealthStatus
+        let healthStatus: FeedActivityStatus
         switch daysSinceLast {
         case 0...3:   healthStatus = .active
         case 4...14:  healthStatus = .slowing
