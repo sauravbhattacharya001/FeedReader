@@ -625,13 +625,25 @@ class ReadingJournalManager {
     // MARK: - Statistics
 
     /// Overall journal statistics.
+    ///
+    /// Single-pass aggregation: accumulates all counters in one loop
+    /// instead of 5 separate reduce/filter passes over the entries array.
     func statistics() -> JournalStatistics {
         let entries = allEntries
-        let totalArticles = entries.reduce(0) { $0 + $1.articleCount }
-        let totalTime = entries.reduce(0.0) { $0 + $1.totalReadingTime }
-        let totalHighlights = entries.reduce(0) { $0 + $1.highlights.count }
-        let totalNotes = entries.reduce(0) { $0 + $1.notes.count }
-        let reflections = entries.filter { $0.reflection != nil }.count
+        var totalArticles = 0
+        var totalTime = 0.0
+        var totalHighlights = 0
+        var totalNotes = 0
+        var reflections = 0
+
+        for entry in entries {
+            totalArticles += entry.articleCount
+            totalTime += entry.totalReadingTime
+            totalHighlights += entry.highlights.count
+            totalNotes += entry.notes.count
+            if entry.reflection != nil { reflections += 1 }
+        }
+
         let avgArticlesPerDay = entries.isEmpty ? 0.0 : Double(totalArticles) / Double(entries.count)
 
         return JournalStatistics(
@@ -683,10 +695,16 @@ class ReadingJournalManager {
         self.entriesByDate = dict
     }
 
+    /// Enforce the maximum entry count by removing the oldest entries.
+    ///
+    /// Uses O(n) min() lookup instead of O(n log n) sorted().first,
+    /// avoiding unnecessary full sorts on every eviction.
     private func enforceCapacity() {
         while entriesByDate.count > ReadingJournalManager.maxEntries {
-            if let oldest = entriesByDate.keys.sorted().first {
+            if let oldest = entriesByDate.keys.min() {
                 entriesByDate.removeValue(forKey: oldest)
+            } else {
+                break
             }
         }
     }

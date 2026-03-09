@@ -392,7 +392,7 @@ class ArticleSpacedReview {
         let total = reviews.count
         let retention = total > 0 ? Double(easyCount + goodCount) / Double(total) : 0
         let avgQuality = total > 0
-            ? Double(reviews.map { $0.quality.rawValue }.reduce(0, +)) / Double(total)
+            ? Double(reviews.reduce(0) { $0 + $1.quality.rawValue }) / Double(total)
             : 0
 
         let stats = ReviewSessionStats(
@@ -417,49 +417,55 @@ class ArticleSpacedReview {
     // MARK: - Statistics
 
     /// Get aggregate review statistics.
+    ///
+    /// Single-pass aggregation: collects review totals, mastered/flagged
+    /// counts, feed histogram, interval sum, and latest review date in
+    /// one loop instead of 4+ separate reduce/filter/flatMap passes.
     func getStats(at date: Date = Date()) -> ReviewStats {
         let allItems = Array(items.values)
-        let totalReviews = allItems.reduce(0) { $0 + $1.reviewCount }
-        let totalSuccesses = allItems.reduce(0) { $0 + $1.successCount }
+        var totalReviews = 0
+        var totalSuccesses = 0
+        var masteredCount = 0
+        var flaggedCount = 0
+        var totalIntervalDays = 0.0
+        var feedCounts: [String: Int] = [:]
+        var latestReviewDate: Date? = nil
+
+        for item in allItems {
+            totalReviews += item.reviewCount
+            totalSuccesses += item.successCount
+            if item.isMastered { masteredCount += 1 }
+            if item.isFlagged { flaggedCount += 1 }
+            totalIntervalDays += Self.intervalSchedule[item.intervalLevel]
+            feedCounts[item.feedName, default: 0] += 1
+
+            // Track latest review date across all history
+            if let last = item.reviewHistory.max(by: { $0.date < $1.date })?.date {
+                if latestReviewDate == nil || last > latestReviewDate! {
+                    latestReviewDate = last
+                }
+            }
+        }
+
         let retention = totalReviews > 0
             ? Double(totalSuccesses) / Double(totalReviews)
             : 0
-
-        // Average interval
-        let avgInterval: Double
-        if allItems.isEmpty {
-            avgInterval = 0
-        } else {
-            let totalIntervalDays = allItems.reduce(0.0) { acc, item in
-                acc + Self.intervalSchedule[item.intervalLevel]
-            }
-            avgInterval = totalIntervalDays / Double(allItems.count)
-        }
-
-        // Items by feed
-        var feedCounts: [String: Int] = [:]
-        for item in allItems {
-            feedCounts[item.feedName, default: 0] += 1
-        }
+        let avgInterval = allItems.isEmpty ? 0.0
+            : totalIntervalDays / Double(allItems.count)
         let itemsByFeed = feedCounts.sorted { $0.value > $1.value }
             .map { (name: $0.key, count: $0.value) }
 
-        // Last review date
-        let lastReview = allItems
-            .flatMap { $0.reviewHistory }
-            .max { $0.date < $1.date }?.date
-
         return ReviewStats(
             totalItems: allItems.count,
-            masteredItems: allItems.filter { $0.isMastered }.count,
+            masteredItems: masteredCount,
             dueItems: dueCount(at: date),
-            flaggedItems: allItems.filter { $0.isFlagged }.count,
+            flaggedItems: flaggedCount,
             totalReviews: totalReviews,
             overallRetentionRate: retention,
             currentStreak: currentStreak(at: date),
             longestStreak: longestStreak,
             averageInterval: avgInterval,
-            lastReviewDate: lastReview,
+            lastReviewDate: latestReviewDate,
             itemsByFeed: itemsByFeed
         )
     }
