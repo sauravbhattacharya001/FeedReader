@@ -17,6 +17,7 @@ enum DateFormatting {
     static let isoDate: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
@@ -61,6 +62,7 @@ enum DateFormatting {
     static let yearMonth: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
@@ -68,6 +70,7 @@ enum DateFormatting {
     static let yearWeek: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy-'W'ww"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 
@@ -114,6 +117,7 @@ enum DateFormatting {
     static let yearOnly: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "yyyy"
+        f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
 

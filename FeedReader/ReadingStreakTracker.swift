@@ -110,6 +110,7 @@ class ReadingStreakTracker {
         self.calendar = cal
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
+        fmt.locale = Locale(identifier: "en_US_POSIX")
         fmt.calendar = cal
         self.iso8601DayFormatter = fmt
         loadRecords()

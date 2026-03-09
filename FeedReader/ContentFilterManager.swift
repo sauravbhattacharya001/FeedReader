@@ -342,7 +342,8 @@ class ContentFilterManager {
             // Give new ID to avoid collisions
             let newFilter = ContentFilter(id: UUID().uuidString, keyword: filter.keyword,
                                           isActive: filter.isActive, matchScope: filter.matchScope,
-                                          matchMode: filter.matchMode)
+                                          matchMode: filter.matchMode,
+                                          createdAt: filter.createdAt, mutedCount: filter.mutedCount)
             if let f = newFilter {
                 if addFilter(f) {
                     result.added += 1
