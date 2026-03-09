@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning &amp; Study - FeedReader</title>
+    <meta name="description" content="Learning and study tools in FeedReader: flashcards, quizzes, spaced repetition, article threading, and version tracking.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="smart-features.html">Smart Features</a></li>
+            <li><a href="content-management.html">Content Management</a></li>
+            <li><a href="reading-analytics.html">Reading Analytics</a></li>
+            <li><a href="learning-study.html" class="active">Learning &amp; Study</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<main class="docs-content">
+    <header class="page-header">
+        <h1>📚 Learning &amp; Study</h1>
+        <p class="subtitle">Turn articles into active learning material with flashcards, quizzes, spaced repetition, and more.</p>
+    </header>
+
+    <!-- Flashcard Generator -->
+    <section id="flashcards" class="feature-section">
+        <h2>🃏 Flashcard Generator</h2>
+        <p class="module-meta"><code>ArticleFlashcardGenerator</code> &mdash; 791 lines</p>
+        <p>Automatically extracts key terms, definitions, and concepts from articles and turns them into study flashcards.</p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>Auto-extraction</strong> &mdash; Identifies key terms and their definitions from article content using NLP heuristics</li>
+            <li><strong>Deck management</strong> &mdash; Organize flashcards into named decks by topic, feed, or custom grouping</li>
+            <li><strong>Difficulty rating</strong> &mdash; Cards are rated by difficulty based on term complexity and context</li>
+            <li><strong>Spaced repetition scheduling</strong> &mdash; Integrates with the spaced review system for optimal retention</li>
+            <li><strong>Manual creation</strong> &mdash; Create custom flashcards from any article passage</li>
+            <li><strong>Export</strong> &mdash; Export decks for use in external flashcard apps</li>
+        </ul>
+
+        <h3>API Overview</h3>
+        <div class="code-block">
+<pre><code>let generator = ArticleFlashcardGenerator.shared
+
+// Generate flashcards from an article
+let cards = generator.generateFlashcards(from: article)
+
+// Create a deck
+generator.createDeck(name: "AI Concepts")
+generator.addCards(cards, toDeck: "AI Concepts")
+
+// Study mode
+let dueCards = generator.getDueCards(deck: "AI Concepts")
+generator.markCard(card, difficulty: .medium)</code></pre>
+        </div>
+    </section>
+
+    <!-- Quiz Generator -->
+    <section id="quizzes" class="feature-section">
+        <h2>❓ Quiz Generator</h2>
+        <p class="module-meta"><code>ArticleQuizGenerator</code> &mdash; 653 lines</p>
+        <p>Generates comprehension quizzes from article content to test understanding and retention.</p>
+
+        <h3>Question Types</h3>
+        <ul>
+            <li><strong>Multiple choice</strong> &mdash; 4-option questions generated from article facts</li>
+            <li><strong>True/false</strong> &mdash; Statement verification based on article claims</li>
+            <li><strong>Fill-in-the-blank</strong> &mdash; Key terms removed from sentences for recall testing</li>
+        </ul>
+
+        <h3>Features</h3>
+        <ul>
+            <li><strong>Difficulty calibration</strong> &mdash; Adjusts question complexity based on article readability and user performance</li>
+            <li><strong>Score tracking</strong> &mdash; Tracks quiz scores over time with per-topic breakdowns</li>
+            <li><strong>Distractor generation</strong> &mdash; Creates plausible wrong answers from related content</li>
+            <li><strong>Quiz history</strong> &mdash; Review past quizzes and retry missed questions</li>
+        </ul>
+
+        <h3>API Overview</h3>
+        <div class="code-block">
+<pre><code>let quizGen = ArticleQuizGenerator.shared
+
+// Generate a quiz from an article
+let quiz = quizGen.generateQuiz(from: article, questionCount: 5)
+
+// Access questions
+for question in quiz.questions {
+    print(question.text)       // "What protocol does RSS use?"
+    print(question.options)    // ["HTTP", "FTP", "SMTP", "WebSocket"]
+    print(question.answer)     // 0 (index of correct answer)
+}
+
+// Submit answers and get score
+let result = quizGen.submitQuiz(quiz, answers: userAnswers)
+print(result.score)           // 0.8 (80%)
+print(result.missed)          // [QuizQuestion] — wrong answers</code></pre>
+        </div>
+    </section>
+
+    <!-- Spaced Review -->
+    <section id="spaced-review" class="feature-section">
+        <h2>🔄 Spaced Repetition Review</h2>
+        <p class="module-meta"><code>ArticleSpacedReview</code> &mdash; 525 lines</p>
+        <p>SM-2 algorithm implementation for scheduling article reviews at optimal intervals to maximize long-term retention.</p>
+
+        <h3>How It Works</h3>
+        <ol>
+            <li>Articles are added to the review queue when read</li>
+            <li>The SM-2 algorithm calculates the next review date based on your recall quality</li>
+            <li>Easy articles get longer intervals; difficult ones are shown sooner</li>
+            <li>Over time, intervals grow from days to weeks to months</li>
+        </ol>
+
+        <h3>Review Parameters</h3>
+        <table class="params-table">
+            <thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>easeFactor</code></td><td>Multiplier for interval growth (starts at 2.5, adjusts per review)</td></tr>
+                <tr><td><code>interval</code></td><td>Days until next review (starts at 1)</td></tr>
+                <tr><td><code>repetition</code></td><td>Number of successful reviews</td></tr>
+                <tr><td><code>quality</code></td><td>Self-rated recall quality (0–5 scale)</td></tr>
+            </tbody>
+        </table>
+
+        <h3>API Overview</h3>
+        <div class="code-block">
+<pre><code>let reviewer = ArticleSpacedReview.shared
+
+// Add article to review queue
+reviewer.addForReview(articleLink: article.link)
+
+// Get articles due for review today
+let dueArticles = reviewer.getDueItems()
+
+// Record a review (quality: 0=forgot, 3=hard, 5=easy)
+reviewer.recordReview(articleLink: article.link, quality: 4)
+
+// Check next review date
+let nextDate = reviewer.getNextReviewDate(for: article.link)</code></pre>
+        </div>
+    </section>
+
+    <!-- Article Threading -->
+    <section id="article-threads" class="feature-section">
+        <h2>🔗 Article Threading</h2>
+        <p class="module-meta"><code>ArticleThreadManager</code> &mdash; 375 lines</p>
+        <p>Link related articles into narrative threads to follow developing stories over time.</p>
+
+        <h3>Features</h3>
+        <ul>
+            <li><strong>Manual threading</strong> &mdash; Link articles together to form story arcs</li>
+            <li><strong>Chronological ordering</strong> &mdash; Threads are automatically sorted by publication date</li>
+            <li><strong>Thread navigation</strong> &mdash; Move forward/backward through a story timeline</li>
+            <li><strong>Thread metadata</strong> &mdash; Title, description, and tag support for each thread</li>
+            <li><strong>Cross-feed threads</strong> &mdash; Connect articles from different sources covering the same story</li>
+        </ul>
+
+        <h3>API Overview</h3>
+        <div class="code-block">
+<pre><code>let threads = ArticleThreadManager.shared
+
+// Create a story thread
+let threadId = threads.createThread(title: "AI Regulation Updates")
+
+// Add articles to the thread
+threads.addEntry(articleLink: article1.link, toThread: threadId)
+threads.addEntry(articleLink: article2.link, toThread: threadId)
+
+// Navigate the thread
+let entries = threads.getEntries(forThread: threadId)
+// Returns chronologically ordered ThreadEntry objects</code></pre>
+        </div>
+    </section>
+
+    <!-- Version Tracking -->
+    <section id="version-tracking" class="feature-section">
+        <h2>📝 Article Version Tracking</h2>
+        <p class="module-meta"><code>ArticleVersionTracker</code> &mdash; 610 lines</p>
+        <p>Detects and tracks changes to articles over time — useful for following corrections, updates, and evolving stories.</p>
+
+        <h3>Features</h3>
+        <ul>
+            <li><strong>Automatic snapshots</strong> &mdash; Content is captured when you first read an article</li>
+            <li><strong>Change detection</strong> &mdash; Compares current content against stored snapshots to find updates</li>
+            <li><strong>Diff generation</strong> &mdash; Line-by-line diff showing additions, removals, and modifications</li>
+            <li><strong>Version history</strong> &mdash; Browse all captured versions of an article</li>
+            <li><strong>Update alerts</strong> &mdash; Notification when a tracked article changes</li>
+        </ul>
+
+        <h3>API Overview</h3>
+        <div class="code-block">
+<pre><code>let tracker = ArticleVersionTracker.shared
+
+// Snapshot current article state
+tracker.captureSnapshot(link: article.link,
+                        title: article.title,
+                        content: article.body)
+
+// Check for changes
+let versions = tracker.getVersions(for: article.link)
+if versions.count > 1 {
+    let diff = tracker.diffVersions(
+        old: versions[0], new: versions[1])
+    print(diff.additions)    // New content added
+    print(diff.removals)     // Content removed
+}</code></pre>
+        </div>
+    </section>
+
+    <!-- Integration diagram -->
+    <section id="integration" class="feature-section">
+        <h2>🧩 How They Work Together</h2>
+        <p>The learning modules integrate with each other and the rest of FeedReader:</p>
+
+        <div class="code-block">
+<pre><code>Article Read
+    │
+    ├── ArticleFlashcardGenerator → Extracts key terms → Flashcard decks
+    │                                                         │
+    ├── ArticleQuizGenerator ──── → Generates quiz ─────── Score tracking
+    │                                                         │
+    ├── ArticleSpacedReview ───── → Schedules review ──── Due date queue
+    │                                                         │
+    ├── ArticleVersionTracker ─── → Captures snapshot ─── Change alerts
+    │
+    └── ArticleThreadManager ──── → Links to thread ───── Story timeline</code></pre>
+        </div>
+
+        <h3>Combined Workflow</h3>
+        <ol>
+            <li><strong>Read</strong> an article — version tracker captures a snapshot</li>
+            <li><strong>Generate</strong> flashcards and a quiz from the content</li>
+            <li><strong>Add</strong> the article to a story thread if it's part of an ongoing narrative</li>
+            <li><strong>Schedule</strong> spaced repetition reviews for long-term retention</li>
+            <li><strong>Track</strong> quiz scores and review performance over time</li>
+        </ol>
+    </section>
+</main>
+
+<footer>
+    <div class="footer-inner">
+        <p>FeedReader &copy; 2025 Saurav Bhattacharya &mdash; <a href="https://github.com/sauravbhattacharya001/FeedReader">View on GitHub</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
