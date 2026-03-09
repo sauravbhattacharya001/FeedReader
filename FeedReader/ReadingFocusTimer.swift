@@ -147,8 +147,10 @@ struct DailyFocusSummary: Codable, Equatable {
     }
 
     /// Number of completed (full duration) sessions.
+    /// Uses reduce instead of filter+count to avoid allocating a
+    /// temporary array just for counting.
     var completedSessions: Int {
-        sessions.filter(\.completed).count
+        sessions.reduce(0) { $0 + ($1.completed ? 1 : 0) }
     }
 
     /// Total articles read across all sessions.
@@ -230,8 +232,9 @@ class ReadingFocusTimer {
     }
 
     /// Number of completed sessions in history.
+    /// Avoids temporary array allocation from filter — counts in-place.
     var totalCompletedSessions: Int {
-        sessions.filter(\.completed).count
+        sessions.reduce(0) { $0 + ($1.completed ? 1 : 0) }
     }
 
     // MARK: - Init

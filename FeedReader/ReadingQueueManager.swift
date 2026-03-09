@@ -218,13 +218,21 @@ class ReadingQueueManager {
     }
 
     /// Remove all completed items from the queue.
+    ///
+    /// Single-pass removal: partitions items in-place and updates the
+    /// link index in the same loop, instead of filtering twice.
     func clearCompleted() -> Int {
         let before = items.count
-        let completedLinks = items.filter({ $0.isCompleted }).map({ $0.articleLink })
-        items.removeAll(where: { $0.isCompleted })
-        for link in completedLinks {
-            linkIndex.remove(link)
+        var kept: [QueueItem] = []
+        kept.reserveCapacity(items.count)
+        for item in items {
+            if item.isCompleted {
+                linkIndex.remove(item.articleLink)
+            } else {
+                kept.append(item)
+            }
         }
+        items = kept
         let removed = before - items.count
         if removed > 0 {
             save()
@@ -358,27 +366,41 @@ class ReadingQueueManager {
     // MARK: - Statistics
 
     /// Generate queue statistics summary.
+    ///
+    /// Single-pass aggregation: collects pending/completed counts,
+    /// reading time totals, priority histogram, and oldest pending date
+    /// in one iteration instead of 5+ separate filter/reduce passes.
     func stats() -> QueueStats {
-        let pending = items.filter { !$0.isCompleted }
-        let completed = items.filter { $0.isCompleted }
-
-        let totalMinutes = items.reduce(0.0) { $0 + $1.estimatedReadingTimeMinutes }
-        let pendingMinutes = pending.reduce(0.0) { $0 + $1.estimatedReadingTimeMinutes }
-
+        var pendingCount = 0
+        var completedCount = 0
+        var totalMinutes = 0.0
+        var pendingMinutes = 0.0
         var byPriority: [Priority: Int] = [:]
-        for p in Priority.allCases {
-            byPriority[p] = items.filter({ $0.priority == p }).count
+        var oldestPending: Date? = nil
+
+        for item in items {
+            totalMinutes += item.estimatedReadingTimeMinutes
+            byPriority[item.priority, default: 0] += 1
+
+            if item.isCompleted {
+                completedCount += 1
+            } else {
+                pendingCount += 1
+                pendingMinutes += item.estimatedReadingTimeMinutes
+                if oldestPending == nil || item.addedDate < oldestPending! {
+                    oldestPending = item.addedDate
+                }
+            }
         }
 
         let completionRate = items.isEmpty ? 0.0
-            : Double(completed.count) / Double(items.count) * 100.0
+            : Double(completedCount) / Double(items.count) * 100.0
         let avgTime = items.isEmpty ? 0.0 : totalMinutes / Double(items.count)
-        let oldestPending = pending.min(by: { $0.addedDate < $1.addedDate })?.addedDate
 
         return QueueStats(
             totalItems: items.count,
-            pendingItems: pending.count,
-            completedItems: completed.count,
+            pendingItems: pendingCount,
+            completedItems: completedCount,
             totalEstimatedMinutes: totalMinutes,
             pendingEstimatedMinutes: pendingMinutes,
             completionRate: completionRate,

@@ -103,6 +103,66 @@ final class RSSStoryTests: XCTestCase {
         let b = RSSStory(title: "A", body: "Body", link: "https://x.com/2")
         XCTAssertNotEqual(a, b)
     }
+
+    // MARK: - HTML Entity Edge Cases
+
+    func testStripHTMLDecodesNumericEntities() {
+        // &#169; = ©, &#8212; = —
+        XCTAssertEqual(RSSStory.stripHTML("Copyright &#169; 2026"), "Copyright © 2026")
+        XCTAssertEqual(RSSStory.stripHTML("dash&#8212;here"), "dash—here")
+    }
+
+    func testStripHTMLDecodesHexEntities() {
+        // &#x41; = A, &#x2764; = ❤
+        XCTAssertEqual(RSSStory.stripHTML("&#x41;BC"), "ABC")
+        XCTAssertEqual(RSSStory.stripHTML("love &#x2764;"), "love ❤")
+    }
+
+    func testStripHTMLHandlesNestedTags() {
+        XCTAssertEqual(
+            RSSStory.stripHTML("<div><p>Nested <em>emphasis</em></p></div>"),
+            "Nested emphasis"
+        )
+    }
+
+    func testStripHTMLHandlesNbsp() {
+        XCTAssertEqual(RSSStory.stripHTML("word&nbsp;word"), "word word")
+    }
+
+    func testStripHTMLHandlesQuotEntities() {
+        XCTAssertEqual(
+            RSSStory.stripHTML("He said &quot;hello&quot; and she said &#39;hi&#39;"),
+            "He said \"hello\" and she said 'hi'"
+        )
+    }
+
+    func testStripHTMLPreservesUnknownAmpersand() {
+        // Unknown entity: & should be preserved as-is
+        XCTAssertEqual(RSSStory.stripHTML("AT&T"), "AT&T")
+    }
+
+    func testStripHTMLHandlesMalformedNumericRef() {
+        // &#abc; is not a valid numeric ref — should pass through
+        let result = RSSStory.stripHTML("&#abc;test")
+        XCTAssertTrue(result.contains("test"))
+    }
+
+    // MARK: - URL Edge Cases
+
+    func testIsSafeURLRejectsFTP() {
+        XCTAssertFalse(RSSStory.isSafeURL("ftp://example.com/file.txt"))
+    }
+
+    func testStoryRejectsHTMLOnlyBody() {
+        // Body that's only HTML tags → strips to empty → should reject
+        let story = RSSStory(title: "Title", body: "<br/><p></p>", link: "https://example.com")
+        XCTAssertNil(story)
+    }
+
+    func testStoryWithHTTPLink() {
+        let story = RSSStory(title: "T", body: "B", link: "http://example.com")
+        XCTAssertNotNil(story)
+    }
 }
 
 final class FeedItemTests: XCTestCase {
@@ -133,6 +193,37 @@ final class FeedItemTests: XCTestCase {
     func testPresetsNotEmpty() {
         XCTAssertFalse(FeedItem.presets.isEmpty)
         XCTAssertGreaterThanOrEqual(FeedItem.presets.count, 5)
+    }
+
+    func testFeedItemNSCodingRoundTrip() throws {
+        let original = FeedItem(name: "Coded Feed", url: "https://example.com/coded", isEnabled: true)
+        let data = try NSKeyedArchiver.archivedData(withRootObject: original, requiringSecureCoding: true)
+        let decoded = try NSKeyedUnarchiver.unarchivedObject(ofClass: FeedItem.self, from: data)
+        XCTAssertNotNil(decoded)
+        XCTAssertEqual(decoded?.name, "Coded Feed")
+        XCTAssertEqual(decoded?.url, "https://example.com/coded")
+        XCTAssertTrue(decoded?.isEnabled ?? false)
+    }
+
+    func testFeedItemInequalityDifferentURL() {
+        let a = FeedItem(name: "Same", url: "https://a.com/feed")
+        let b = FeedItem(name: "Same", url: "https://b.com/feed")
+        XCTAssertNotEqual(a, b)
+    }
+
+    func testFeedItemIdentifierCaseInsensitive() {
+        let a = FeedItem(name: "A", url: "HTTPS://EXAMPLE.COM/Feed")
+        let b = FeedItem(name: "B", url: "https://example.com/feed")
+        XCTAssertEqual(a, b)
+    }
+
+    func testPresetsAllHaveHTTPS() {
+        for preset in FeedItem.presets {
+            XCTAssertTrue(
+                preset.url.hasPrefix("https://"),
+                "Preset '\(preset.name)' should use HTTPS but has URL: \(preset.url)"
+            )
+        }
     }
 }
 
@@ -410,5 +501,113 @@ final class RSSParserTests: XCTestCase {
         let stories = parser.parseData(xml)
         XCTAssertEqual(stories.count, 1)
         XCTAssertEqual(stories[0].link, "https://example.com/fallback-guid")
+    }
+
+    // MARK: - Malformed / Edge Case XML
+
+    func testMalformedXMLReturnsEmpty() {
+        let xml = "this is not xml at all".data(using: .utf8)!
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertTrue(stories.isEmpty)
+    }
+
+    func testItemWithHTMLInDescription() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>HTML Body</title>
+            <description>&lt;p&gt;Paragraph&lt;/p&gt; &amp; more</description>
+            <link>https://example.com/html-body</link>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        // The body should have HTML stripped and entities decoded
+        XCTAssertEqual(stories[0].body, "Paragraph & more")
+    }
+
+    func testItemMissingTitleIsSkipped() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <description>No title here</description>
+            <link>https://example.com/no-title</link>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        // RSSStory init returns nil for empty title
+        XCTAssertTrue(stories.isEmpty)
+    }
+
+    func testItemMissingDescriptionIsSkipped() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>No Description</title>
+            <link>https://example.com/no-desc</link>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertTrue(stories.isEmpty)
+    }
+
+    func testEnclosureImageExtraction() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item>
+            <title>Enclosure Image</title>
+            <description>Has enclosure</description>
+            <link>https://example.com/enc</link>
+            <enclosure url="https://cdn.example.com/podcast.mp3" type="audio/mpeg"/>
+          </item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].imagePath, "https://cdn.example.com/podcast.mp3")
+    }
+
+    func testMultipleItemsPreserveOrder() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+        <channel>
+          <item><title>First</title><description>D1</description><link>https://example.com/1</link></item>
+          <item><title>Second</title><description>D2</description><link>https://example.com/2</link></item>
+          <item><title>Third</title><description>D3</description><link>https://example.com/3</link></item>
+        </channel>
+        </rss>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 3)
+        XCTAssertEqual(stories[0].title, "First")
+        XCTAssertEqual(stories[1].title, "Second")
+        XCTAssertEqual(stories[2].title, "Third")
     }
 }
