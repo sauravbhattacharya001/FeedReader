@@ -119,6 +119,9 @@ class ArticleRecommendationEngine {
         /// Feed name → normalized preference score (0.0–1.0).
         let feedScores: [String: Double]
         
+        /// Feed name → number of articles read from that feed.
+        let feedArticleCounts: [String: Int]
+        
         /// Keyword → normalized affinity score (0.0–1.0).
         let keywordScores: [String: Double]
         
@@ -282,6 +285,7 @@ class ArticleRecommendationEngine {
         
         let profile = ReadingProfile(
             feedScores: feedScores,
+            feedArticleCounts: feedCounts,
             keywordScores: keywordScores,
             feedRevisitRates: feedRevisitRates,
             revisitKeywords: revisitKeywordSet
@@ -305,7 +309,7 @@ class ArticleRecommendationEngine {
         let feedScore = profile.feedScores[feedName] ?? 0.0
         if feedScore > 0 {
             totalScore += feedScore * options.feedWeight
-            let readCount = Int(feedScore * Double(profile.feedScores.count))
+            let readCount = profile.feedArticleCounts[feedName] ?? 1
             reasons.append(.preferredFeed(feedName: feedName, readCount: max(readCount, 1)))
         }
         
