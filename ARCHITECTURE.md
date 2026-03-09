@@ -66,7 +66,7 @@ Feed source configuration (`Feed.swift`, 100 lines):
 | **ImageCache** | 267 | NSCache + disk cache with SHA256 key hashing. Async loading, 4-connection concurrency limit, CGImageSource downsampling for memory efficiency. |
 | **Reachability** | 46 | Network reachability check via SCNetworkReachability. |
 
-## Content Analysis (10 modules, ~3,900 lines)
+## Content Analysis (15 modules, ~6,430 lines)
 
 | Module | Lines | Purpose |
 |--------|-------|---------|
@@ -80,8 +80,13 @@ Feed source configuration (`Feed.swift`, 100 lines):
 | **ArticleRecommendationEngine** | 359 | Weighted scoring: reading history (0.3) + bookmarks (0.3) + keywords (0.2) + recency (0.2). Feed diversity bonus. |
 | **ArticleTagManager** | 462 | Auto-tagging via keyword extraction + manual tags. Tag statistics, merge, search, trending tags. UserDefaults persistence. |
 | **FeedPerformanceAnalyzer** | 812 | Per-feed report cards: publishing frequency, content quality (readability + substance + diversity), engagement, freshness. Composite scoring with configurable weights. |
+| **ArticleCitationGenerator** | 749 | Multi-format academic citation (APA, MLA, Chicago, Harvard, IEEE, Vancouver, BibTeX). Author name parsing with suffix/initial handling. Batch export and bibliography generation. |
+| **ArticleCrossReferenceEngine** | 663 | Named entity extraction (people, orgs, places, topics) and cross-article relationship mapping. Co-occurrence tracking, article graph building, relationship strength scoring. |
+| **TopicClassifier** | 575 | Keyword-based topic classification across predefined categories. Confidence scoring, multi-label assignment, topic hierarchy support. |
+| **SentimentTrendsTracker** | 542 | Longitudinal sentiment analysis across feeds over time. Per-feed/per-topic sentiment trajectories, shift detection, moving averages. |
+| **ArticleClipboard** | 504 | Snippet extraction and management. Save highlighted passages with source attribution, tagging, search, and multi-format export. |
 
-## User Experience (13 modules, ~4,500 lines)
+## User Experience (25 modules, ~11,860 lines)
 
 | Module | Lines | Purpose |
 |--------|-------|---------|
@@ -98,8 +103,20 @@ Feed source configuration (`Feed.swift`, 100 lines):
 | **SmartFeedManager** | 287 | Saved keyword-based searches across all feeds. ANY/ALL match modes, title/body/both scopes. |
 | **ShareManager** | 517 | Multi-format article sharing (plain text, Markdown, HTML, social, email). Single and digest modes. Share history tracking. |
 | **DigestGenerator** | 580 | Personal newsletter generation from reading history. Configurable time windows, grouping by feed, 3 output formats. |
+| **ReadingAchievementsManager** | 530 | Gamified achievement system with predefined milestones (article counts, streaks, categories). Unlock tracking, progress percentages, and achievement history. |
+| **ReadingActivityHeatmap** | 495 | GitHub-style contribution heatmap for reading activity. Daily cell grid with intensity levels, streak visualization, and date range navigation. |
+| **ReadingChallengeManager** | 686 | Community-style reading challenges (daily, weekly, monthly). Progress tracking, difficulty tiers, challenge history, and completion certificates. |
+| **ReadingDataExporter** | 965 | Comprehensive data export (JSON, CSV, Markdown, HTML). Export reading history, bookmarks, notes, collections, stats. GDPR-compliant full data export. |
+| **ReadingFocusTimer** | 592 | Pomodoro-style focus timer for reading sessions. Configurable presets (15/25/45/60 min), break reminders, session logging, and distraction tracking. |
+| **ReadingHabitsProfiler** | 624 | Behavioral analysis of reading patterns. Identifies preferred reading times, session durations, topic preferences, and generates personalized habit reports. |
+| **ReadingInsightsGenerator** | 619 | AI-style insight generation from reading data. Detects patterns, generates natural-language summaries of reading behavior, and suggests improvements. |
+| **ReadingJournalManager** | 629 | Personal reading journal with timestamped entries tied to articles. NSSecureCoding persistence, search, mood tagging, and reflection prompts. |
+| **ReadingMoodTracker** | 395 | Track emotional state before/after reading sessions. Mood history, correlation with article topics, and sentiment alignment analysis. |
+| **ReadingSessionTracker** | 406 | Detailed per-session tracking: articles read, time spent, scroll depth, interruptions. Session comparison and productivity scoring. |
+| **ReadingSpeedTracker** | 434 | Words-per-minute tracking with calibration. Speed samples over time, improvement trends, and per-category speed breakdowns. |
+| **ReadingTimeBudget** | 584 | Daily/weekly time budgets for reading. Budget allocation by category, overspend alerts, rollover rules, and budget-vs-actual reports. |
 
-## Feed Management (5 modules, ~1,600 lines)
+## Feed Management (12 modules, ~5,450 lines)
 
 | Module | Lines | Purpose |
 |--------|-------|---------|
@@ -109,6 +126,23 @@ Feed source configuration (`Feed.swift`, 100 lines):
 | **OPMLManager** | 290 | OPML import/export for feed lists. Standard RSS reader interoperability. |
 | **OfflineCacheManager** | 380 | Article content caching for offline reading. Per-article storage, cache size management, expiry. |
 | **FeedHealthManager** | 590 | Feed reliability monitoring: success/failure tracking, error categorization, health scores, stale feed detection. |
+| **FeedAutomationEngine** | 812 | Rule-based feed automation with conditions and actions. Auto-bookmark, auto-tag, auto-archive based on keyword/source/sentiment triggers. Condition combinators (AND/OR). |
+| **FeedComparisonManager** | 423 | Side-by-side feed comparison: publishing frequency, content overlap, quality scores, topic distribution. Generates comparison reports and recommendations. |
+| **FeedMergeManager** | 344 | Merge multiple feeds into unified virtual feeds. Deduplication across sources, configurable merge strategies, and merged feed persistence. |
+| **FeedPrivacyGuard** | 840 | Privacy threat detection in feed content: tracking pixels, fingerprinting scripts, third-party cookies, beacon URLs. Threat severity scoring and content sanitization. |
+| **FeedSubscriptionAnalyzer** | 641 | Subscription lifecycle analytics: when feeds were added/removed, engagement trends per feed, churn prediction, and ROI scoring (value vs. time spent). |
+| **FeedWeatherReport** | 538 | Metaphorical "weather report" for feed health: activity temperature, content freshness barometer, engagement forecast, and trend indicators. |
+| **ContentCalendar** | 551 | Calendar view of article publication patterns. Tracks publishing cadence per feed, identifies gaps, predicts next publish times, and highlights peak content days. |
+
+## Learning & Study (5 modules, ~2,954 lines)
+
+| Module | Lines | Purpose |
+|--------|-------|---------|
+| **ArticleFlashcardGenerator** | 791 | Generate flashcards from article content. Auto-extraction of key terms and definitions, spaced repetition scheduling, difficulty rating, and deck management. |
+| **ArticleQuizGenerator** | 653 | Auto-generate quizzes from article content. Multiple question types (multiple choice, true/false, fill-in-blank). Difficulty calibration and score tracking. |
+| **ArticleSpacedReview** | 525 | SM-2 spaced repetition algorithm for article review scheduling. Tracks ease factor, interval, and repetition count per article. Due date calculation and review queue. |
+| **ArticleThreadManager** | 375 | Thread articles into narrative sequences. Link related articles chronologically, track story arcs, and navigate article threads as connected timelines. |
+| **ArticleVersionTracker** | 610 | Track changes to articles over time. Snapshot content at read time, detect updates/corrections, diff generation, and version history browsing. |
 
 ## View Controllers (7 files, ~2,400 lines)
 
@@ -145,7 +179,7 @@ Modules communicate via **NotificationCenter** (99 post calls across codebase). 
 
 ## Testing
 
-**51 source files** (~16,000 lines) with **41 test files** (~16,000 lines of tests).
+**85 source files** (~33,000 lines) with **41 test files** (~16,000 lines of tests).
 
 All managers use a testable architecture:
 - Public `init()` (not private) for test isolation
@@ -154,7 +188,7 @@ All managers use a testable architecture:
 
 ## Codebase Statistics
 
-- **Total source**: ~16,000 lines across 51 Swift files
+- **Total source**: ~33,000 lines across 85 Swift files
 - **Total tests**: ~16,000 lines across 41 test files
 - **Singletons**: 28 shared instances
 - **Largest module**: FeedPerformanceAnalyzer (812 lines)
