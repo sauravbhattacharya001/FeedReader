@@ -179,6 +179,38 @@ final class URLValidatorTests: XCTestCase {
         XCTAssertFalse(URLValidator.isSafe("http://203.0.113.1/"))
     }
 
+    // MARK: - SSRF: addresses outside test-net /24 ranges are allowed
+
+    func testNonTestNet1Allowed() {
+        // 192.0.1.1 is NOT in 192.0.2.0/24 — should be allowed
+        XCTAssertTrue(URLValidator.isSafe("http://192.0.1.1/path"))
+    }
+
+    func testNonTestNet1OtherSubnetAllowed() {
+        // 192.0.3.1 is NOT in 192.0.2.0/24
+        XCTAssertTrue(URLValidator.isSafe("http://192.0.3.1/"))
+    }
+
+    func testNonTestNet2Allowed() {
+        // 198.51.99.1 is NOT in 198.51.100.0/24
+        XCTAssertTrue(URLValidator.isSafe("http://198.51.99.1/"))
+    }
+
+    func testNonTestNet2OtherSubnetAllowed() {
+        // 198.51.101.1 is NOT in 198.51.100.0/24
+        XCTAssertTrue(URLValidator.isSafe("http://198.51.101.1/"))
+    }
+
+    func testNonTestNet3Allowed() {
+        // 203.0.112.1 is NOT in 203.0.113.0/24
+        XCTAssertTrue(URLValidator.isSafe("http://203.0.112.1/"))
+    }
+
+    func testNonTestNet3OtherSubnetAllowed() {
+        // 203.0.114.1 is NOT in 203.0.113.0/24
+        XCTAssertTrue(URLValidator.isSafe("http://203.0.114.1/"))
+    }
+
     // MARK: - validateFeedURL
 
     func testValidateFeedURLPublic() {
