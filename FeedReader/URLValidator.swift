@@ -122,7 +122,7 @@ enum URLValidator {
 
     /// Check if an IPv4 address string falls in a private/reserved range.
     private static func isPrivateIPv4(_ ip: String) -> Bool {
-        guard let (a, b, _, _) = parseIPv4(ip) else { return false }
+        guard let (a, b, c, _) = parseIPv4(ip) else { return false }
 
         // 127.0.0.0/8 — Loopback
         if a == 127 { return true }
@@ -139,11 +139,11 @@ enum URLValidator {
         // 0.0.0.0/8 — "This" network
         if a == 0 { return true }
         // 192.0.2.0/24 — TEST-NET-1
-        if a == 192 && b == 0 { return true }
+        if a == 192 && b == 0 && c == 2 { return true }
         // 198.51.100.0/24 — TEST-NET-2
-        if a == 198 && b == 51 { return true }
+        if a == 198 && b == 51 && c == 100 { return true }
         // 203.0.113.0/24 — TEST-NET-3
-        if a == 203 && b == 0 { return true }
+        if a == 203 && b == 0 && c == 113 { return true }
         // 255.255.255.255 — Broadcast
         if a == 255 { return true }
 
