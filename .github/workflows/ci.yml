@@ -62,7 +62,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             SWIFT_TREAT_WARNINGS_AS_ERRORS=NO \
-            | xcpretty || true
+            | xcpretty
 
       - name: Run tests with code coverage
         run: |
@@ -76,7 +76,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             -resultBundlePath TestResults \
-            | xcpretty || true
+            | xcpretty
 
       - name: Extract code coverage report
         if: always()
@@ -205,7 +205,7 @@ jobs:
 
       - name: Run SPM tests with coverage
         run: |
-          swift test --enable-code-coverage 2>&1 || true
+          swift test --enable-code-coverage 2>&1
 
       - name: Extract SPM coverage
         run: |
