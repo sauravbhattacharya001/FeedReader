@@ -431,14 +431,17 @@ class ReadingJournalManager {
             checkDate = calendar.date(byAdding: .day, value: 1, to: checkDate)!
         }
 
-        let totalArticles = entries.reduce(0) { $0 + $1.articleCount }
-        let totalTime = entries.reduce(0.0) { $0 + $1.totalReadingTime }
-        let totalHighlights = entries.reduce(0) { $0 + $1.highlights.count }
-        let totalNotes = entries.reduce(0) { $0 + $1.notes.count }
-
-        // Most-read feeds
+        // Single-pass accumulation (was 4 separate reduce passes + feed loop)
+        var totalArticles = 0
+        var totalTime = 0.0
+        var totalHighlights = 0
+        var totalNotes = 0
         var feedCounts: [String: Int] = [:]
         for entry in entries {
+            totalArticles += entry.articleCount
+            totalTime += entry.totalReadingTime
+            totalHighlights += entry.highlights.count
+            totalNotes += entry.notes.count
             for article in entry.articlesRead {
                 feedCounts[article.feedName, default: 0] += 1
             }
@@ -478,16 +481,20 @@ class ReadingJournalManager {
             }
         }
 
-        let totalArticles = entries.reduce(0) { $0 + $1.articleCount }
-        let totalTime = entries.reduce(0.0) { $0 + $1.totalReadingTime }
-        let avgArticlesPerDay = entries.isEmpty ? 0.0 : Double(totalArticles) / Double(entries.count)
-
+        // Single-pass accumulation (was 2 reduce passes + feed loop + filter)
+        var totalArticles = 0
+        var totalTime = 0.0
+        var reflectionCount = 0
         var feedCounts: [String: Int] = [:]
         for entry in entries {
+            totalArticles += entry.articleCount
+            totalTime += entry.totalReadingTime
+            if entry.reflection != nil { reflectionCount += 1 }
             for article in entry.articlesRead {
                 feedCounts[article.feedName, default: 0] += 1
             }
         }
+        let avgArticlesPerDay = entries.isEmpty ? 0.0 : Double(totalArticles) / Double(entries.count)
         let topFeeds = feedCounts.sorted { $0.value > $1.value }.prefix(5).map { $0.key }
 
         return MonthlySummary(
@@ -499,7 +506,7 @@ class ReadingJournalManager {
             totalReadingTime: totalTime,
             averageArticlesPerDay: avgArticlesPerDay,
             topFeeds: Array(topFeeds),
-            reflectionCount: entries.filter { $0.reflection != nil }.count,
+            reflectionCount: reflectionCount,
             moods: entries.compactMap { $0.moodTag }
         )
     }
@@ -627,11 +634,19 @@ class ReadingJournalManager {
     /// Overall journal statistics.
     func statistics() -> JournalStatistics {
         let entries = allEntries
-        let totalArticles = entries.reduce(0) { $0 + $1.articleCount }
-        let totalTime = entries.reduce(0.0) { $0 + $1.totalReadingTime }
-        let totalHighlights = entries.reduce(0) { $0 + $1.highlights.count }
-        let totalNotes = entries.reduce(0) { $0 + $1.notes.count }
-        let reflections = entries.filter { $0.reflection != nil }.count
+        // Single-pass accumulation (was 4 reduce passes + 1 filter pass)
+        var totalArticles = 0
+        var totalTime = 0.0
+        var totalHighlights = 0
+        var totalNotes = 0
+        var reflections = 0
+        for entry in entries {
+            totalArticles += entry.articleCount
+            totalTime += entry.totalReadingTime
+            totalHighlights += entry.highlights.count
+            totalNotes += entry.notes.count
+            if entry.reflection != nil { reflections += 1 }
+        }
         let avgArticlesPerDay = entries.isEmpty ? 0.0 : Double(totalArticles) / Double(entries.count)
 
         return JournalStatistics(
@@ -685,7 +700,7 @@ class ReadingJournalManager {
 
     private func enforceCapacity() {
         while entriesByDate.count > ReadingJournalManager.maxEntries {
-            if let oldest = entriesByDate.keys.sorted().first {
+            if let oldest = entriesByDate.keys.min() {
                 entriesByDate.removeValue(forKey: oldest)
             }
         }
