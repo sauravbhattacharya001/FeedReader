@@ -652,6 +652,7 @@ class ArticleVersionTracker {
         let union = a.union(b)
         guard !union.isEmpty else { return 1.0 }
         let intersection = a.intersection(b)
+        guard !union.isEmpty else { return 0.0 }
         return Double(intersection.count) / Double(union.count)
     }
 

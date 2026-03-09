@@ -627,7 +627,7 @@ class ReadingInsightsGenerator {
 
         guard dailyCounts.count > 1, dailyCounts.reduce(0, +) > 0 else { return 0 }
 
-        let mean = Double(dailyCounts.reduce(0, +)) / Double(dailyCounts.count)
+        let mean = dailyCounts.isEmpty ? 0.0 : Double(dailyCounts.reduce(0, +)) / Double(dailyCounts.count)
         let variance = dailyCounts.reduce(0.0) { $0 + pow(Double($1) - mean, 2) }
             / Double(dailyCounts.count)
         let cv = mean > 0 ? sqrt(variance) / mean : 0  // coefficient of variation

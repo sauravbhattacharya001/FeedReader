@@ -376,7 +376,7 @@ class FeedPerformanceAnalyzer {
             lines.append("")
         }
 
-        let avgScore = sorted.reduce(0.0) { $0 + $1.compositeScore } / Double(sorted.count)
+        let avgScore = sorted.isEmpty ? 0.0 : sorted.reduce(0.0) { $0 + $1.compositeScore } / Double(sorted.count)
         lines.append("Overall: \(sorted.count) feeds, average score \(String(format: "%.0f", avgScore))/100")
 
         let stale = sorted.filter { $0.publishing.healthStatus == .dead || $0.publishing.healthStatus == .stale }
@@ -501,11 +501,11 @@ class FeedPerformanceAnalyzer {
             }
         }
 
-        let avgReadability = readabilityScores.reduce(0, +) / Double(readabilityScores.count)
-        let avgWordCount = Double(wordCounts.reduce(0, +)) / Double(wordCounts.count)
+        let avgReadability = readabilityScores.isEmpty ? 0.0 : readabilityScores.reduce(0, +) / Double(readabilityScores.count)
+        let avgWordCount = wordCounts.isEmpty ? 0.0 : Double(wordCounts.reduce(0, +)) / Double(wordCounts.count)
         let sortedWC = wordCounts.sorted()
         let medianWC = sortedWC[sortedWC.count / 2]
-        let substantive = Double(wordCounts.filter { $0 > 100 }.count) / Double(wordCounts.count)
+        let substantive = wordCounts.isEmpty ? 0.0 : Double(wordCounts.filter { $0 > 100 }.count) / Double(wordCounts.count)
 
         let topKW = keywordFreq
             .sorted { $0.value > $1.value }
@@ -548,12 +548,12 @@ class FeedPerformanceAnalyzer {
             scores.append(score)
         }
 
-        let avg = scores.reduce(0, +) / Double(scores.count)
-        let positive = Double(scores.filter { $0 > 0.1 }.count) / Double(scores.count)
-        let negative = Double(scores.filter { $0 < -0.1 }.count) / Double(scores.count)
+        let avg = scores.isEmpty ? 0.0 : scores.reduce(0, +) / Double(scores.count)
+        let positive = scores.isEmpty ? 0.0 : Double(scores.filter { $0 > 0.1 }.count) / Double(scores.count)
+        let negative = scores.isEmpty ? 0.0 : Double(scores.filter { $0 < -0.1 }.count) / Double(scores.count)
         let neutral = 1.0 - positive - negative
 
-        let variance = scores.reduce(0.0) { $0 + pow($1 - avg, 2) } / Double(scores.count)
+        let variance = scores.isEmpty ? 0.0 : scores.reduce(0.0) { $0 + pow($1 - avg, 2) } / Double(scores.count)
         let volatility = sqrt(variance)
 
         let tone: String
@@ -600,7 +600,7 @@ class FeedPerformanceAnalyzer {
         let readFromFeed = feedLinks.intersection(readLinks)
         let bookmarkedFromFeed = feedLinks.intersection(bookmarkedLinks)
 
-        let readRate = Double(readFromFeed.count) / Double(articles.count)
+        let readRate = articles.isEmpty ? 0.0 : Double(readFromFeed.count) / Double(articles.count)
 
         // Estimate average read lag (proxy: time from publish to now / 2)
         // Real implementation would track actual read timestamps

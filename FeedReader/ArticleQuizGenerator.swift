@@ -704,7 +704,7 @@ final class ArticleQuizGenerator {
             totalQuizzesTaken: completed.count,
             totalQuestionsAnswered: totalAnswers,
             totalCorrect: totalCorrect,
-            averageScore: scores.reduce(0, +) / Double(scores.count),
+            averageScore: scores.isEmpty ? 0.0 : scores.reduce(0, +) / Double(scores.count),
             bestScore: scores.max() ?? 0.0,
             worstScore: scores.min() ?? 0.0,
             quizzesByArticle: byArticle,

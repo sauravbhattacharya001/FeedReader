@@ -291,7 +291,7 @@ class FeedHealthManager {
                 failureRecords.append(record)
             }
         }
-        let successRate = Double(successRecords.count) / Double(feedRecords.count)
+        let successRate = feedRecords.isEmpty ? 0.0 : Double(successRecords.count) / Double(feedRecords.count)
         
         // Response time statistics (from successful fetches only)
         let responseTimes = successRecords.map { $0.responseTimeMs }
