@@ -151,10 +151,11 @@ class OfflineCacheManager {
 
     /// Remove a story from the offline cache.
     func removeFromCache(_ story: Story) {
-        if let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) {
-            let removed = cachedArticles.remove(at: idx)
-            _totalSizeBytes -= removed.estimatedSizeBytes
+        guard let idx = cachedArticles.firstIndex(where: { $0.story.link == story.link }) else {
+            return
         }
+        let removed = cachedArticles.remove(at: idx)
+        _totalSizeBytes -= removed.estimatedSizeBytes
         cacheIndex.remove(story.link)
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
