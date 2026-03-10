@@ -289,7 +289,7 @@ class OfflineCacheManager {
         guard !cachedArticles.isEmpty else { return }
         let removed = cachedArticles.removeLast()
         cacheIndex.remove(removed.story.link)
-        _totalSizeBytes -= removed.estimatedSizeBytes
+        _totalSizeBytes = max(0, _totalSizeBytes - removed.estimatedSizeBytes)
     }
 
     // MARK: - Persistence
