@@ -502,8 +502,10 @@ class ArticleReadLaterReminder {
         return count
     }
 
-    /// Auto-escalate items that have been pending longer than 2× their priority's
-    /// default interval without being read. Returns count of escalated items.
+    /// Auto-escalate items that have been pending longer than the cumulative
+    /// escalation threshold for their current priority level. Uses the sum of
+    /// 2× each prior level's interval to prevent over-escalation in a single
+    /// call (see bug: age-from-savedAt would skip multiple levels at once).
     @discardableResult
     func autoEscalate(at now: Date = Date()) -> Int {
         var count = 0
@@ -511,7 +513,10 @@ class ArticleReadLaterReminder {
             guard items[idx].status == .pending || items[idx].status == .snoozed,
                   let next = items[idx].priority.escalated else { continue }
             let age = now.timeIntervalSince(items[idx].savedAt)
-            let threshold = items[idx].priority.defaultInterval * 2
+            // Cumulative threshold: sum of 2× each level's interval up to
+            // and including the current level. This ensures an item must age
+            // through each level's window before escalating to the next.
+            let threshold = cumulativeEscalationThreshold(for: items[idx].priority)
             if age > threshold {
                 items[idx].priority = next
                 count += 1
@@ -519,6 +524,18 @@ class ArticleReadLaterReminder {
         }
         if count > 0 { save() }
         return count
+    }
+
+    /// Calculates the cumulative time an item must have been saved before
+    /// it can escalate past the given priority level. Each level requires
+    /// 2× its default interval on top of all prior levels.
+    private func cumulativeEscalationThreshold(for priority: ReminderPriority) -> TimeInterval {
+        var total: TimeInterval = 0
+        for p in ReminderPriority.allCases {
+            total += p.defaultInterval * 2
+            if p == priority { break }
+        }
+        return total
     }
 
     // MARK: - Statistics
