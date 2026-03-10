@@ -663,6 +663,10 @@ class ReadingTimeBudgetManager {
 
     /// Import state from JSON string.
     func importJSON(_ json: String) -> Bool {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        guard json.utf8.count <= 10_485_760 else { return }
+
         guard let data = json.data(using: .utf8),
               let decoded = try? JSONDecoder().decode(PersistenceData.self, from: data) else { return false }
         self.config = decoded.config

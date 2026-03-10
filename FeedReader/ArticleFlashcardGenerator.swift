@@ -629,6 +629,10 @@ class ArticleFlashcardGenerator {
 
     /// Import data from JSON.
     func importJSON(_ json: String) -> Bool {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        guard json.utf8.count <= 10_485_760 else { return false }
+
         guard let jsonData = json.data(using: .utf8) else { return false }
         let decoder = JSONCoding.iso8601Decoder
         guard let data = try? decoder.decode(PersistenceData.self, from: jsonData) else { return false }
