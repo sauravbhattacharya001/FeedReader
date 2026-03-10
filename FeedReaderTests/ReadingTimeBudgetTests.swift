@@ -395,4 +395,68 @@ class ReadingTimeBudgetTests: XCTestCase {
     func testAverageDailyMinutesZeroDays() {
         XCTAssertEqual(manager.averageDailyMinutes(lastDays: 0), 0)
     }
+
+    // MARK: - Entry Cap Tests (Issue #55)
+
+    func testEntryCapEvictsOldest() {
+        let small = TimeBudgetConfig(dailyMinutes: 30, weeklyMinutes: 150, wordsPerMinute: 200, includeWeekends: true, maxEntries: 5)
+        let mgr = ReadingTimeBudgetManager(config: small, calendar: calendar)
+
+        // Log 8 entries — oldest 3 should be evicted
+        let now = Date()
+        for i in 0..<8 {
+            let d = calendar.date(byAdding: .hour, value: -i, to: now)!
+            mgr.logEntry(date: d, durationSeconds: 60, articleTitle: "Article \(i)")
+        }
+
+        XCTAssertEqual(mgr.entryCount, 5, "Should cap at 5 entries")
+        // Most recent entries should survive (entries are sorted by date, suffix kept)
+        let all = mgr.allEntries()
+        XCTAssertTrue(all.allSatisfy { $0.articleTitle != nil })
+    }
+
+    func testEntryCapZeroMeansUnlimited() {
+        let unlimited = TimeBudgetConfig(dailyMinutes: 30, weeklyMinutes: 150, wordsPerMinute: 200, includeWeekends: true, maxEntries: 0)
+        let mgr = ReadingTimeBudgetManager(config: unlimited, calendar: calendar)
+
+        for i in 0..<20 {
+            mgr.logEntry(date: Date(), durationSeconds: 60, articleTitle: "A\(i)")
+        }
+        XCTAssertEqual(mgr.entryCount, 20, "maxEntries=0 should not evict")
+    }
+
+    func testPruneEntriesRemovesOld() {
+        let now = Date()
+        let old1 = calendar.date(byAdding: .day, value: -100, to: now)!
+        let old2 = calendar.date(byAdding: .day, value: -91, to: now)!
+        let recent = calendar.date(byAdding: .day, value: -5, to: now)!
+        let cutoff = calendar.date(byAdding: .day, value: -90, to: now)!
+
+        manager.logEntry(date: old1, durationSeconds: 600, articleTitle: "Old1")
+        manager.logEntry(date: old2, durationSeconds: 600, articleTitle: "Old2")
+        manager.logEntry(date: recent, durationSeconds: 600, articleTitle: "Recent")
+
+        let removed = manager.pruneEntries(olderThan: cutoff)
+        XCTAssertEqual(removed, 2, "Should remove 2 entries older than 90 days")
+        XCTAssertEqual(manager.entryCount, 1, "Should keep 1 recent entry")
+        XCTAssertEqual(manager.allEntries().first?.articleTitle, "Recent")
+    }
+
+    func testPruneEntriesReturnsZeroWhenNothingToRemove() {
+        manager.logEntry(date: Date(), durationSeconds: 600)
+        let cutoff = calendar.date(byAdding: .day, value: -90, to: Date())!
+        let removed = manager.pruneEntries(olderThan: cutoff)
+        XCTAssertEqual(removed, 0)
+    }
+
+    func testMaxEntriesConfigValidation() {
+        let bad = TimeBudgetConfig(dailyMinutes: 30, weeklyMinutes: 150, wordsPerMinute: 200, includeWeekends: true, maxEntries: -1)
+        XCTAssertFalse(bad.isValid, "Negative maxEntries should be invalid")
+    }
+
+    func testDefaultConfigMaxEntries() {
+        let cfg = TimeBudgetConfig.default
+        XCTAssertEqual(cfg.maxEntries, 10_000)
+    }
+
 }

@@ -41,17 +41,32 @@ struct TimeBudgetConfig: Codable, Equatable {
     var wordsPerMinute: Int
     /// Whether to count weekends toward weekly budget. Default true.
     var includeWeekends: Bool
+    /// Maximum entries to keep in memory. 0 = unlimited. Default 10_000.
+    /// When the cap is exceeded, the oldest entries are evicted (FIFO).
+    var maxEntries: Int = 10_000
 
     static let `default` = TimeBudgetConfig(
         dailyMinutes: 30,
         weeklyMinutes: 150,
         wordsPerMinute: 238,
-        includeWeekends: true
+        includeWeekends: true,
+        maxEntries: 10_000
     )
+
+    /// Custom decoder to handle existing JSON without maxEntries field.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        dailyMinutes = try container.decode(Int.self, forKey: .dailyMinutes)
+        weeklyMinutes = try container.decode(Int.self, forKey: .weeklyMinutes)
+        wordsPerMinute = try container.decode(Int.self, forKey: .wordsPerMinute)
+        includeWeekends = try container.decode(Bool.self, forKey: .includeWeekends)
+        maxEntries = try container.decodeIfPresent(Int.self, forKey: .maxEntries) ?? 10_000
+    }
 
     /// Validates that the config has sensible values.
     var isValid: Bool {
         return dailyMinutes >= 0 && weeklyMinutes >= 0 && wordsPerMinute > 0
+            && maxEntries >= 0
     }
 }
 
@@ -588,6 +603,33 @@ class ReadingTimeBudgetManager {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: - Entry Management
+
+    /// Remove entries older than the given date.
+    /// Returns the number of entries removed.
+    @discardableResult
+    func pruneEntries(olderThan cutoffDate: Date) -> Int {
+        let before = entries.count
+        entries.removeAll { $0.date < cutoffDate }
+        let removed = before - entries.count
+        if removed > 0 { save() }
+        return removed
+    }
+
+    /// Enforce the entry cap by evicting the oldest entries (FIFO).
+    /// Called automatically on save() when maxEntries > 0.
+    private func enforceEntryCap() {
+        guard config.maxEntries > 0, entries.count > config.maxEntries else { return }
+        // Sort by date to ensure oldest are removed first
+        entries.sort { $0.date < $1.date }
+        entries = Array(entries.suffix(config.maxEntries))
+    }
+
+    /// Number of entries currently stored.
+    var entryCount: Int {
+        return entries.count
+    }
+
     // MARK: - Persistence
 
     private struct PersistenceData: Codable {
@@ -596,6 +638,7 @@ class ReadingTimeBudgetManager {
     }
 
     private func save() {
+        enforceEntryCap()
         guard let path = persistencePath else { return }
         let data = PersistenceData(config: config, entries: entries)
         if let encoded = try? JSONEncoder().encode(data) {
