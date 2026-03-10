@@ -295,12 +295,17 @@ class FeedComparisonManager {
         let minCount = min(a.articleCount, b.articleCount)
         let overlapRatio = minCount > 0 ? Double(totalOverlap) / Double(minCount) : 0.0
         
+        // Each overlapping article consumes one article from each feed,
+        // so unique counts should never go below zero.
+        let uniqueA = max(0, a.articleCount - totalOverlap)
+        let uniqueB = max(0, b.articleCount - totalOverlap)
+        
         return OverlapAnalysis(
             exactMatches: exactMatches,
             titleMatches: titleMatches,
             overlapRatio: min(overlapRatio, 1.0),
-            uniqueToA: a.articleCount - totalOverlap,
-            uniqueToB: b.articleCount - totalOverlap,
+            uniqueToA: uniqueA,
+            uniqueToB: uniqueB,
             matchedPairs: matchedPairs
         )
     }
