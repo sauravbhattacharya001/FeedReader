@@ -327,7 +327,7 @@ class ContentFilterManager {
     func importFilters(json: String) -> ImportResult {
         // Size guard: reject input larger than 10 MB to prevent OOM
         // on adversarial or accidentally huge payloads (CWE-400).
-        guard json.utf8.count <= 10_485_760 else { return }
+        guard json.utf8.count <= 10_485_760 else { return ImportResult(added: 0, skipped: 0, errors: 1) }
 
         var result = ImportResult(added: 0, skipped: 0, errors: 0)
         

@@ -460,7 +460,7 @@ class SentimentTrendsTracker {
     func importJSON(_ json: String) -> Int {
         // Size guard: reject input larger than 10 MB to prevent OOM
         // on adversarial or accidentally huge payloads (CWE-400).
-        guard json.utf8.count <= 10_485_760 else { return }
+        guard json.utf8.count <= 10_485_760 else { return 0 }
 
         guard let data = json.data(using: .utf8),
               let imported = try? JSONDecoder().decode([SentimentSample].self, from: data) else {

@@ -730,7 +730,7 @@ class ReadingChallengeManager {
     func importJSON(_ jsonString: String) -> Int {
         // Size guard: reject input larger than 10 MB to prevent OOM
         // on adversarial or accidentally huge payloads (CWE-400).
-        guard jsonString.utf8.count <= 10_485_760 else { return }
+        guard jsonString.utf8.count <= 10_485_760 else { return 0 }
 
         let decoder = JSONCoding.iso8601Decoder
         guard let data = jsonString.data(using: .utf8),
