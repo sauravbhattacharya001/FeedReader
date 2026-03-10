@@ -660,6 +660,10 @@ class FeedAutomationEngine {
     /// Import rules from a JSON string.
     @discardableResult
     func importRules(from jsonString: String, replace: Bool = false) -> Int {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        guard jsonString.utf8.count <= 10_485_760 else { return }
+
         guard let data = jsonString.data(using: .utf8) else { return 0 }
         return importRules(from: data, replace: replace)
     }

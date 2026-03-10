@@ -178,6 +178,10 @@ class OPMLManager {
     ///   - enableAll: Whether to enable all imported feeds (default: true).
     /// - Returns: Import result with counts.
     func importFromString(_ opmlString: String, enableAll: Bool = true) -> OPMLImportResult {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        guard opmlString.utf8.count <= 10_485_760 else { return OPMLImportResult(imported: [], duplicates: [], skipped: 0) }
+
         let outlines = parseOPML(opmlString)
         return importOutlines(outlines, enableAll: enableAll)
     }

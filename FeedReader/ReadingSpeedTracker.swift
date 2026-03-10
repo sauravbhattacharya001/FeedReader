@@ -440,6 +440,10 @@ class ReadingSpeedTracker {
 
     /// Import speed data from JSON (merges with existing, deduplicates by ID).
     func importJSON(_ jsonString: String) -> Int {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        guard jsonString.utf8.count <= 10_485_760 else { return }
+
         let decoder = JSONCoding.iso8601Decoder
         guard let data = jsonString.data(using: .utf8),
               let imported = try? decoder.decode([SpeedSample].self, from: data)
