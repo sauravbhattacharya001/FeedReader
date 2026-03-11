@@ -548,15 +548,23 @@ class ArticleSpacedReview {
     // MARK: - Streaks
 
     /// Calculate current consecutive review streak.
+    ///
+    /// Uses `Calendar.date(byAdding:)` instead of subtracting 86400
+    /// seconds, which breaks across DST transitions where a calendar
+    /// day may be 23 or 25 hours.  Fixes #66.
     func currentStreak(at date: Date = Date()) -> Int {
+        let calendar = Calendar(identifier: .gregorian)
         var streak = 0
-        var checkDate = date
+        var checkDate = calendar.startOfDay(for: date)
 
         // Check if today has reviews
         let todayStr = Self.dateString(from: checkDate)
         if !reviewDates.contains(todayStr) {
             // Check yesterday — streak might still be alive
-            checkDate = checkDate.addingTimeInterval(-86400)
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else {
+                return 0
+            }
+            checkDate = yesterday
             let yesterdayStr = Self.dateString(from: checkDate)
             if !reviewDates.contains(yesterdayStr) {
                 return 0
@@ -568,7 +576,10 @@ class ArticleSpacedReview {
             let dateStr = Self.dateString(from: checkDate)
             if reviewDates.contains(dateStr) {
                 streak += 1
-                checkDate = checkDate.addingTimeInterval(-86400)
+                guard let prev = calendar.date(byAdding: .day, value: -1, to: checkDate) else {
+                    break
+                }
+                checkDate = prev
             } else {
                 break
             }
