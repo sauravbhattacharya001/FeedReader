@@ -549,6 +549,7 @@ class ArticleSpacedReview {
 
     /// Calculate current consecutive review streak.
     func currentStreak(at date: Date = Date()) -> Int {
+        let calendar = Calendar.current
         var streak = 0
         var checkDate = date
 
@@ -556,19 +557,21 @@ class ArticleSpacedReview {
         let todayStr = Self.dateString(from: checkDate)
         if !reviewDates.contains(todayStr) {
             // Check yesterday — streak might still be alive
-            checkDate = checkDate.addingTimeInterval(-86400)
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else { return 0 }
+            checkDate = yesterday
             let yesterdayStr = Self.dateString(from: checkDate)
             if !reviewDates.contains(yesterdayStr) {
                 return 0
             }
         }
 
-        // Count backwards
+        // Count backwards using Calendar to handle DST correctly
         while true {
             let dateStr = Self.dateString(from: checkDate)
             if reviewDates.contains(dateStr) {
                 streak += 1
-                checkDate = checkDate.addingTimeInterval(-86400)
+                guard let prevDay = calendar.date(byAdding: .day, value: -1, to: checkDate) else { break }
+                checkDate = prevDay
             } else {
                 break
             }
