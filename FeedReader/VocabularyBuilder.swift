@@ -356,12 +356,22 @@ class VocabularyBuilder {
         let mostRecent = calendar.startOfDay(for: sorted[0])
         let daysDiff = calendar.dateComponents([.day], from: mostRecent, to: today).day ?? 0
         if daysDiff > 1 { current = 0 }
+        // Track whether the consecutive run still connects to the most
+        // recent date.  Once a gap breaks the chain, older consecutive
+        // runs must not inflate `current`.
+        var currentStreakBroken = daysDiff > 1
         for i in 1..<sorted.count {
             let prev = calendar.startOfDay(for: sorted[i-1])
             let curr = calendar.startOfDay(for: sorted[i])
             let gap = calendar.dateComponents([.day], from: curr, to: prev).day ?? 0
-            if gap == 1 { streak += 1; longest = max(longest, streak); if daysDiff <= 1 { current = streak } }
-            else { streak = 1 }
+            if gap == 1 {
+                streak += 1
+                longest = max(longest, streak)
+                if !currentStreakBroken { current = streak }
+            } else {
+                streak = 1
+                currentStreakBroken = true
+            }
         }
         longest = max(longest, streak); return (current, longest)
     }
