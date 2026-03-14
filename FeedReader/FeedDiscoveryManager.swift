@@ -134,7 +134,8 @@ class FeedDiscoveryManager {
             
             // Resolve relative URL
             let resolvedURL = resolveURL(href, base: baseURL)
-            guard !resolvedURL.isEmpty else { continue }
+            guard !resolvedURL.isEmpty,
+                  isValidFeedURL(resolvedURL) else { continue }
             
             let normalized = normalizeURL(resolvedURL)
             guard !seenURLs.contains(normalized) else { continue }
@@ -227,25 +228,22 @@ class FeedDiscoveryManager {
     
     /// Validate that a URL looks like a plausible feed URL.
     ///
+    /// Checks scheme, host presence, and delegates to `URLValidator` for
+    /// SSRF protection (private/reserved address rejection).
+    ///
     /// - Parameter url: The URL to validate.
-    /// - Returns: True if the URL has a valid scheme and host.
+    /// - Returns: True if the URL is safe and has a valid scheme and host.
     static func isValidFeedURL(_ url: String) -> Bool {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
         
-        // Must be http or https
+        // Delegate scheme, host, and SSRF checks to the centralized validator.
+        // URLValidator.isSafe() rejects javascript:, data:, file:, private IPs,
+        // loopback, link-local, cloud metadata endpoints, etc.
+        guard URLValidator.isSafe(trimmed) else { return false }
+        
+        // Must have a host with at least one dot (basic DNS plausibility)
         let lower = trimmed.lowercased()
-        guard lower.hasPrefix("http://") || lower.hasPrefix("https://") else {
-            return false
-        }
-        
-        // Block dangerous schemes that might be disguised
-        let blocked = ["javascript:", "data:", "file:", "ftp:"]
-        for scheme in blocked {
-            if lower.hasPrefix(scheme) { return false }
-        }
-        
-        // Must have a host (at least one dot)
         let afterScheme = lower.hasPrefix("https://")
             ? String(lower.dropFirst(8))
             : String(lower.dropFirst(7))

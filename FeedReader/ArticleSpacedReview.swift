@@ -215,14 +215,17 @@ class ArticleSpacedReview {
         guard items[link] == nil else { return nil }
 
         let now = Date()
-        let firstInterval = Self.intervalSchedule[0] * 86400  // days → seconds
+        let firstIntervalDays = Int(Self.intervalSchedule[0])
+        let nextReviewDate = Calendar.current.date(
+            byAdding: .day, value: firstIntervalDays, to: now
+        ) ?? now.addingTimeInterval(Double(firstIntervalDays) * 86400)
         let item = ReviewItem(
             articleLink: link,
             articleTitle: title,
             feedName: feedName,
             keyPoints: keyPoints,
             addedAt: now,
-            nextReviewDate: now.addingTimeInterval(firstInterval),
+            nextReviewDate: nextReviewDate,
             intervalLevel: 0,
             reviewCount: 0,
             successCount: 0,
@@ -295,7 +298,9 @@ class ArticleSpacedReview {
 
     /// Get items coming up for review in the next N days.
     func upcomingItems(withinDays days: Int, from date: Date = Date()) -> [ReviewItem] {
-        let cutoff = date.addingTimeInterval(Double(days) * 86400)
+        let cutoff = Calendar.current.date(
+            byAdding: .day, value: days, to: date
+        ) ?? date.addingTimeInterval(Double(days) * 86400)
         return items.values
             .filter { $0.nextReviewDate > date && $0.nextReviewDate <= cutoff }
             .sorted { $0.nextReviewDate < $1.nextReviewDate }
@@ -339,7 +344,10 @@ class ArticleSpacedReview {
         let intervalDays = Self.intervalSchedule[newLevel]
         let adjustedInterval = intervalDays * quality.intervalMultiplier
         let actualInterval = max(adjustedInterval, Self.intervalSchedule[0])  // minimum 1 day
-        let nextDate = date.addingTimeInterval(actualInterval * 86400)
+        let actualDays = Int(actualInterval.rounded())
+        let nextDate = Calendar.current.date(
+            byAdding: .day, value: actualDays, to: date
+        ) ?? date.addingTimeInterval(actualInterval * 86400)
 
         // Create review record
         let record = ReviewRecord(
@@ -548,7 +556,11 @@ class ArticleSpacedReview {
     // MARK: - Streaks
 
     /// Calculate current consecutive review streak.
+    ///
+    /// Uses `Calendar.date(byAdding:)` instead of raw `TimeInterval` arithmetic
+    /// to correctly handle DST transitions and leap seconds.
     func currentStreak(at date: Date = Date()) -> Int {
+        let calendar = Calendar.current
         var streak = 0
         var checkDate = date
 
@@ -556,7 +568,10 @@ class ArticleSpacedReview {
         let todayStr = Self.dateString(from: checkDate)
         if !reviewDates.contains(todayStr) {
             // Check yesterday — streak might still be alive
-            checkDate = checkDate.addingTimeInterval(-86400)
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: checkDate) else {
+                return 0
+            }
+            checkDate = yesterday
             let yesterdayStr = Self.dateString(from: checkDate)
             if !reviewDates.contains(yesterdayStr) {
                 return 0
@@ -568,7 +583,10 @@ class ArticleSpacedReview {
             let dateStr = Self.dateString(from: checkDate)
             if reviewDates.contains(dateStr) {
                 streak += 1
-                checkDate = checkDate.addingTimeInterval(-86400)
+                guard let prevDay = calendar.date(byAdding: .day, value: -1, to: checkDate) else {
+                    break
+                }
+                checkDate = prevDay
             } else {
                 break
             }

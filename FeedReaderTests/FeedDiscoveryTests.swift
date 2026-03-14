@@ -411,6 +411,32 @@ class FeedDiscoveryTests: XCTestCase {
         XCTAssertTrue(FeedDiscoveryManager.isValidFeedURL("  https://example.com/feed  "))
     }
     
+    // MARK: - SSRF Protection in isValidFeedURL
+    
+    func testRejectsPrivateIP10() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://10.0.0.1/feed"))
+    }
+    
+    func testRejectsPrivateIP172() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://172.16.0.1/feed"))
+    }
+    
+    func testRejectsPrivateIP192() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://192.168.1.1/feed"))
+    }
+    
+    func testRejectsLoopback() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://127.0.0.1/feed"))
+    }
+    
+    func testRejectsCloudMetadata() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://169.254.169.254/latest/meta-data/"))
+    }
+    
+    func testRejectsLocalhostDomain() {
+        XCTAssertFalse(FeedDiscoveryManager.isValidFeedURL("http://localhost.localdomain/feed"))
+    }
+    
     // MARK: - feedTitleFromURL
     
     func testTitleFromFeedPath() {
