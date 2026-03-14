@@ -93,9 +93,13 @@ enum URLValidator {
         if cleaned == "::1" || cleaned == "0:0:0:0:0:0:0:1" {
             return true  // loopback
         }
-        if cleaned.hasPrefix("fe80") || cleaned.hasPrefix("fd")
-            || cleaned.hasPrefix("fc") {
-            return true  // link-local / unique-local
+        // fe80::/10 link-local covers fe80:: through febf:: (prefixes fe8, fe9, fea, feb)
+        if cleaned.hasPrefix("fe8") || cleaned.hasPrefix("fe9")
+            || cleaned.hasPrefix("fea") || cleaned.hasPrefix("feb") {
+            return true  // link-local (fe80::/10)
+        }
+        if cleaned.hasPrefix("fd") || cleaned.hasPrefix("fc") {
+            return true  // unique-local (fc00::/7)
         }
         // IPv4-mapped IPv6: ::ffff:w.x.y.z
         if cleaned.hasPrefix("::ffff:") {
