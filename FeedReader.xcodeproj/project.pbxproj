@@ -49,6 +49,8 @@
 		HL000001HLHT000100000003 /* ArticleHighlightsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */; };
 		TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000010 /* ArticleTagManager.swift */; };
 		TA000001TXAN000100000001 /* TextAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = TA000001TXAN000100000010 /* TextAnalyzer.swift */; };
+		WC000001WCLD000100000001 /* ArticleWordCloudGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = WC000001WCLD000100000010 /* ArticleWordCloudGenerator.swift */; };
+		WC000001WCLD000100000002 /* ArticleWordCloudGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = WC000001WCLD000100000020 /* ArticleWordCloudGeneratorTests.swift */; };
 		SA000001SENT000100000001 /* ArticleSentimentAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = SA000001SENT000100000010 /* ArticleSentimentAnalyzer.swift */; };
 		TG000001TAGS000100000002 /* ArticleTagTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = TG000001TAGS000100000020 /* ArticleTagTests.swift */; };
 		KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = KA000001KWAT000100000010 /* KeywordAlertTests.swift */; };
@@ -113,6 +115,8 @@
 		HL000001HLHT000100000030 /* ArticleHighlightsTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleHighlightsTests.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000010 /* ArticleTagManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagManager.swift; sourceTree = "<group>"; };
 		TA000001TXAN000100000010 /* TextAnalyzer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TextAnalyzer.swift; sourceTree = "<group>"; };
+		WC000001WCLD000100000010 /* ArticleWordCloudGenerator.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleWordCloudGenerator.swift; sourceTree = "<group>"; };
+		WC000001WCLD000100000020 /* ArticleWordCloudGeneratorTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleWordCloudGeneratorTests.swift; sourceTree = "<group>"; };
 		SA000001SENT000100000010 /* ArticleSentimentAnalyzer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleSentimentAnalyzer.swift; sourceTree = "<group>"; };
 		TG000001TAGS000100000020 /* ArticleTagTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ArticleTagTests.swift; sourceTree = "<group>"; };
 		KA000001KWAT000100000010 /* KeywordAlertTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeywordAlertTests.swift; sourceTree = "<group>"; };
@@ -182,6 +186,7 @@
 				HL000001HLHT000100000020 /* ArticleHighlightsManager.swift */,
 				TG000001TAGS000100000010 /* ArticleTagManager.swift */,
 				TA000001TXAN000100000010 /* TextAnalyzer.swift */,
+				WC000001WCLD000100000010 /* ArticleWordCloudGenerator.swift */,
 				SA000001SENT000100000010 /* ArticleSentimentAnalyzer.swift */,
 				SM000001SUMM000100000010 /* ArticleSummarizer.swift */,
 				DD000001DDDD000100000030 /* FeedListViewController.swift */,
@@ -215,6 +220,7 @@
 				KA000001KWAT000100000010 /* KeywordAlertTests.swift */,
 				RE000001RECE000100000010 /* RecommendationEngineTests.swift */,
 				TA000001TXAN000100000020 /* TextAnalyzerTests.swift */,
+				WC000001WCLD000100000020 /* ArticleWordCloudGeneratorTests.swift */,
 				SA000001SENT000100000020 /* ArticleSentimentTests.swift */,
 				SM000001SUMM000100000020 /* ArticleSummarizerTests.swift */,
 				080686C41D89F2DA00C5E08B /* Info.plist */,
@@ -347,6 +353,7 @@
 				HL000001HLHT000100000002 /* ArticleHighlightsManager.swift in Sources */,
 				TG000001TAGS000100000001 /* ArticleTagManager.swift in Sources */,
 				TA000001TXAN000100000001 /* TextAnalyzer.swift in Sources */,
+				WC000001WCLD000100000001 /* ArticleWordCloudGenerator.swift in Sources */,
 				SA000001SENT000100000001 /* ArticleSentimentAnalyzer.swift in Sources */,
 				SM000001SUMM000100000001 /* ArticleSummarizer.swift in Sources */,
 				DD000001DDDD000100000003 /* FeedListViewController.swift in Sources */,
@@ -377,6 +384,7 @@
 				KA000001KWAT000100000001 /* KeywordAlertTests.swift in Sources */,
 				RE000001RECE000100000001 /* RecommendationEngineTests.swift in Sources */,
 				TA000001TXAN000100000002 /* TextAnalyzerTests.swift in Sources */,
+				WC000001WCLD000100000002 /* ArticleWordCloudGeneratorTests.swift in Sources */,
 				SA000001SENT000100000002 /* ArticleSentimentTests.swift in Sources */,
 				SM000001SUMM000100000002 /* ArticleSummarizerTests.swift in Sources */,
 			);
