@@ -95,6 +95,11 @@ class ArticleDeduplicator {
     /// Insertion order for deterministic canonical selection.
     private var insertionOrder: [String] = []
 
+    /// Position lookup: link → index in insertionOrder for O(1) access.
+    /// Maintained incrementally by indexStory/removeStory/reset to avoid
+    /// O(n) firstIndex(of:) scans in selectCanonical.
+    private var positionCache: [String: Int] = [:]
+
     // MARK: - Types
 
     /// Pre-computed fingerprint for an article.
@@ -161,19 +166,27 @@ class ArticleDeduplicator {
         )
 
         index[link] = fingerprint
+        positionCache[link] = insertionOrder.count
         insertionOrder.append(link)
     }
 
     /// Remove a story from the index.
     func removeStory(link: String) {
         index.removeValue(forKey: link)
-        insertionOrder.removeAll { $0 == link }
+        if let removedPos = positionCache.removeValue(forKey: link) {
+            insertionOrder.removeAll { $0 == link }
+            // Rebuild positions for entries that shifted
+            for i in removedPos..<insertionOrder.count {
+                positionCache[insertionOrder[i]] = i
+            }
+        }
     }
 
     /// Clear the entire index.
     func reset() {
         index.removeAll()
         insertionOrder.removeAll()
+        positionCache.removeAll()
     }
 
     /// Number of indexed articles.
@@ -482,11 +495,11 @@ class ArticleDeduplicator {
 
     private func selectCanonical(_ links: [String]) -> String {
         var best = links[0]
-        var bestOrder = insertionOrder.firstIndex(of: best) ?? Int.max
+        var bestOrder = positionCache[best] ?? Int.max
         var bestTitleLen = index[best]?.titleLength ?? Int.max
 
         for link in links.dropFirst() {
-            let order = insertionOrder.firstIndex(of: link) ?? Int.max
+            let order = positionCache[link] ?? Int.max
             let titleLen = index[link]?.titleLength ?? Int.max
 
             if order < bestOrder || (order == bestOrder && titleLen < bestTitleLen) {
