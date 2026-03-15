@@ -377,8 +377,9 @@ class ReadingTimeBudgetManager {
     }
 
     /// Minutes used in the week containing the given date (Mon-Sun).
+    /// When `config.includeWeekends` is false, weekend minutes are excluded.
     func minutesUsedThisWeek(containing date: Date = Date()) -> Double {
-        let weekDates = datesInWeek(containing: date)
+        let weekDates = budgetDatesInWeek(containing: date)
         return weekDates.reduce(0) { $0 + minutesUsed(on: $1) }
     }
 
@@ -395,9 +396,10 @@ class ReadingTimeBudgetManager {
         let remToday = config.dailyMinutes > 0 ? max(0, Double(config.dailyMinutes) - usedToday) : 0
         let remWeek = config.weeklyMinutes > 0 ? max(0, Double(config.weeklyMinutes) - usedWeek) : 0
 
-        let weekday = calendar.component(.weekday, from: of)
-        // Days remaining in week (Sun=1..Sat=7, week starts Mon)
-        let daysLeft = max(1, 8 - (weekday == 1 ? 7 : weekday - 1))
+        // Count budget-relevant days remaining in the week (including today)
+        let weekBudgetDates = budgetDatesInWeek(containing: of)
+        let startOfToday = calendar.startOfDay(for: of)
+        let daysLeft = max(1, weekBudgetDates.filter { calendar.startOfDay(for: $0) >= startOfToday }.count)
 
         let suggestedPace: Double
         if config.weeklyMinutes > 0 && daysLeft > 0 {
@@ -450,8 +452,11 @@ class ReadingTimeBudgetManager {
     // MARK: - Weekly Report
 
     /// Generate a weekly budget report for the week containing the given date.
+    /// When `config.includeWeekends` is false, weekend days are excluded from
+    /// daily summaries and aggregate calculations.
     func weeklyReport(containing date: Date = Date()) -> WeeklyBudgetReport {
-        let weekDates = datesInWeek(containing: date)
+        let weekDates = budgetDatesInWeek(containing: date)
+        let allWeekDates = datesInWeek(containing: date)
         let dailySummaries = weekDates.map { dailySummary(for: $0) }
 
         let totalUsed = dailySummaries.reduce(0.0) { $0 + $1.usedMinutes }
@@ -471,8 +476,8 @@ class ReadingTimeBudgetManager {
         let quietest = dailySummaries.min(by: { $0.usedMinutes < $1.usedMinutes })
 
         return WeeklyBudgetReport(
-            weekStartDate: weekDates.first ?? date,
-            weekEndDate: weekDates.last ?? date,
+            weekStartDate: allWeekDates.first ?? date,
+            weekEndDate: allWeekDates.last ?? date,
             config: config,
             dailySummaries: dailySummaries,
             totalBudgetMinutes: config.weeklyMinutes,
@@ -690,6 +695,20 @@ class ReadingTimeBudgetManager {
             current = next
         }
         return dates
+    }
+
+    /// Returns dates in the week that count toward the budget.
+    /// When `config.includeWeekends` is false, Saturday and Sunday are excluded.
+    private func budgetDatesInWeek(containing date: Date) -> [Date] {
+        let all = datesInWeek(containing: date)
+        if config.includeWeekends { return all }
+        return all.filter { !isWeekend($0) }
+    }
+
+    /// Whether a date falls on Saturday or Sunday.
+    private func isWeekend(_ date: Date) -> Bool {
+        let wd = calendar.component(.weekday, from: date)
+        return wd == 1 || wd == 7  // Sunday=1, Saturday=7
     }
 
     private func calculateAdherence(_ summaries: [DailyBudgetSummary]) -> Double {
