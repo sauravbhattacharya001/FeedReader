@@ -352,6 +352,24 @@ class ArticleReadLaterReminderTests: XCTestCase {
         XCTAssertEqual(escalated, 0)
     }
 
+    func testAutoEscalate_DoesNotSkipLevels() {
+        // Item saved 15 days ago as low priority (threshold: 2x7d = 14d).
+        // After first escalate it should go to normal, NOT skip to high/urgent.
+        let old = Date().addingTimeInterval(-15 * 24 * 3600)
+        reminder.saveForLater(link: "https://example.com/1", title: "Test", priority: .low, at: old)
+        
+        // First escalation: low -> normal
+        let first = reminder.autoEscalate()
+        XCTAssertEqual(first, 1)
+        XCTAssertEqual(reminder.item(forLink: "https://example.com/1")?.priority, .normal)
+        
+        // Immediately calling again should NOT escalate further — the item
+        // just got escalated and needs 2x3d=6d at normal before going to high.
+        let second = reminder.autoEscalate()
+        XCTAssertEqual(second, 0, "Should not escalate again immediately")
+        XCTAssertEqual(reminder.item(forLink: "https://example.com/1")?.priority, .normal)
+    }
+
     // MARK: - Statistics
 
     func testStatistics() {
