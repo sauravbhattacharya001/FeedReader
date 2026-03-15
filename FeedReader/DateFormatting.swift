@@ -67,9 +67,15 @@ enum DateFormatting {
     }()
 
     /// "2026-W10" (ISO week key)
+    ///
+    /// Uses the ISO 8601 calendar so that week numbers match the ISO
+    /// standard (weeks start on Monday, week 1 contains the first
+    /// Thursday of the year). Without this, locales where the week
+    /// starts on Sunday (e.g. en_US) produce different week numbers.
     static let yearWeek: DateFormatter = {
         let f = DateFormatter()
-        f.dateFormat = "yyyy-'W'ww"
+        f.calendar = Calendar(identifier: .iso8601)
+        f.dateFormat = "YYYY-'W'ww"
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }()
