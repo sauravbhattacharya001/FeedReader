@@ -209,6 +209,16 @@ class ArticleReadLaterReminder {
     // MARK: - Storage
 
     private var items: [ReadLaterItem] = []
+
+    /// O(1) lookup: item ID → array index. Rebuilt on load, kept in sync
+    /// on every mutation. Replaces 17 separate O(n) linear scans with
+    /// dictionary lookups.
+    private var idToIndex: [String: Int] = [:]
+
+    /// O(1) lookup: article link → array index. Prevents duplicate scans
+    /// in saveForLater, removeItem(link:), markCompleted(link:), isSaved.
+    private var linkToIndex: [String: Int] = [:]
+
     private let fileManager = FileManager.default
 
     private var archiveURL: URL {
@@ -230,6 +240,19 @@ class ArticleReadLaterReminder {
             return
         }
         items = decoded
+        rebuildIndices()
+    }
+
+    /// Rebuild O(1) lookup dictionaries from the items array.
+    /// Called after load and any operation that may shift indices
+    /// (remove, clearAll).
+    private func rebuildIndices() {
+        idToIndex.removeAll(keepingCapacity: true)
+        linkToIndex.removeAll(keepingCapacity: true)
+        for (i, item) in items.enumerated() {
+            idToIndex[item.id] = i
+            linkToIndex[item.articleLink] = i
+        }
     }
 
     private func save() {
@@ -246,7 +269,7 @@ class ArticleReadLaterReminder {
     func saveForLater(link: String, title: String, feedName: String = "",
                       priority: ReminderPriority = .normal, notes: String? = nil,
                       tags: [String] = [], at now: Date = Date()) -> ReadLaterItem? {
-        guard !items.contains(where: { $0.articleLink == link }) else { return nil }
+        guard linkToIndex[link] == nil else { return nil }
 
         let cleanTags = tags.map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
                             .filter { !$0.isEmpty }
@@ -267,6 +290,9 @@ class ArticleReadLaterReminder {
             tags: cleanTags
         )
         items.append(item)
+        let newIndex = items.count - 1
+        idToIndex[item.id] = newIndex
+        linkToIndex[item.articleLink] = newIndex
         save()
         return item
     }
@@ -274,8 +300,9 @@ class ArticleReadLaterReminder {
     /// Remove an item by its unique id. Returns true if removed.
     @discardableResult
     func removeItem(id: String) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }) else { return false }
+        guard let idx = idToIndex[id] else { return false }
         items.remove(at: idx)
+        rebuildIndices()  // Indices shift after removal
         save()
         return true
     }
@@ -283,8 +310,9 @@ class ArticleReadLaterReminder {
     /// Remove an item by article link. Returns true if removed.
     @discardableResult
     func removeItem(link: String) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.articleLink == link }) else { return false }
+        guard let idx = linkToIndex[link] else { return false }
         items.remove(at: idx)
+        rebuildIndices()
         save()
         return true
     }
@@ -292,6 +320,8 @@ class ArticleReadLaterReminder {
     /// Remove all items.
     func clearAll() {
         items.removeAll()
+        idToIndex.removeAll()
+        linkToIndex.removeAll()
         save()
     }
 
@@ -300,7 +330,7 @@ class ArticleReadLaterReminder {
     /// Mark an item as completed (read). Returns false if already completed.
     @discardableResult
     func markCompleted(id: String, at now: Date = Date()) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               items[idx].status != .completed else { return false }
         items[idx].status = .completed
         items[idx].completedAt = now
@@ -311,7 +341,7 @@ class ArticleReadLaterReminder {
     /// Mark an item as completed by link.
     @discardableResult
     func markCompleted(link: String, at now: Date = Date()) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.articleLink == link }),
+        guard let idx = linkToIndex[link],
               items[idx].status != .completed else { return false }
         items[idx].status = .completed
         items[idx].completedAt = now
@@ -322,7 +352,7 @@ class ArticleReadLaterReminder {
     /// Dismiss an item (skip it). Returns false if already completed.
     @discardableResult
     func dismiss(id: String) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               items[idx].status != .completed else { return false }
         items[idx].status = .dismissed
         save()
@@ -334,7 +364,7 @@ class ArticleReadLaterReminder {
     /// Snooze a reminder using a preset duration. Returns false if not snoozeable.
     @discardableResult
     func snooze(id: String, preset: SnoozePreset, from now: Date = Date()) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               items[idx].status == .pending || items[idx].status == .snoozed,
               items[idx].snoozeCount < ReadLaterItem.maxSnoozes else { return false }
         items[idx].status = .snoozed
@@ -348,7 +378,7 @@ class ArticleReadLaterReminder {
     @discardableResult
     func snoozeUntil(id: String, date: Date, from now: Date = Date()) -> Bool {
         guard date > now else { return false }
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               items[idx].status == .pending || items[idx].status == .snoozed,
               items[idx].snoozeCount < ReadLaterItem.maxSnoozes else { return false }
         items[idx].status = .snoozed
@@ -363,7 +393,7 @@ class ArticleReadLaterReminder {
     /// Update an item's priority. Returns false if item not found.
     @discardableResult
     func updatePriority(id: String, to priority: ReminderPriority) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }) else { return false }
+        guard let idx = idToIndex[id] else { return false }
         items[idx].priority = priority
         save()
         return true
@@ -372,7 +402,7 @@ class ArticleReadLaterReminder {
     /// Update an item's notes. Returns false if item not found.
     @discardableResult
     func updateNotes(id: String, notes: String?) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }) else { return false }
+        guard let idx = idToIndex[id] else { return false }
         items[idx].notes = notes
         save()
         return true
@@ -383,7 +413,7 @@ class ArticleReadLaterReminder {
     func addTag(id: String, tag: String) -> Bool {
         let normalized = tag.trimmingCharacters(in: .whitespaces).lowercased()
         guard !normalized.isEmpty,
-              let idx = items.firstIndex(where: { $0.id == id }),
+              let idx = idToIndex[id],
               !items[idx].tags.contains(normalized) else { return false }
         items[idx].tags.append(normalized)
         save()
@@ -394,7 +424,7 @@ class ArticleReadLaterReminder {
     @discardableResult
     func removeTag(id: String, tag: String) -> Bool {
         let normalized = tag.trimmingCharacters(in: .whitespaces).lowercased()
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               let tagIdx = items[idx].tags.firstIndex(of: normalized) else { return false }
         items[idx].tags.remove(at: tagIdx)
         save()
@@ -405,19 +435,21 @@ class ArticleReadLaterReminder {
 
     /// Look up an item by its unique id.
     func item(withId id: String) -> ReadLaterItem? {
-        items.first(where: { $0.id == id })
+        guard let idx = idToIndex[id] else { return nil }
+        return items[idx]
     }
 
     /// Look up an item by article link.
     func item(forLink link: String) -> ReadLaterItem? {
-        items.first(where: { $0.articleLink == link })
+        guard let idx = linkToIndex[link] else { return nil }
+        return items[idx]
     }
 
     /// Whether an article link is currently saved (pending or snoozed).
     func isSaved(link: String) -> Bool {
-        items.contains(where: {
-            $0.articleLink == link && ($0.status == .pending || $0.status == .snoozed)
-        })
+        guard let idx = linkToIndex[link] else { return false }
+        let status = items[idx].status
+        return status == .pending || status == .snoozed
     }
 
     /// All items sorted by priority (descending) then saved date (ascending).
@@ -476,7 +508,7 @@ class ArticleReadLaterReminder {
     /// Acknowledge a reminder — resets the next reminder date based on priority interval.
     @discardableResult
     func acknowledgeReminder(id: String, at now: Date = Date()) -> Bool {
-        guard let idx = items.firstIndex(where: { $0.id == id }),
+        guard let idx = idToIndex[id],
               items[idx].status == .pending || items[idx].status == .snoozed else { return false }
         items[idx].status = .pending
         items[idx].lastRemindedAt = now
