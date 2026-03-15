@@ -140,6 +140,8 @@ struct ReadLaterItem: Codable, Equatable {
     var completedAt: Date?
     /// When the item was last reminded.
     var lastRemindedAt: Date?
+    /// When the item was last auto-escalated (cooldown between escalations).
+    var lastEscalatedAt: Date?
     /// Lowercase tags for categorization.
     var tags: [String]
 
@@ -534,18 +536,21 @@ class ArticleReadLaterReminder {
         return count
     }
 
-    /// Auto-escalate items that have been pending longer than 2× their priority's
-    /// default interval without being read. Returns count of escalated items.
+    /// Auto-escalate items that have been at their current priority longer than 2× their priority's
+    /// default interval without being read. Uses lastEscalatedAt to ensure items
+    /// spend the full cooldown at each priority level. Returns count of escalated items.
     @discardableResult
     func autoEscalate(at now: Date = Date()) -> Int {
         var count = 0
         for idx in items.indices {
             guard items[idx].status == .pending || items[idx].status == .snoozed,
                   let next = items[idx].priority.escalated else { continue }
-            let age = now.timeIntervalSince(items[idx].savedAt)
+            let anchor = items[idx].lastEscalatedAt ?? items[idx].savedAt
+            let elapsed = now.timeIntervalSince(anchor)
             let threshold = items[idx].priority.defaultInterval * 2
-            if age > threshold {
+            if elapsed > threshold {
                 items[idx].priority = next
+                items[idx].lastEscalatedAt = now
                 count += 1
             }
         }
