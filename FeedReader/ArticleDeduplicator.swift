@@ -16,6 +16,7 @@
 //
 
 import Foundation
+import CryptoKit
 
 // MARK: - DuplicateGroup
 
@@ -518,12 +519,15 @@ class ArticleDeduplicator {
         return "\(Int(value * 100))%"
     }
 
+    /// Compute a stable, collision-resistant hash for group IDs using SHA-256.
+    /// Previous implementation used djb2 (UInt64) which has a high collision
+    /// probability at scale — two different canonical links mapping to the
+    /// same group ID would incorrectly merge unrelated duplicate groups.
+    /// This mirrors the fix applied to ImageCache.diskPath (see commit history).
     private func stableHash(_ text: String) -> String {
-        var hash: UInt64 = 5381
-        for byte in text.utf8 {
-            hash = ((hash &<< 5) &+ hash) &+ UInt64(byte)
-        }
-        return String(hash, radix: 16)
+        let data = Data(text.utf8)
+        let digest = SHA256.hash(data: data)
+        return digest.prefix(16).map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - Stop Words
