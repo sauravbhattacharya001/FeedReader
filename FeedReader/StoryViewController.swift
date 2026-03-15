@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import AVFoundation
 
 class StoryViewController: UIViewController {
     
@@ -26,6 +27,9 @@ class StoryViewController: UIViewController {
     
     /// Offline cache bar button for save/remove.
     private var offlineButton: UIBarButtonItem!
+    
+    /// Text-to-speech bar button for reading articles aloud.
+    private var ttsButton: UIBarButtonItem!
     
     /// Timestamp when the user opened this article (for reading time tracking).
     private var viewStartTime: Date?
@@ -59,13 +63,24 @@ class StoryViewController: UIViewController {
         )
         offlineButton.tintColor = .systemGreen
         
+        ttsButton = UIBarButtonItem(
+            image: UIImage(systemName: "speaker.wave.2"),
+            style: .plain,
+            target: self,
+            action: #selector(toggleTTS)
+        )
+        ttsButton.tintColor = .systemBlue
+        
         let shareButton = UIBarButtonItem(
             barButtonSystemItem: .action,
             target: self,
             action: #selector(shareStory)
         )
         
-        navigationItem.rightBarButtonItems = [shareButton, bookmarkButton, offlineButton]
+        navigationItem.rightBarButtonItems = [shareButton, bookmarkButton, offlineButton, ttsButton]
+        
+        // Listen for TTS state changes
+        ArticleTextToSpeech.shared.delegate = self
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -89,6 +104,11 @@ class StoryViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        
+        // Stop TTS when leaving the article
+        if ArticleTextToSpeech.shared.currentArticleLink == story?.link {
+            ArticleTextToSpeech.shared.stop()
+        }
         
         // Update time spent reading this article
         if let story = story, let startTime = viewStartTime {
@@ -242,5 +262,73 @@ class StoryViewController: UIViewController {
             return
         }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+    
+    // MARK: - Text-to-Speech
+    
+    /// Toggle TTS: start reading if idle, pause/resume if active.
+    @objc private func toggleTTS() {
+        let tts = ArticleTextToSpeech.shared
+        
+        if tts.isActive {
+            // If reading this article, toggle pause/resume. If reading
+            // a different article, stop that and start this one.
+            if tts.currentArticleLink == story?.link {
+                tts.togglePlayPause()
+            } else if let story = story {
+                tts.speak(story: story)
+            }
+        } else if let story = story {
+            tts.speak(story: story)
+            showToast("🔊 Reading aloud…")
+        }
+        
+        updateTTSIcon()
+    }
+    
+    /// Long-press on TTS button to stop.
+    @objc private func stopTTS() {
+        ArticleTextToSpeech.shared.stop()
+        updateTTSIcon()
+        showToast("Stopped reading")
+    }
+    
+    /// Update the TTS button icon based on current state.
+    private func updateTTSIcon() {
+        let iconName: String
+        switch ArticleTextToSpeech.shared.state {
+        case .playing: iconName = "pause.circle.fill"
+        case .paused:  iconName = "play.circle.fill"
+        case .idle:    iconName = "speaker.wave.2"
+        }
+        ttsButton.image = UIImage(systemName: iconName)
+    }
+}
+
+// MARK: - ArticleTextToSpeechDelegate
+
+extension StoryViewController: ArticleTextToSpeechDelegate {
+    func ttsDidChangeState(_ state: TTSState) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateTTSIcon()
+        }
+    }
+    
+    func ttsDidProgress(characterRange: NSRange, inFullText: String) {
+        // Future: highlight the currently spoken text in descriptionLabel
+    }
+    
+    func ttsDidFinish() {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateTTSIcon()
+            self?.showToast("Finished reading")
+        }
+    }
+    
+    func ttsDidFail(error: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.updateTTSIcon()
+            self?.showToast("TTS error: \(error)")
+        }
     }
 }
