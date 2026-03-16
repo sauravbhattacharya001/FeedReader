@@ -202,10 +202,11 @@ public class RSSParser: NSObject {
 
     /// Parse stories from a single feed URL using the given session.
     private func parseFeed(_ url: String, session: URLSession, generation: UInt64) {
-        guard let feedURL = URL(string: url),
-              let scheme = feedURL.scheme?.lowercased(),
-              scheme == "http" || scheme == "https" else {
-            // Reject non-HTTP(S) URLs to prevent SSRF (file://, ftp://, etc.)
+        // Delegate full SSRF validation to URLValidator: checks scheme,
+        // host presence, and rejects private/reserved/link-local addresses
+        // (e.g., 169.254.169.254, 10.x.x.x, localhost). Previously only
+        // checked for HTTP(S) scheme, allowing internal network URLs through.
+        guard let feedURL = URLValidator.validateFeedURL(url) else {
             feedCompleted(generation: generation)
             return
         }
