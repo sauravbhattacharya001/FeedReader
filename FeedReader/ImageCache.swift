@@ -35,8 +35,13 @@ class ImageCache {
         return URLSession(configuration: config)
     }()
 
-    /// Tracks in-flight prefetch URLs to avoid duplicate requests.
+    /// Tracks in-flight download URLs to avoid duplicate network requests
+    /// across both `loadImage` and `prefetch` calls.
     private var inflightURLs = Set<String>()
+    /// Pending completion handlers for in-flight `loadImage` requests, keyed
+    /// by URL. When a download is already in progress, subsequent callers
+    /// are queued here and notified when the single download completes.
+    private var pendingCompletions: [String: [(UIImage?) -> Void]] = [:]
     private let inflightLock = NSLock()
 
     /// Serial queue for disk I/O operations — keeps file writes off the main thread.
@@ -133,34 +138,58 @@ class ImageCache {
             return
         }
 
-        // 2. Check disk cache (async to avoid blocking main thread)
+        // 2. Check if a download is already in flight — if so, queue this
+        //    completion handler instead of starting a duplicate request.
+        inflightLock.lock()
+        if inflightURLs.contains(urlString) {
+            pendingCompletions[urlString, default: []].append(completion)
+            inflightLock.unlock()
+            return
+        }
+        inflightURLs.insert(urlString)
+        pendingCompletions[urlString] = [completion]
+        inflightLock.unlock()
+
+        // 3. Check disk cache (async to avoid blocking main thread)
         let diskPath = ImageCache.diskPath(for: urlString)
         diskQueue.async { [weak self] in
             if let data = try? Data(contentsOf: diskPath),
                let diskImage = ImageCache.downsampledImage(data: data) {
                 self?.setImage(diskImage, forKey: urlString)
-                DispatchQueue.main.async { completion(diskImage) }
+                self?.completeInflight(urlString: urlString, image: diskImage)
                 return
             }
 
-            // 3. Fetch from network
-            // Guard against self being deallocated — if the cache is gone,
-            // still call completion(nil) so callers aren't left waiting
-            // indefinitely (fixes leaked completion handlers).
+            // 4. Fetch from network
             guard let self = self else {
                 DispatchQueue.main.async { completion(nil) }
                 return
             }
             self.imageSession.dataTask(with: url) { [weak self] data, _, _ in
                 guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
-                    DispatchQueue.main.async { completion(nil) }
+                    self?.completeInflight(urlString: urlString, image: nil)
                     return
                 }
                 self?.setImage(image, forKey: urlString)
-                // Persist downsampled thumbnail to disk
                 self?.persistToDisk(image: image, for: urlString)
-                DispatchQueue.main.async { completion(image) }
+                self?.completeInflight(urlString: urlString, image: image)
             }.resume()
+        }
+    }
+
+    /// Deliver a loaded image to the original caller and all queued completion
+    /// handlers, then remove the URL from the in-flight set.
+    private func completeInflight(urlString: String, image: UIImage?) {
+        inflightLock.lock()
+        inflightURLs.remove(urlString)
+        let queued = pendingCompletions.removeValue(forKey: urlString) ?? []
+        inflightLock.unlock()
+
+        DispatchQueue.main.async {
+            // Notify all waiting callers
+            for handler in queued {
+                handler(image)
+            }
         }
     }
 
@@ -192,6 +221,7 @@ class ImageCache {
     }
 
     /// Cancel all pending prefetch requests (e.g., on rapid scroll direction change).
+    /// Also notifies any queued `loadImage` completion handlers with `nil`.
     func cancelPrefetches() {
         imageSession.getTasksWithCompletionHandler { dataTasks, _, _ in
             for task in dataTasks {
@@ -200,7 +230,18 @@ class ImageCache {
         }
         inflightLock.lock()
         inflightURLs.removeAll()
+        let allPending = pendingCompletions
+        pendingCompletions.removeAll()
         inflightLock.unlock()
+
+        // Notify queued callers that their requests were cancelled
+        DispatchQueue.main.async {
+            for (_, handlers) in allPending {
+                for handler in handlers {
+                    handler(nil)
+                }
+            }
+        }
     }
 
     /// Clears all cached images (memory and disk).
