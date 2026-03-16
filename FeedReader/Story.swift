@@ -8,6 +8,11 @@
 
 import UIKit
 
+/// An RSS story/article with title, body, link, and optional image.
+///
+/// Conforms to `NSSecureCoding` for persistent storage via `NSKeyedArchiver`.
+/// HTML tags are stripped from the body on initialization, and URLs are
+/// validated against a safe-scheme allowlist to prevent injection attacks.
 class Story: NSObject, NSSecureCoding {
     
     // MARK: - NSSecureCoding
@@ -49,6 +54,18 @@ class Story: NSObject, NSSecureCoding {
     
     // MARK: - Initialization
     
+    /// Creates a new story from RSS feed data.
+    ///
+    /// HTML tags are stripped from `description` before storing. The `link`
+    /// must use a safe URL scheme (http/https) or initialization fails.
+    ///
+    /// - Parameters:
+    ///   - title: The headline of the story. Must not be empty.
+    ///   - photo: An optional thumbnail image.
+    ///   - description: The article body (HTML is stripped automatically).
+    ///   - link: The article URL. Must be a safe URL scheme.
+    ///   - imagePath: Optional URL string for a remote image.
+    /// - Returns: `nil` if `title` or sanitized body is empty, or `link` is unsafe.
     init?(title: String, photo: UIImage?, description: String, link: String, imagePath: String? = nil) {
         
         // Sanitize HTML from description before storing

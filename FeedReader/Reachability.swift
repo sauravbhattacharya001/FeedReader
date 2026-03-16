@@ -11,8 +11,19 @@
 import Foundation
 import SystemConfiguration
 
+/// Lightweight network reachability checker using `SCNetworkReachability`.
+///
+/// Provides a synchronous check for whether the device can reach the network.
+/// Does not monitor changes — call `isConnectedToNetwork()` on demand.
 open class Reachability {
     
+    /// Returns `true` if the device has an active network route (Wi-Fi or cellular).
+    ///
+    /// Uses `SCNetworkReachabilityCreateWithAddress` with a zero address to test
+    /// the default route. Checks that the `.reachable` flag is set and
+    /// `.connectionRequired` is not.
+    ///
+    /// - Returns: `true` if the network is reachable, `false` otherwise.
     class func isConnectedToNetwork() -> Bool {
         
         var zeroAddress = sockaddr_in(sin_len: 0, sin_family: 0, sin_port: 0, sin_addr: in_addr(s_addr: 0), sin_zero: (0, 0, 0, 0, 0, 0, 0, 0))
