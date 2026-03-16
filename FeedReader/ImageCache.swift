@@ -113,9 +113,18 @@ class ImageCache {
         return UIImage(cgImage: cgImage)
     }
 
+    /// Pending completion handlers for in-flight `loadImage` requests.
+    /// When multiple callers request the same URL, only one network fetch
+    /// is made and all callers receive the result.
+    private var pendingCompletions = [String: [(UIImage?) -> Void]]()
+    private let pendingLock = NSLock()
+
     /// Loads an image from URL, returning it via the completion handler.
     /// Checks: 1) in-memory cache, 2) disk cache, 3) network fetch.
     /// Persists downloaded thumbnails to disk for fast cold starts.
+    ///
+    /// Coalesces concurrent requests for the same URL — only one disk
+    /// read / network fetch is performed; all callers receive the result.
     ///
     /// - Parameters:
     ///   - urlString: The image URL string. Must pass `Story.isSafeURL` check.
@@ -133,33 +142,50 @@ class ImageCache {
             return
         }
 
-        // 2. Check disk cache (async to avoid blocking main thread)
+        // 2. Coalesce concurrent requests for the same URL
+        pendingLock.lock()
+        if pendingCompletions[urlString] != nil {
+            // Another request is already in flight — just append our callback
+            pendingCompletions[urlString]!.append(completion)
+            pendingLock.unlock()
+            return
+        }
+        pendingCompletions[urlString] = [completion]
+        pendingLock.unlock()
+
+        // Helper to deliver the result to all pending callers and clean up
+        let deliverResult: (UIImage?) -> Void = { [weak self] image in
+            self?.pendingLock.lock()
+            let callbacks = self?.pendingCompletions.removeValue(forKey: urlString) ?? []
+            self?.pendingLock.unlock()
+            DispatchQueue.main.async {
+                for cb in callbacks { cb(image) }
+            }
+        }
+
+        // 3. Check disk cache (async to avoid blocking main thread)
         let diskPath = ImageCache.diskPath(for: urlString)
         diskQueue.async { [weak self] in
             if let data = try? Data(contentsOf: diskPath),
                let diskImage = ImageCache.downsampledImage(data: data) {
                 self?.setImage(diskImage, forKey: urlString)
-                DispatchQueue.main.async { completion(diskImage) }
+                deliverResult(diskImage)
                 return
             }
 
-            // 3. Fetch from network
-            // Guard against self being deallocated — if the cache is gone,
-            // still call completion(nil) so callers aren't left waiting
-            // indefinitely (fixes leaked completion handlers).
+            // 4. Fetch from network
             guard let self = self else {
-                DispatchQueue.main.async { completion(nil) }
+                deliverResult(nil)
                 return
             }
             self.imageSession.dataTask(with: url) { [weak self] data, _, _ in
                 guard let data = data, let image = ImageCache.downsampledImage(data: data) else {
-                    DispatchQueue.main.async { completion(nil) }
+                    deliverResult(nil)
                     return
                 }
                 self?.setImage(image, forKey: urlString)
-                // Persist downsampled thumbnail to disk
                 self?.persistToDisk(image: image, for: urlString)
-                DispatchQueue.main.async { completion(image) }
+                deliverResult(image)
             }.resume()
         }
     }
