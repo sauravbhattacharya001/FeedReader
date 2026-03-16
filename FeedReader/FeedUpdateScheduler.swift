@@ -132,6 +132,7 @@ class FeedUpdateScheduler {
     @discardableResult
     func recordCheck(feedURL: String, newArticleCount count: Int, at date: Date? = nil) -> FeedSchedule {
         let now = date ?? dateProvider()
+        let count = max(0, count)  // Guard against negative counts corrupting stats
         let key = feedURL.lowercased()
 
         var schedule = schedules[key] ?? FeedSchedule(
