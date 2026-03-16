@@ -39,6 +39,11 @@ class ImageCache {
     private var inflightURLs = Set<String>()
     private let inflightLock = NSLock()
 
+    /// Tracks URLSessionTask identifiers created by prefetch so that
+    /// cancelPrefetches() only cancels prefetch tasks — not loadImage()
+    /// requests that share the same URLSession.
+    private var prefetchTaskIDs = Set<Int>()
+
     /// Serial queue for disk I/O operations — keeps file writes off the main thread.
     private let diskQueue = DispatchQueue(label: "com.feedreader.imagecache.disk", qos: .utility)
 
@@ -205,7 +210,7 @@ class ImageCache {
             inflightLock.unlock()
             if alreadyInFlight { continue }
 
-            imageSession.dataTask(with: url) { [weak self] data, _, _ in
+            let task = imageSession.dataTask(with: url) { [weak self] data, _, _ in
                 self?.inflightLock.lock()
                 self?.inflightURLs.remove(urlString)
                 self?.inflightLock.unlock()
@@ -213,19 +218,32 @@ class ImageCache {
                 guard let data = data, let image = ImageCache.downsampledImage(data: data) else { return }
                 self?.setImage(image, forKey: urlString)
                 self?.persistToDisk(image: image, for: urlString)
-            }.resume()
+            }
+            inflightLock.lock()
+            prefetchTaskIDs.insert(task.taskIdentifier)
+            inflightLock.unlock()
+            task.resume()
         }
     }
 
-    /// Cancel all pending prefetch requests (e.g., on rapid scroll direction change).
+    /// Cancel pending prefetch requests only — does not affect loadImage()
+    /// requests that may be in flight on the same URLSession. Previously
+    /// this cancelled ALL data tasks, causing visible cell images to fail
+    /// loading when the user changed scroll direction.
     func cancelPrefetches() {
-        imageSession.getTasksWithCompletionHandler { dataTasks, _, _ in
-            for task in dataTasks {
+        imageSession.getTasksWithCompletionHandler { [weak self] dataTasks, _, _ in
+            guard let self = self else { return }
+            self.inflightLock.lock()
+            let idsToCancel = self.prefetchTaskIDs
+            self.inflightLock.unlock()
+
+            for task in dataTasks where idsToCancel.contains(task.taskIdentifier) {
                 task.cancel()
             }
         }
         inflightLock.lock()
         inflightURLs.removeAll()
+        prefetchTaskIDs.removeAll()
         inflightLock.unlock()
     }
 
