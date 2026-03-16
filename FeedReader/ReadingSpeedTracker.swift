@@ -315,7 +315,7 @@ class ReadingSpeedTracker {
     /// to the second half. Requires at least 10 samples in the window.
     func speedTrend(days: Int = 30) -> SpeedTrend {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        let recent = samples.filter { $0.recordedAt >= cutoff }
+        let recent = validSamples().filter { $0.recordedAt >= cutoff }
         guard recent.count >= 10 else { return .insufficientData }
 
         let sorted = recent.sorted { $0.recordedAt < $1.recordedAt }
@@ -344,7 +344,7 @@ class ReadingSpeedTracker {
 
     /// Speed breakdown by category.
     func categoryBreakdown() -> [SpeedBreakdown] {
-        let categorized = samples.filter { $0.category != nil }
+        let categorized = validSamples().filter { $0.category != nil }
         let grouped = Dictionary(grouping: categorized) { $0.category! }
         return grouped.map { key, values in
             let wpms = values.map(\.wordsPerMinute)
@@ -359,7 +359,7 @@ class ReadingSpeedTracker {
     }
 
     private func breakdown(groupedBy keyPath: KeyPath<SpeedSample, String>) -> [SpeedBreakdown] {
-        let grouped = Dictionary(grouping: samples) { $0[keyPath: keyPath] }
+        let grouped = Dictionary(grouping: validSamples()) { $0[keyPath: keyPath] }
         return grouped.map { key, values in
             let wpms = values.map(\.wordsPerMinute)
             return SpeedBreakdown(
