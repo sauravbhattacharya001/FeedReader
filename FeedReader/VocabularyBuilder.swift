@@ -12,6 +12,7 @@ import Foundation
 
 // MARK: - Models
 
+/// Difficulty tier for a vocabulary word, from everyday language to specialised terminology.
 enum WordDifficulty: String, Codable, CaseIterable, Comparable {
     case basic, moderate, advanced, expert
     private var order: Int {
@@ -20,10 +21,14 @@ enum WordDifficulty: String, Codable, CaseIterable, Comparable {
     static func < (lhs: WordDifficulty, rhs: WordDifficulty) -> Bool { lhs.order < rhs.order }
 }
 
+/// Tracks how well the user has learned a word, progressing through stages
+/// from newly encountered to fully mastered via spaced repetition.
 enum MasteryLevel: String, Codable, CaseIterable {
     case new, learning, familiar, confident, mastered
 }
 
+/// The sentence and article metadata where a vocabulary word was encountered,
+/// providing real-world usage context for review.
 struct WordContext: Codable, Equatable {
     let sentence: String
     let articleTitle: String
@@ -32,6 +37,8 @@ struct WordContext: Codable, Equatable {
     let date: Date
 }
 
+/// A single vocabulary word with its definition, usage contexts, review history,
+/// spaced-repetition schedule, tags, and star status.
 struct VocabularyEntry: Codable, Equatable {
     let word: String
     var difficulty: WordDifficulty
@@ -49,6 +56,8 @@ struct VocabularyEntry: Codable, Equatable {
     static func == (lhs: VocabularyEntry, rhs: VocabularyEntry) -> Bool { lhs.word == rhs.word }
 }
 
+/// Aggregate statistics for the user's vocabulary: word counts by difficulty and mastery,
+/// review accuracy, streak data, and top contributing feeds.
 struct VocabularyStats: Equatable {
     let totalWords: Int
     let byDifficulty: [WordDifficulty: Int]
@@ -68,9 +77,21 @@ struct VocabularyStats: Equatable {
 
 // MARK: - Spaced Repetition
 
+/// Calculates the next review date and mastery-level transition for a vocabulary word
+/// using a modified Leitner/SM-2 spaced repetition algorithm.
+///
+/// Correct answers advance mastery and increase the review interval;
+/// incorrect answers demote mastery and shorten it. The interval is
+/// further scaled by the user's cumulative accuracy on that word.
 struct SpacedRepetitionScheduler {
     static let baseIntervals: [MasteryLevel: Int] = [.new: 0, .learning: 1, .familiar: 3, .confident: 7, .mastered: 21]
 
+    /// Compute the next mastery level and review date after a review attempt.
+    /// - Parameters:
+    ///   - entry: The vocabulary entry being reviewed.
+    ///   - correct: Whether the user answered correctly.
+    ///   - calendar: Calendar used for date arithmetic (injectable for testing).
+    /// - Returns: A tuple of the new mastery level and next scheduled review date.
     static func schedule(entry: VocabularyEntry, correct: Bool, calendar: Calendar = .current) -> (mastery: MasteryLevel, nextReview: Date) {
         var newMastery = entry.mastery
         let now = Date()
@@ -102,6 +123,8 @@ struct SpacedRepetitionScheduler {
 
 // MARK: - Word Difficulty Estimator
 
+/// Heuristically estimates word difficulty based on length, syllable count,
+/// and membership in a common-words set (~150 most frequent English words).
 struct WordDifficultyEstimator {
     private static let commonWords: Set<String> = [
         "the","be","to","of","and","a","in","that","have","i","it","for","not","on","with","he","as","you","do","at",
@@ -116,6 +139,9 @@ struct WordDifficultyEstimator {
         "show","move","play","run","read","hand","off","last","great","old","big","end","set","try","turn","few","left","might"
     ]
 
+    /// Estimate the difficulty tier of a single word.
+    /// - Parameter word: The word to classify.
+    /// - Returns: A ``WordDifficulty`` level based on length and syllable heuristics.
     static func estimate(_ word: String) -> WordDifficulty {
         let lower = word.lowercased()
         if commonWords.contains(lower) { return .basic }
@@ -127,6 +153,7 @@ struct WordDifficultyEstimator {
         return .advanced
     }
 
+    /// Approximate the number of syllables in an English word using vowel-cluster counting.
     static func estimateSyllables(_ word: String) -> Int {
         let vowels: Set<Character> = ["a","e","i","o","u","y"]
         var count = 0; var prevVowel = false
@@ -142,6 +169,12 @@ struct WordDifficultyEstimator {
 
 // MARK: - Vocabulary Builder
 
+/// Manages a user's vocabulary list: adding/removing words, tracking usage contexts,
+/// scheduling spaced-repetition reviews, computing analytics, and persisting state to disk.
+///
+/// Words are normalised to lowercase and deduplicated. Each word tracks its difficulty,
+/// definition, contexts from articles, review history, mastery level, and next review date.
+/// The builder supports import/export as JSON for backup or sync.
 class VocabularyBuilder {
     private var entries: [String: VocabularyEntry] = [:]
     private let calendar: Calendar
@@ -160,6 +193,8 @@ class VocabularyBuilder {
 
     // MARK: - Word Management
 
+    /// Add a word (or update an existing one with new context/definition/tags).
+    /// - Returns: The created or updated ``VocabularyEntry``.
     @discardableResult
     func addWord(_ word: String, definition: String? = nil, difficulty: WordDifficulty? = nil,
                  context: WordContext? = nil, tags: [String] = []) -> VocabularyEntry {
@@ -187,29 +222,40 @@ class VocabularyBuilder {
         entries[normalised] = entry; save(); return entry
     }
 
+    /// Remove a word from the vocabulary. Returns `true` if the word existed.
     @discardableResult func removeWord(_ word: String) -> Bool {
         guard entries.removeValue(forKey: normalise(word)) != nil else { return false }; save(); return true
     }
+    /// Look up a word's entry, or `nil` if not tracked.
     func lookup(_ word: String) -> VocabularyEntry? { entries[normalise(word)] }
+    /// Check whether a word is in the vocabulary.
     func contains(_ word: String) -> Bool { entries[normalise(word)] != nil }
 
+    /// Update the definition for a tracked word.
     func setDefinition(_ word: String, definition: String?) { entries[normalise(word)]?.definition = definition; save() }
+    /// Update the personal note for a tracked word.
     func setNote(_ word: String, note: String?) { entries[normalise(word)]?.note = note; save() }
 
+    /// Toggle the starred status of a word. Returns the new starred state.
     @discardableResult func toggleStar(_ word: String) -> Bool {
         let key = normalise(word)
         guard var entry = entries[key] else { return false }
         entry.starred = !entry.starred; entries[key] = entry; save(); return entry.starred
     }
 
+    /// Replace all tags on a word.
     func setTags(_ word: String, tags: [String]) { entries[normalise(word)]?.tags = tags.sorted(); save() }
 
     // MARK: - Listing & Filtering
 
+    /// All vocabulary entries, most recently added first.
     func allWords() -> [VocabularyEntry] { entries.values.sorted { $0.addedDate > $1.addedDate } }
+    /// Words filtered by difficulty tier.
     func words(difficulty: WordDifficulty) -> [VocabularyEntry] { entries.values.filter { $0.difficulty == difficulty }.sorted { $0.addedDate > $1.addedDate } }
+    /// Words filtered by mastery level.
     func words(mastery: MasteryLevel) -> [VocabularyEntry] { entries.values.filter { $0.mastery == mastery }.sorted { $0.addedDate > $1.addedDate } }
 
+    /// Full-text search across word, definition, note, and tags.
     func search(_ query: String) -> [VocabularyEntry] {
         let q = query.lowercased()
         return entries.values.filter { e in
@@ -218,17 +264,23 @@ class VocabularyBuilder {
         }
     }
 
+    /// Words matching a specific tag (case-insensitive).
     func words(tag: String) -> [VocabularyEntry] {
         let t = tag.lowercased()
         return entries.values.filter { $0.tags.contains { $0.lowercased() == t } }.sorted { $0.addedDate > $1.addedDate }
     }
 
+    /// All starred/favourite words.
     func starredWords() -> [VocabularyEntry] { entries.values.filter { $0.starred }.sorted { $0.addedDate > $1.addedDate } }
+    /// All unique tags across the vocabulary.
     func allTags() -> [String] { var t = Set<String>(); entries.values.forEach { t.formUnion($0.tags) }; return t.sorted() }
+    /// Total number of tracked words.
     var wordCount: Int { entries.count }
 
     // MARK: - Spaced Repetition / Review
 
+    /// Words whose next review date has passed (or was never set), sorted by mastery
+    /// (lowest first) then oldest-reviewed first, capped at `limit`.
     func wordsDueForReview(limit: Int = 20) -> [VocabularyEntry] {
         let now = Date()
         return entries.values.filter { e in guard let next = e.nextReviewDate else { return true }; return next <= now }
@@ -236,6 +288,8 @@ class VocabularyBuilder {
             .prefix(limit).map { $0 }
     }
 
+    /// Record a review attempt, updating mastery and scheduling the next review.
+    /// - Returns: The updated entry, or `nil` if the word isn't tracked.
     @discardableResult
     func recordReview(_ word: String, correct: Bool) -> VocabularyEntry? {
         let key = normalise(word)
@@ -247,6 +301,15 @@ class VocabularyBuilder {
 
     // MARK: - Article Analysis
 
+    /// Scan article text and suggest uncommon words the user hasn't saved yet,
+    /// ranked by difficulty (hardest first).
+    /// - Parameters:
+    ///   - text: The full article body text.
+    ///   - articleTitle: Title for context tracking.
+    ///   - articleLink: URL for context tracking.
+    ///   - feedName: Source feed name for context tracking.
+    ///   - maxSuggestions: Maximum number of suggestions to return.
+    /// - Returns: Tuples of (word, difficulty, example sentence).
     func suggestWords(from text: String, articleTitle: String = "", articleLink: String = "",
                       feedName: String = "", maxSuggestions: Int = 10) -> [(word: String, difficulty: WordDifficulty, sentence: String)] {
         let uniqueWords = Set(tokenise(text).map { $0.lowercased() })
@@ -265,6 +328,8 @@ class VocabularyBuilder {
 
     // MARK: - Analytics
 
+    /// Compute aggregate vocabulary statistics including word counts, review accuracy,
+    /// streaks, and top contributing feeds.
     func stats() -> VocabularyStats {
         let all = Array(entries.values); let now = Date()
         var byDiff: [WordDifficulty: Int] = [:]; for d in WordDifficulty.allCases { byDiff[d] = 0 }
@@ -289,6 +354,7 @@ class VocabularyBuilder {
             longestStreak: longest, currentStreak: current)
     }
 
+    /// All words that have at least one context from the given feed.
     func wordsFromFeed(_ feedName: String) -> [VocabularyEntry] {
         let lower = feedName.lowercased()
         return entries.values.filter { $0.contexts.contains { $0.feedName.lowercased() == lower } }
@@ -296,11 +362,14 @@ class VocabularyBuilder {
 
     // MARK: - Export / Import
 
+    /// Export the entire vocabulary as a JSON string.
     func exportJSON() -> String {
         guard let data = try? JSONEncoder().encode(allWords()) else { return "[]" }
         return String(data: data, encoding: .utf8) ?? "[]"
     }
 
+    /// Import vocabulary entries from JSON, adding only words not already present.
+    /// Rejects payloads over 10 MB. Returns the number of new words imported.
     @discardableResult
     func importJSON(_ json: String) -> Int {
         guard json.utf8.count <= 10_485_760,
@@ -312,6 +381,7 @@ class VocabularyBuilder {
         save(); return count
     }
 
+    /// Delete all vocabulary entries.
     func reset() { entries.removeAll(); save() }
 
     // MARK: - Persistence
