@@ -1,0 +1,116 @@
+name: 💥 Crash Report
+description: Report an app crash with diagnostic details
+title: "[Crash]: "
+labels: ["bug", "crash"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a crash. The more detail you provide, the faster we can fix it.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe what you were doing when the crash occurred.
+      placeholder: "I was scrolling through my feed list when the app crashed."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we trigger the crash?
+      placeholder: |
+        1. Open the app
+        2. Add a feed with URL ...
+        3. Pull to refresh
+        4. App crashes
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Crash Frequency
+      description: How often does this crash occur?
+      options:
+        - Every time (100% reproducible)
+        - Frequently (> 50% of attempts)
+        - Sometimes (< 50% of attempts)
+        - Happened once
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected Area
+      description: Which part of the app were you using?
+      options:
+        - Feed Parsing / Loading
+        - Offline Caching
+        - Bookmarks
+        - Search / Filtering
+        - Image Loading
+        - Multi-Feed Management
+        - Network / Connectivity
+        - UI / Layout
+        - App Launch / Startup
+        - Background Refresh
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: crash-log
+    attributes:
+      label: Crash Log / Stack Trace
+      description: |
+        Paste the crash log from Xcode console or Settings > Privacy > Analytics > Analytics Data.
+        Look for entries starting with "FeedReader".
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS Version
+      placeholder: "e.g., 17.4"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: "e.g., iPhone 15 Pro, iPad Air 5th gen"
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App Version / Commit
+      description: If built from source, include the commit hash.
+      placeholder: "e.g., v1.2.0 or commit abc1234"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Network conditions, feed URLs that trigger it, screenshots, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true

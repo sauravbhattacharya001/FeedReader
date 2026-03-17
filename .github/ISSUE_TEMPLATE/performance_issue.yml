@@ -1,0 +1,97 @@
+name: 🐢 Performance Issue
+description: Report slow performance, high memory usage, or battery drain
+title: "[Performance]: "
+labels: ["performance"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve FeedReader's performance by describing the issue below.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Performance Issue Type
+      options:
+        - Slow feed loading / parsing
+        - High memory usage
+        - Excessive battery drain
+        - UI lag / dropped frames
+        - Slow search / filtering
+        - Large cache / storage usage
+        - Slow app launch
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the performance problem in detail.
+      placeholder: "Loading feeds with 500+ articles takes over 30 seconds and the UI freezes."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Conditions
+      description: |
+        What conditions trigger the issue? Include details like:
+        - Number of feeds subscribed
+        - Average articles per feed
+        - Network type (WiFi/Cellular)
+        - How long the app has been running
+      placeholder: |
+        - 25 feeds subscribed
+        - Some feeds have 1000+ articles
+        - On WiFi
+        - Issue appears after ~10 minutes of use
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Measurements
+      description: |
+        If available, include quantitative data:
+        - Memory usage from Xcode Debug Navigator
+        - Time profiler results
+        - Battery usage from Settings
+      render: shell
+    validations:
+      required: false
+
+  - type: input
+    id: ios-version
+    attributes:
+      label: iOS Version
+      placeholder: "e.g., 17.4"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: "e.g., iPhone 12 mini, iPad Pro 11-inch"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Screenshots of Instruments traces, Xcode memory graphs, etc.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this is not a duplicate.
+          required: true
