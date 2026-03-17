@@ -2,323 +2,306 @@
 //  VocabularyBuilderTests.swift
 //  FeedReaderTests
 //
+//  Tests for VocabularyBuilder — word extraction, mastery tracking,
+//  review scheduling, filtering, search, import/export, and statistics.
+//
 
 import XCTest
 @testable import FeedReader
 
 class VocabularyBuilderTests: XCTestCase {
+    
     var builder: VocabularyBuilder!
-    var calendar: Calendar!
-
+    
     override func setUp() {
         super.setUp()
-        calendar = Calendar.current
-        builder = VocabularyBuilder(calendar: calendar, persistencePath: nil)
+        builder = VocabularyBuilder.shared
+        builder.clearAll()
     }
-
+    
+    override func tearDown() {
+        builder.clearAll()
+        super.tearDown()
+    }
+    
+    // MARK: - Word Extraction
+    
+    func testExtractWordsFiltersCommon() {
+        let text = "The government established unprecedented regulations for the environment."
+        let words = builder.extractWords(from: text)
+        XCTAssertTrue(words.contains("government"))
+        XCTAssertTrue(words.contains("established"))
+        XCTAssertTrue(words.contains("unprecedented"))
+        XCTAssertTrue(words.contains("regulations"))
+        XCTAssertTrue(words.contains("environment"))
+        // "the" and "for" should be filtered
+        XCTAssertFalse(words.contains("the"))
+        XCTAssertFalse(words.contains("for"))
+    }
+    
+    func testExtractWordsMinLength() {
+        let text = "A big cat ran fast across the field"
+        let words = builder.extractWords(from: text)
+        // Words under 6 chars should be excluded
+        XCTAssertFalse(words.contains("big"))
+        XCTAssertFalse(words.contains("cat"))
+        XCTAssertFalse(words.contains("ran"))
+        XCTAssertFalse(words.contains("fast"))
+        XCTAssertTrue(words.contains("across"))
+    }
+    
+    func testExtractWordsDeduplicates() {
+        let text = "Technology drives technology forward with technology"
+        let words = builder.extractWords(from: text)
+        let techCount = words.filter { $0 == "technology" }.count
+        XCTAssertEqual(techCount, 1)
+    }
+    
+    func testExtractWordsEmptyText() {
+        let words = builder.extractWords(from: "")
+        XCTAssertTrue(words.isEmpty)
+    }
+    
+    // MARK: - Context Sentence
+    
+    func testContextSentenceFound() {
+        let text = "The economy is growing. Inflation remains unprecedented in recent years. Markets are stable."
+        let context = builder.contextSentence(for: "unprecedented", in: text)
+        XCTAssertTrue(context.contains("unprecedented"))
+        XCTAssertTrue(context.hasSuffix("."))
+    }
+    
+    func testContextSentenceNotFound() {
+        let text = "The sky is blue. The grass is green."
+        let context = builder.contextSentence(for: "extraordinary", in: text)
+        XCTAssertEqual(context, "")
+    }
+    
+    // MARK: - Process Article
+    
+    func testProcessArticleAddsWords() {
+        let body = "The unprecedented transformation of cryptocurrency markets demonstrates remarkable volatility and extraordinary resilience."
+        let added = builder.processArticle(title: "Crypto News", body: body, feedName: "TechCrunch")
+        XCTAssertGreaterThan(added.count, 0)
+        XCTAssertTrue(added.allSatisfy { $0.sourceFeedName == "TechCrunch" })
+        XCTAssertTrue(added.allSatisfy { $0.sourceArticleTitle == "Crypto News" })
+    }
+    
+    func testProcessArticleMaxWords() {
+        let body = "Extraordinary unprecedented remarkable significant comprehensive substantial magnificent revolutionary transformative exceptional"
+        let added = builder.processArticle(title: "Test", body: body, feedName: "Feed", maxWords: 3)
+        XCTAssertLessThanOrEqual(added.count, 3)
+    }
+    
+    func testProcessArticleSkipsDuplicates() {
+        let body = "Unprecedented changes in the technological landscape"
+        _ = builder.processArticle(title: "First", body: body, feedName: "Feed1")
+        let secondAdded = builder.processArticle(title: "Second", body: body, feedName: "Feed2")
+        XCTAssertEqual(secondAdded.count, 0)
+    }
+    
+    // MARK: - Manual Add/Remove
+    
     func testAddWord() {
-        let entry = builder.addWord("ephemeral")
-        XCTAssertEqual(entry.word, "ephemeral")
-        XCTAssertEqual(entry.mastery, .new)
-        XCTAssertEqual(builder.wordCount, 1)
+        builder.addWord("serendipity", context: "A moment of serendipity.", articleTitle: "Life", feedName: "Blog")
+        XCTAssertEqual(builder.words.count, 1)
+        XCTAssertEqual(builder.words.first?.word, "serendipity")
+        XCTAssertEqual(builder.words.first?.masteryLevel, .new)
     }
-
-    func testAddWordNormalises() {
-        builder.addWord("  Ephemeral  ")
-        XCTAssertTrue(builder.contains("ephemeral"))
-        XCTAssertTrue(builder.contains("EPHEMERAL"))
-        XCTAssertEqual(builder.wordCount, 1)
+    
+    func testAddDuplicateWordIgnored() {
+        builder.addWord("serendipity", context: "Context 1", articleTitle: "A1", feedName: "F1")
+        builder.addWord("Serendipity", context: "Context 2", articleTitle: "A2", feedName: "F2")
+        XCTAssertEqual(builder.words.count, 1)
     }
-
-    func testAddEmptyWord() {
-        let entry = builder.addWord("")
-        XCTAssertEqual(entry.word, "")
-        XCTAssertEqual(builder.wordCount, 0)
-    }
-
-    func testAddWordWithDefinition() {
-        let entry = builder.addWord("ubiquitous", definition: "present everywhere")
-        XCTAssertEqual(entry.definition, "present everywhere")
-    }
-
-    func testAddWordWithContext() {
-        let ctx = WordContext(sentence: "The ubiquitous nature of smartphones.", articleTitle: "Tech",
-            articleLink: "https://example.com", feedName: "TechCrunch", date: Date())
-        let entry = builder.addWord("ubiquitous", context: ctx)
-        XCTAssertEqual(entry.contexts.count, 1)
-        XCTAssertEqual(entry.contexts.first?.feedName, "TechCrunch")
-    }
-
-    func testAddExistingWordAppendsContext() {
-        let ctx1 = WordContext(sentence: "S1", articleTitle: "A1", articleLink: "", feedName: "F1", date: Date())
-        let ctx2 = WordContext(sentence: "S2", articleTitle: "A2", articleLink: "", feedName: "F2", date: Date())
-        builder.addWord("paradigm", context: ctx1)
-        builder.addWord("paradigm", context: ctx2)
-        XCTAssertEqual(builder.lookup("paradigm")?.contexts.count, 2)
-    }
-
-    func testContextCappedAt50() {
-        for i in 0..<55 {
-            let ctx = WordContext(sentence: "S\(i)", articleTitle: "A", articleLink: "", feedName: "F", date: Date())
-            builder.addWord("prolific", context: ctx)
-        }
-        XCTAssertEqual(builder.lookup("prolific")?.contexts.count, 50)
-    }
-
-    func testAddWordWithTags() {
-        let entry = builder.addWord("mitochondria", tags: ["biology", "science"])
-        XCTAssertEqual(entry.tags, ["biology", "science"])
-    }
-
-    func testAddWordMergesTags() {
-        builder.addWord("mitochondria", tags: ["biology"])
-        builder.addWord("mitochondria", tags: ["science"])
-        let e = builder.lookup("mitochondria")
-        XCTAssertEqual(e?.tags.count, 2)
-        XCTAssertTrue(e?.tags.contains("biology") ?? false)
-    }
-
-    func testAddWordAutoEstimates() {
-        XCTAssertEqual(builder.addWord("cat").difficulty, .basic)
-        XCTAssertTrue(builder.addWord("antidisestablishmentarianism").difficulty >= .advanced)
-    }
-
-    func testAddWordCustomDifficulty() {
-        XCTAssertEqual(builder.addWord("synapse", difficulty: .expert).difficulty, .expert)
-    }
-
+    
     func testRemoveWord() {
-        builder.addWord("ephemeral")
-        XCTAssertTrue(builder.removeWord("ephemeral"))
-        XCTAssertEqual(builder.wordCount, 0)
+        builder.addWord("ephemeral", context: "Test", articleTitle: "A", feedName: "F")
+        XCTAssertEqual(builder.words.count, 1)
+        builder.removeWord("ephemeral")
+        XCTAssertEqual(builder.words.count, 0)
     }
-
-    func testRemoveNonexistent() { XCTAssertFalse(builder.removeWord("nope")) }
-
-    func testLookup() {
-        builder.addWord("paradigm", definition: "a model")
-        XCTAssertEqual(builder.lookup("paradigm")?.definition, "a model")
+    
+    func testClearAll() {
+        builder.addWord("alpha", context: "", articleTitle: "", feedName: "")
+        builder.addWord("bravo", context: "", articleTitle: "", feedName: "")
+        builder.clearAll()
+        XCTAssertTrue(builder.words.isEmpty)
     }
-
-    func testLookupMissing() { XCTAssertNil(builder.lookup("nope")) }
-
-    func testSetDefinition() {
-        builder.addWord("entropy")
-        builder.setDefinition("entropy", definition: "disorder")
-        XCTAssertEqual(builder.lookup("entropy")?.definition, "disorder")
+    
+    // MARK: - Mastery & Review
+    
+    func testReviewWordAdvancesMastery() {
+        builder.addWord("catalyst", context: "", articleTitle: "", feedName: "")
+        XCTAssertEqual(builder.words.first?.masteryLevel, .new)
+        
+        builder.reviewWord("catalyst", knewIt: true)
+        XCTAssertEqual(builder.words.first?.masteryLevel, .learning)
+        XCTAssertEqual(builder.words.first?.reviewCount, 1)
+        
+        builder.reviewWord("catalyst", knewIt: true)
+        XCTAssertEqual(builder.words.first?.masteryLevel, .familiar)
+        
+        builder.reviewWord("catalyst", knewIt: true)
+        XCTAssertEqual(builder.words.first?.masteryLevel, .mastered)
     }
-
-    func testSetNote() {
-        builder.addWord("entropy")
-        builder.setNote("entropy", note: "thermodynamics")
-        XCTAssertEqual(builder.lookup("entropy")?.note, "thermodynamics")
+    
+    func testReviewWordDemotesMastery() {
+        builder.addWord("catalyst", context: "", articleTitle: "", feedName: "")
+        builder.reviewWord("catalyst", knewIt: true) // -> learning
+        builder.reviewWord("catalyst", knewIt: false) // -> new
+        XCTAssertEqual(builder.words.first?.masteryLevel, .new)
     }
-
-    func testToggleStar() {
-        builder.addWord("quixotic")
-        XCTAssertTrue(builder.toggleStar("quixotic"))
-        XCTAssertTrue(builder.lookup("quixotic")?.starred ?? false)
-        XCTAssertFalse(builder.toggleStar("quixotic"))
+    
+    func testReviewWordCapsAtMastered() {
+        builder.addWord("catalyst", context: "", articleTitle: "", feedName: "")
+        for _ in 0..<10 { builder.reviewWord("catalyst", knewIt: true) }
+        XCTAssertEqual(builder.words.first?.masteryLevel, .mastered)
     }
-
-    func testToggleStarNonexistent() { XCTAssertFalse(builder.toggleStar("nope")) }
-
-    func testSetTags() {
-        builder.addWord("paradigm")
-        builder.setTags("paradigm", tags: ["philosophy", "science"])
-        XCTAssertEqual(builder.lookup("paradigm")?.tags, ["philosophy", "science"])
+    
+    func testReviewWordDoesNotGoBelowNew() {
+        builder.addWord("catalyst", context: "", articleTitle: "", feedName: "")
+        builder.reviewWord("catalyst", knewIt: false)
+        XCTAssertEqual(builder.words.first?.masteryLevel, .new)
     }
-
-    func testAllWords() {
-        builder.addWord("a"); builder.addWord("b"); builder.addWord("c")
-        XCTAssertEqual(builder.allWords().count, 3)
+    
+    func testWordsDueForReview() {
+        builder.addWord("ancient", context: "", articleTitle: "", feedName: "")
+        // Newly added word with nextReviewDate = dateAdded + 1 day, so not due yet
+        let due = builder.wordsDueForReview()
+        XCTAssertEqual(due.count, 0)
     }
-
-    func testFilterByDifficulty() {
-        builder.addWord("cat", difficulty: .basic)
-        builder.addWord("ubiquitous", difficulty: .advanced)
-        builder.addWord("mitochondria", difficulty: .advanced)
-        XCTAssertEqual(builder.words(difficulty: .advanced).count, 2)
-    }
-
+    
+    // MARK: - Filtering
+    
     func testFilterByMastery() {
-        builder.addWord("a"); builder.addWord("b")
-        XCTAssertEqual(builder.words(mastery: .new).count, 2)
+        builder.addWord("alpha", context: "", articleTitle: "", feedName: "")
+        builder.addWord("bravo", context: "", articleTitle: "", feedName: "")
+        builder.reviewWord("bravo", knewIt: true) // -> learning
+        
+        XCTAssertEqual(builder.words(at: .new).count, 1)
+        XCTAssertEqual(builder.words(at: .learning).count, 1)
     }
-
-    func testSearch() {
-        builder.addWord("paradigm", definition: "a model or pattern")
-        builder.addWord("entropy", definition: "measure of disorder")
-        let r = builder.search("model")
-        XCTAssertEqual(r.count, 1)
-        XCTAssertEqual(r.first?.word, "paradigm")
+    
+    func testFilterByFeed() {
+        builder.addWord("alpha", context: "", articleTitle: "", feedName: "BBC")
+        builder.addWord("bravo", context: "", articleTitle: "", feedName: "NPR")
+        
+        XCTAssertEqual(builder.words(fromFeed: "BBC").count, 1)
+        XCTAssertEqual(builder.words(fromFeed: "NPR").count, 1)
+        XCTAssertEqual(builder.words(fromFeed: "CNN").count, 0)
     }
-
-    func testSearchByTag() {
-        builder.addWord("mitochondria", tags: ["biology"])
-        builder.addWord("entropy", tags: ["physics"])
-        XCTAssertEqual(builder.search("biology").count, 1)
+    
+    func testSearchWords() {
+        builder.addWord("algorithm", context: "", articleTitle: "", feedName: "")
+        builder.addWord("algebra", context: "", articleTitle: "", feedName: "")
+        builder.addWord("biology", context: "", articleTitle: "", feedName: "")
+        
+        XCTAssertEqual(builder.searchWords("alg").count, 2)
+        XCTAssertEqual(builder.searchWords("bio").count, 1)
+        XCTAssertEqual(builder.searchWords("xyz").count, 0)
     }
-
-    func testWordsByTag() {
-        builder.addWord("mitochondria", tags: ["biology"])
-        builder.addWord("ribosome", tags: ["biology"])
-        builder.addWord("entropy", tags: ["physics"])
-        XCTAssertEqual(builder.words(tag: "biology").count, 2)
+    
+    // MARK: - Statistics
+    
+    func testGenerateStats() {
+        builder.addWord("alpha", context: "", articleTitle: "", feedName: "BBC")
+        builder.addWord("bravo", context: "", articleTitle: "", feedName: "BBC")
+        builder.addWord("charlie", context: "", articleTitle: "", feedName: "NPR")
+        
+        let stats = builder.generateStats()
+        XCTAssertEqual(stats.totalWords, 3)
+        XCTAssertEqual(stats.newCount, 3)
+        XCTAssertEqual(stats.wordsAddedToday, 3)
+        XCTAssertGreaterThan(stats.topSources.count, 0)
     }
-
-    func testStarredWords() {
-        builder.addWord("a"); builder.addWord("b"); builder.toggleStar("a")
-        XCTAssertEqual(builder.starredWords().count, 1)
+    
+    func testStatsEmptyVocabulary() {
+        let stats = builder.generateStats()
+        XCTAssertEqual(stats.totalWords, 0)
+        XCTAssertEqual(stats.masteryPercentage, 0.0)
     }
-
-    func testAllTags() {
-        builder.addWord("a", tags: ["science"]); builder.addWord("b", tags: ["art", "science"])
-        XCTAssertEqual(builder.allTags(), ["art", "science"])
+    
+    // MARK: - Export / Import
+    
+    func testExportJSON() {
+        builder.addWord("quantum", context: "Quantum computing.", articleTitle: "Tech", feedName: "Wired")
+        let data = builder.exportAsJSON()
+        XCTAssertNotNil(data)
     }
-
-    func testRecordReviewCorrect() {
-        builder.addWord("paradigm")
-        let u = builder.recordReview("paradigm", correct: true)
-        XCTAssertEqual(u?.reviewCount, 1); XCTAssertEqual(u?.correctCount, 1)
-        XCTAssertEqual(u?.mastery, .learning)
+    
+    func testExportCSV() {
+        builder.addWord("quantum", context: "Quantum computing.", articleTitle: "Tech", feedName: "Wired")
+        let csv = builder.exportAsCSV()
+        XCTAssertTrue(csv.contains("quantum"))
+        XCTAssertTrue(csv.contains("Word,Mastery"))
     }
-
-    func testRecordReviewIncorrect() {
-        builder.addWord("paradigm")
-        _ = builder.recordReview("paradigm", correct: true)
-        let u = builder.recordReview("paradigm", correct: false)
-        XCTAssertEqual(u?.mastery, .learning); XCTAssertEqual(u?.reviewCount, 2)
+    
+    func testImportJSON() {
+        builder.addWord("original", context: "", articleTitle: "", feedName: "")
+        let data = builder.exportAsJSON()!
+        builder.clearAll()
+        
+        let imported = builder.importFromJSON(data)
+        XCTAssertEqual(imported, 1)
+        XCTAssertEqual(builder.words.first?.word, "original")
     }
-
-    func testMasteryProgression() {
-        builder.addWord("paradigm")
-        var e = builder.recordReview("paradigm", correct: true); XCTAssertEqual(e?.mastery, .learning)
-        e = builder.recordReview("paradigm", correct: true); XCTAssertEqual(e?.mastery, .familiar)
-        e = builder.recordReview("paradigm", correct: true); XCTAssertEqual(e?.mastery, .familiar)
-        e = builder.recordReview("paradigm", correct: true); XCTAssertEqual(e?.mastery, .confident)
+    
+    func testImportJSONSkipsDuplicates() {
+        builder.addWord("existing", context: "", articleTitle: "", feedName: "")
+        let data = builder.exportAsJSON()!
+        
+        let imported = builder.importFromJSON(data)
+        XCTAssertEqual(imported, 0) // already exists
+        XCTAssertEqual(builder.words.count, 1)
     }
-
-    func testMasteryRegression() {
-        builder.addWord("paradigm")
-        _ = builder.recordReview("paradigm", correct: true)
-        _ = builder.recordReview("paradigm", correct: true)
-        XCTAssertEqual(builder.recordReview("paradigm", correct: false)?.mastery, .learning)
+    
+    func testImportInvalidJSON() {
+        let badData = "not json".data(using: .utf8)!
+        let imported = builder.importFromJSON(badData)
+        XCTAssertEqual(imported, 0)
     }
-
-    func testRecordReviewNonexistent() { XCTAssertNil(builder.recordReview("nope", correct: true)) }
-
-    func testDifficultyEstimation() {
-        XCTAssertEqual(WordDifficultyEstimator.estimate("the"), .basic)
-        XCTAssertEqual(WordDifficultyEstimator.estimate("cat"), .basic)
-        XCTAssertTrue(WordDifficultyEstimator.estimate("antidisestablishmentarianism") >= .advanced)
+    
+    // MARK: - VocabularyWord Model
+    
+    func testWordEquality() {
+        let w1 = VocabularyWord(word: "test", contextSentence: "", sourceArticleTitle: "", sourceFeedName: "")
+        let w2 = VocabularyWord(word: "test", contextSentence: "different", sourceArticleTitle: "different", sourceFeedName: "different")
+        XCTAssertEqual(w1, w2)
     }
-
-    func testSyllableEstimation() {
-        XCTAssertEqual(WordDifficultyEstimator.estimateSyllables("cat"), 1)
-        XCTAssertEqual(WordDifficultyEstimator.estimateSyllables("hello"), 2)
-        XCTAssertTrue(WordDifficultyEstimator.estimateSyllables("university") >= 4)
+    
+    func testMasteryLevelComparable() {
+        XCTAssertTrue(VocabularyWord.MasteryLevel.new < .learning)
+        XCTAssertTrue(VocabularyWord.MasteryLevel.learning < .familiar)
+        XCTAssertTrue(VocabularyWord.MasteryLevel.familiar < .mastered)
     }
-
-    func testSuggestWords() {
-        let text = "The pharmaceutical industry has seen unprecedented consolidation through mergers. Regulatory frameworks for biotechnological innovations remain fragmented."
-        let s = builder.suggestWords(from: text)
-        XCTAssertTrue(s.count > 0)
-        XCTAssertFalse(s.map { $0.word }.contains("the"))
+    
+    func testMasteryDisplayNames() {
+        XCTAssertEqual(VocabularyWord.MasteryLevel.new.displayName, "New")
+        XCTAssertEqual(VocabularyWord.MasteryLevel.learning.displayName, "Learning")
+        XCTAssertEqual(VocabularyWord.MasteryLevel.familiar.displayName, "Familiar")
+        XCTAssertEqual(VocabularyWord.MasteryLevel.mastered.displayName, "Mastered")
     }
-
-    func testSuggestWordsSkipsExisting() {
-        builder.addWord("pharmaceutical")
-        let s = builder.suggestWords(from: "The pharmaceutical industry is growing.")
-        XCTAssertFalse(s.map { $0.word }.contains("pharmaceutical"))
+    
+    func testMasteryReviewIntervals() {
+        XCTAssertEqual(VocabularyWord.MasteryLevel.new.reviewIntervalDays, 1)
+        XCTAssertEqual(VocabularyWord.MasteryLevel.learning.reviewIntervalDays, 3)
+        XCTAssertEqual(VocabularyWord.MasteryLevel.familiar.reviewIntervalDays, 7)
+        XCTAssertEqual(VocabularyWord.MasteryLevel.mastered.reviewIntervalDays, 30)
     }
-
-    func testSuggestWordsLimit() {
-        let text = "Antidisestablishmentarianism, floccinaucinihilipilification, supercalifragilisticexpialidocious, thyroparathyroidectomized."
-        XCTAssertTrue(builder.suggestWords(from: text, maxSuggestions: 2).count <= 2)
+    
+    // MARK: - Notifications
+    
+    func testVocabularyUpdateNotification() {
+        let expectation = self.expectation(forNotification: .vocabularyDidUpdate, object: builder)
+        builder.addWord("notification", context: "", articleTitle: "", feedName: "")
+        wait(for: [expectation], timeout: 1.0)
     }
-
-    func testStatsEmpty() {
-        let s = builder.stats()
-        XCTAssertEqual(s.totalWords, 0); XCTAssertEqual(s.totalReviews, 0); XCTAssertEqual(s.dueForReview, 0)
-    }
-
-    func testStatsWithData() {
-        builder.addWord("paradigm", difficulty: .advanced)
-        builder.addWord("entropy", difficulty: .moderate)
-        builder.addWord("quixotic", difficulty: .advanced)
-        _ = builder.recordReview("paradigm", correct: true)
-        _ = builder.recordReview("paradigm", correct: true)
-        let s = builder.stats()
-        XCTAssertEqual(s.totalWords, 3); XCTAssertEqual(s.byDifficulty[.advanced], 2)
-        XCTAssertEqual(s.totalReviews, 2); XCTAssertTrue(s.averageAccuracy == 1.0)
-    }
-
-    func testStatsRecent() {
-        builder.addWord("a"); builder.addWord("b")
-        let s = builder.stats()
-        XCTAssertEqual(s.wordsAddedLast7Days, 2); XCTAssertEqual(s.wordsAddedLast30Days, 2)
-    }
-
-    func testWordsFromFeed() {
-        let ctx = WordContext(sentence: "T", articleTitle: "A", articleLink: "", feedName: "TC", date: Date())
-        builder.addWord("paradigm", context: ctx); builder.addWord("entropy")
-        XCTAssertEqual(builder.wordsFromFeed("TC").count, 1)
-    }
-
-    func testExportImport() {
-        builder.addWord("paradigm", definition: "a model")
-        builder.addWord("entropy", difficulty: .expert)
-        let json = builder.exportJSON()
-        let b2 = VocabularyBuilder(calendar: calendar, persistencePath: nil)
-        XCTAssertEqual(b2.importJSON(json), 2)
-        XCTAssertTrue(b2.contains("paradigm")); XCTAssertTrue(b2.contains("entropy"))
-    }
-
-    func testImportSkipsDuplicates() {
-        builder.addWord("paradigm")
-        let json = builder.exportJSON()
-        let b2 = VocabularyBuilder(calendar: calendar, persistencePath: nil)
-        b2.addWord("paradigm")
-        XCTAssertEqual(b2.importJSON(json), 0)
-    }
-
-    func testImportRejectsOversized() {
-        XCTAssertEqual(builder.importJSON(String(repeating: "x", count: 10_485_761)), 0)
-    }
-
-    func testImportRejectsInvalid() { XCTAssertEqual(builder.importJSON("bad"), 0) }
-
-    func testReset() {
-        builder.addWord("a"); builder.addWord("b"); builder.reset()
-        XCTAssertEqual(builder.wordCount, 0)
-    }
-
-    func testSchedulerCorrect() {
-        let e = VocabularyEntry(word: "t", difficulty: .moderate, definition: nil, note: nil, contexts: [],
-            reviewCount: 2, correctCount: 2, mastery: .learning, addedDate: Date(), lastReviewDate: nil,
-            nextReviewDate: nil, tags: [], starred: false)
-        let (m, n) = SpacedRepetitionScheduler.schedule(entry: e, correct: true)
-        XCTAssertEqual(m, .familiar); XCTAssertTrue(n > Date())
-    }
-
-    func testSchedulerIncorrect() {
-        let e = VocabularyEntry(word: "t", difficulty: .moderate, definition: nil, note: nil, contexts: [],
-            reviewCount: 5, correctCount: 3, mastery: .confident, addedDate: Date(), lastReviewDate: nil,
-            nextReviewDate: nil, tags: [], starred: false)
-        XCTAssertEqual(SpacedRepetitionScheduler.schedule(entry: e, correct: false).mastery, .familiar)
-    }
-
-    func testSchedulerMasteredStays() {
-        let e = VocabularyEntry(word: "t", difficulty: .moderate, definition: nil, note: nil, contexts: [],
-            reviewCount: 10, correctCount: 9, mastery: .mastered, addedDate: Date(), lastReviewDate: nil,
-            nextReviewDate: nil, tags: [], starred: false)
-        XCTAssertEqual(SpacedRepetitionScheduler.schedule(entry: e, correct: true).mastery, .mastered)
-    }
-
-    func testDifficultyOrdering() {
-        XCTAssertTrue(WordDifficulty.basic < .moderate)
-        XCTAssertTrue(WordDifficulty.moderate < .advanced)
-        XCTAssertTrue(WordDifficulty.advanced < .expert)
+    
+    func testMasteryChangeNotification() {
+        builder.addWord("mastery", context: "", articleTitle: "", feedName: "")
+        let expectation = self.expectation(forNotification: .vocabularyMasteryDidChange, object: builder)
+        builder.reviewWord("mastery", knewIt: true)
+        wait(for: [expectation], timeout: 1.0)
     }
 }
