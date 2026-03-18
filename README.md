@@ -16,6 +16,7 @@
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
   <img src="https://img.shields.io/badge/tests-1941-brightgreen?logo=swift" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-enabled-brightgreen?logo=swift" alt="Code Coverage">
+  <a href="https://codecov.io/gh/sauravbhattacharya001/FeedReader"><img src="https://codecov.io/gh/sauravbhattacharya001/FeedReader/graph/badge.svg" alt="Codecov"></a>
   <br>
   <!-- Platform / Language -->
   <img src="https://img.shields.io/badge/platform-iOS-blue?logo=apple" alt="Platform">

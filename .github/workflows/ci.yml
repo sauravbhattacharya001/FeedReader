@@ -186,6 +186,53 @@ jobs:
             coverage-percent.txt
           retention-days: 14
 
+      - name: Convert coverage to Codecov format
+        if: always()
+        run: |
+          ARCHIVE=$(find TestResults -name '*.xccovarchive' 2>/dev/null | head -1)
+          if [ -n "$ARCHIVE" ]; then
+            # Generate lcov-compatible coverage from xccovarchive
+            python3 << 'PYEOF'
+          import json, os
+
+          try:
+              with open("coverage.json") as f:
+                  data = json.load(f)
+
+              with open("coverage.lcov", "w") as lcov:
+                  for target in data.get("targets", []):
+                      if "Test" in target.get("name", ""):
+                          continue
+                      for src_file in target.get("files", []):
+                          path = src_file.get("path", src_file.get("name", "unknown"))
+                          lcov.write(f"SF:{path}\n")
+                          for func in src_file.get("functions", []):
+                              name = func.get("name", "?")
+                              line = func.get("lineNumber", 0)
+                              covered = func.get("coveredLines", 0)
+                              lcov.write(f"FN:{line},{name}\n")
+                              lcov.write(f"FNDA:{covered},{name}\n")
+                          executable = src_file.get("executableLines", 0)
+                          covered = src_file.get("coveredLines", 0)
+                          lcov.write(f"LF:{executable}\n")
+                          lcov.write(f"LH:{covered}\n")
+                          lcov.write("end_of_record\n")
+              print("Generated coverage.lcov")
+          except Exception as e:
+              print(f"Warning: Could not generate lcov: {e}")
+          PYEOF
+          fi
+
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.lcov
+          flags: xcode-tests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
   spm-test:
     name: SPM Test (FeedReaderCore)
     runs-on: macos-latest
@@ -220,12 +267,26 @@ jobs:
             echo "--- Detailed per-file coverage ---"
             xcrun llvm-cov report "$BIN" -instr-profile="$PROFDATA" \
               --ignore-filename-regex='Tests/' --show-functions=false 2>/dev/null || true
+
+            # Export lcov for Codecov
+            xcrun llvm-cov export "$BIN" -instr-profile="$PROFDATA" \
+              --ignore-filename-regex='Tests/' -format=lcov > spm-coverage.lcov 2>/dev/null || true
           else
             echo "SPM coverage data not found."
             echo "PROFDATA: $PROFDATA"
             echo "BIN: $BIN"
             find .build -name '*.profdata' 2>/dev/null || true
           fi
+
+      - name: Upload SPM coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: spm-coverage.lcov
+          flags: spm-tests
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: SwiftLint

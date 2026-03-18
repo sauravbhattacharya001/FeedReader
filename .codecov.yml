@@ -1,0 +1,39 @@
+codecov:
+  require_ci_to_pass: false
+
+coverage:
+  precision: 1
+  round: down
+  range: "40...90"
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 5%
+        informational: true
+    patch:
+      default:
+        target: 70%
+        informational: true
+
+  flags:
+    xcode-tests:
+      paths:
+        - FeedReader/
+      carryforward: true
+    spm-tests:
+      paths:
+        - Sources/
+      carryforward: true
+
+ignore:
+  - "FeedReaderTests/"
+  - "Tests/"
+  - "docs/"
+  - "*.md"
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false
