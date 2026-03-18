@@ -1,53 +1,50 @@
-# Dockerfile — Swift syntax & lint checker for FeedReader
+# Dockerfile — Build, test, and lint FeedReaderCore (Swift Package Manager)
 #
-# iOS apps cannot run in Docker (they require the Xcode toolchain and an
-# iOS simulator/device), but we CAN validate Swift source files for
-# syntax errors, check formatting, and run SwiftLint in a lightweight
-# Linux container. This catches issues before they hit macOS CI.
+# The iOS app targets (UIKit) cannot compile on Linux, but the core
+# library (Sources/FeedReaderCore) is pure Swift and builds fine with
+# SPM on Linux.  This Dockerfile compiles the library, runs tests,
+# and syntax-checks any remaining iOS-only Swift files.
 #
 # Usage:
-#   docker build -t feedreader-lint .
-#   docker run --rm feedreader-lint
+#   docker build -t feedreader .
+#   docker run --rm feedreader            # runs tests
+#   docker run --rm feedreader swift test  # explicit test run
 
-# ---------- Stage 1: lint ----------
-FROM swift:5.10-jammy AS lint
+# ---------- Stage 1: build + test ----------
+FROM swift:5.10-jammy AS builder
 
-# Install SwiftLint
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libcurl4-openssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy only Swift source files (no Xcode project needed for syntax check)
 WORKDIR /app
+
+# Copy SPM manifest first for layer caching
+COPY Package.swift ./
+RUN swift package resolve 2>/dev/null || true
+
+# Copy source and test files
+COPY Sources/ ./Sources/
+COPY Tests/ ./Tests/
+
+# Build the core library
+RUN swift build -c release 2>&1
+
+# Run tests
+RUN swift test 2>&1
+
+# ---------- Stage 2: lint iOS-only sources ----------
+# Syntax-check files that depend on UIKit (can't compile on Linux,
+# but we can validate syntax with `swiftc -parse`)
 COPY FeedReader/*.swift ./FeedReader/
 COPY FeedReaderTests/*.swift ./FeedReaderTests/
 
-# Create a minimal Package.swift so `swift build` can parse the sources.
-# We only compile the model layer (Story, Reachability) that doesn't
-# depend on UIKit. Full iOS build requires Xcode.
-RUN cat > Package.swift << 'EOF'
-// swift-tools-version:5.10
-import PackageDescription
+RUN echo "=== Syntax checking iOS-only sources ===" && \
+    find ./FeedReader ./FeedReaderTests -name '*.swift' -print0 2>/dev/null | \
+    xargs -0 -I{} sh -c 'echo "  Checking: {}" && swiftc -parse "{}" 2>&1 || true'
 
-let package = Package(
-    name: "FeedReaderLint",
-    targets: [
-        // Intentionally empty — we only use swift syntax checking
-    ]
-)
-EOF
-
-# Syntax-check every Swift file individually.
-# `swiftc -parse` validates syntax without linking against UIKit.
-RUN echo "=== Syntax checking Swift sources ===" && \
-    find . -name '*.swift' -print0 | xargs -0 -I{} sh -c \
-      'echo "  Checking: {}" && swiftc -parse "{}" 2>&1 || true'
-
-# ---------- Stage 2: final ----------
-FROM swift:5.10-jammy-slim AS final
+# ---------- Stage 3: slim runtime ----------
+FROM swift:5.10-jammy-slim
 
 WORKDIR /app
-COPY --from=lint /app /app
+COPY --from=builder /app/.build/release/ /app/.build/release/
+COPY --from=builder /app/Package.swift /app/Sources/ ./Sources/ /app/Tests/ ./Tests/ ./
 
-# Default entrypoint: re-run syntax check (useful for CI caching)
-CMD ["sh", "-c", "echo 'FeedReader Swift lint container — all checks passed'"]
+# Default: run tests
+CMD ["swift", "test"]
