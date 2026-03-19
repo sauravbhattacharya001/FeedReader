@@ -19,12 +19,8 @@
 
 import Foundation
 
-// MARK: - Notifications
-
-extension Notification.Name {
-    /// Posted when reading goals data changes.
-    static let readingGoalsDidChange = Notification.Name("ReadingGoalsDidChangeNotification")
-}
+// NOTE: Notification.Name.readingGoalsDidChange is declared in ReadingGoalsManager.swift
+// and reused here — no duplicate declaration needed.
 
 // MARK: - Models
 
@@ -76,7 +72,7 @@ public struct ReadingBadge: Codable, Equatable {
 }
 
 /// Progress snapshot for a specific period
-public struct GoalProgress: Equatable {
+public struct TrackerGoalProgress: Equatable {
     public let period: ReadingGoal.Period
     public let target: Int
     public let current: Int
@@ -247,7 +243,7 @@ public final class ReadingGoalsTracker {
     // MARK: - Progress
     
     /// Get current progress for all active goals.
-    public func currentProgress(at date: Date = Date()) -> [GoalProgress] {
+    public func currentProgress(at date: Date = Date()) -> [TrackerGoalProgress] {
         return state.goals.filter { $0.isActive }.map { goal in
             let count: Int
             switch goal.period {
@@ -258,12 +254,12 @@ public final class ReadingGoalsTracker {
             case .monthly:
                 count = articlesReadThisMonth(from: date)
             }
-            return GoalProgress(period: goal.period, target: goal.target, current: count)
+            return TrackerGoalProgress(period: goal.period, target: goal.target, current: count)
         }
     }
     
     /// Get progress for a specific period.
-    public func progress(for period: ReadingGoal.Period, at date: Date = Date()) -> GoalProgress? {
+    public func progress(for period: ReadingGoal.Period, at date: Date = Date()) -> TrackerGoalProgress? {
         guard let goal = state.goals.first(where: { $0.period == period && $0.isActive }) else { return nil }
         let count: Int
         switch period {
@@ -274,7 +270,7 @@ public final class ReadingGoalsTracker {
         case .monthly:
             count = articlesReadThisMonth(from: date)
         }
-        return GoalProgress(period: period, target: goal.target, current: count)
+        return TrackerGoalProgress(period: period, target: goal.target, current: count)
     }
     
     // MARK: - Period Completion
