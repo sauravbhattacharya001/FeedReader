@@ -22,8 +22,9 @@ import Foundation
 // MARK: - Notifications
 
 extension Notification.Name {
-    /// Posted when reading goals data changes.
-    static let readingGoalsDidChange = Notification.Name("ReadingGoalsDidChangeNotification")
+    /// Posted when reading goals tracker data changes (streaks, milestones).
+    /// Note: ReadingGoalsManager defines .readingGoalsDidChange for basic goal progress.
+    static let readingGoalsTrackerDidChange = Notification.Name("ReadingGoalsTrackerDidChangeNotification")
 }
 
 // MARK: - Models
@@ -374,7 +375,7 @@ public final class ReadingGoalsTracker {
                !state.badges.contains(where: { $0.streakRequired == def.streak }) {
                 let badge = ReadingBadge(name: def.name, description: def.description, streakRequired: def.streak)
                 state.badges.append(badge)
-                NotificationCenter.default.post(name: .readingGoalsDidChange, object: self, userInfo: ["newBadge": badge])
+                NotificationCenter.default.post(name: .readingGoalsTrackerDidChange, object: self, userInfo: ["newBadge": badge])
             }
         }
     }
@@ -478,7 +479,7 @@ public final class ReadingGoalsTracker {
         if let data = try? encoder.encode(state) {
             try? data.write(to: fileURL, options: .atomic)
         }
-        NotificationCenter.default.post(name: .readingGoalsDidChange, object: self)
+        NotificationCenter.default.post(name: .readingGoalsTrackerDidChange, object: self)
     }
     
     /// Clear all data (for testing).
