@@ -28,10 +28,8 @@ class BookmarkManager {
     /// in isBookmarked() which was called per-cell during table rendering.
     private var bookmarkIndex = Set<String>()
     
-    private static let archiveURL: URL = {
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return documentsDirectory.appendingPathComponent("bookmarks")
-    }()
+    /// Reusable persistence store — replaces hand-rolled NSKeyedArchiver boilerplate.
+    private let store = SecureCodingStore<Story>(filename: "bookmarks")
     
     // MARK: - Initialization
     
@@ -100,27 +98,12 @@ class BookmarkManager {
     // MARK: - Persistence
     
     private func saveBookmarks() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: bookmarks, requiringSecureCoding: true)
-            try data.write(to: BookmarkManager.archiveURL)
-        } catch {
-            print("Failed to save bookmarks: \(error)")
-        }
+        store.save(bookmarks)
     }
     
     private func loadBookmarks() {
-        guard let data = try? Data(contentsOf: BookmarkManager.archiveURL) else {
-            bookmarks = []
-            bookmarkIndex = Set<String>()
-            return
-        }
-        if let loaded = (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story] {
-            bookmarks = loaded
-            bookmarkIndex = Set(loaded.map { $0.link })
-        } else {
-            bookmarks = []
-            bookmarkIndex = Set<String>()
-        }
+        bookmarks = store.load()
+        bookmarkIndex = Set(bookmarks.map { $0.link })
     }
     
     /// Force a reload from disk (useful for testing).

@@ -29,10 +29,8 @@ class FeedManager {
         return feeds.filter { $0.isEnabled }
     }
     
-    private static let archiveURL: URL = {
-        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        return documentsDirectory.appendingPathComponent("feedSources")
-    }()
+    /// Reusable persistence store — replaces hand-rolled NSKeyedArchiver boilerplate.
+    private let store = SecureCodingStore<Feed>(filename: "feedSources")
     
     /// Key to track whether this is the first launch (feeds have been initialized).
     private static let hasInitializedKey = "FeedManager.hasInitialized"
@@ -145,24 +143,11 @@ class FeedManager {
     // MARK: - Persistence
     
     private func saveFeeds() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: feeds, requiringSecureCoding: true)
-            try data.write(to: FeedManager.archiveURL)
-        } catch {
-            print("Failed to save feeds: \(error)")
-        }
+        store.save(feeds)
     }
     
     private func loadFeeds() {
-        guard let data = try? Data(contentsOf: FeedManager.archiveURL) else {
-            feeds = []
-            return
-        }
-        if let loaded = (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Feed.self], from: data)) as? [Feed] {
-            feeds = loaded
-        } else {
-            feeds = []
-        }
+        feeds = store.load()
     }
     
     /// Force reload from disk (useful for testing).
