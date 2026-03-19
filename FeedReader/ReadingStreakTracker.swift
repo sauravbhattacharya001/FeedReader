@@ -98,16 +98,21 @@ class ReadingStreakTracker {
     /// Calendar used for date calculations (Gregorian, user's timezone).
     private let calendar: Calendar
 
-    /// UserDefaults instance for persistence.
-    private let defaults: UserDefaults
+    /// Persistence via the shared UserDefaultsCodableStore helper,
+    /// replacing hand-rolled JSONEncoder/JSONDecoder boilerplate.
+    private let store: UserDefaultsCodableStore<[DailyReadingRecord]>
 
     // MARK: - Initializer
 
     init(defaults: UserDefaults = .standard, calendar: Calendar? = nil) {
-        self.defaults = defaults
         var cal = calendar ?? Calendar(identifier: .gregorian)
         cal.firstWeekday = 2 // Monday
         self.calendar = cal
+        self.store = UserDefaultsCodableStore<[DailyReadingRecord]>(
+            key: ReadingStreakTracker.storageKey,
+            dateStrategy: .deferredToDate,
+            defaults: defaults
+        )
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         fmt.locale = Locale(identifier: "en_US_POSIX")
@@ -420,16 +425,11 @@ class ReadingStreakTracker {
             records = Dictionary(uniqueKeysWithValues: allRecords.map { ($0.date, $0) })
         }
 
-        if let data = try? JSONEncoder().encode(Array(records.values)) {
-            defaults.set(data, forKey: ReadingStreakTracker.storageKey)
-        }
+        store.save(Array(records.values))
     }
 
     private func loadRecords() {
-        guard let data = defaults.data(forKey: ReadingStreakTracker.storageKey),
-              let loaded = try? JSONDecoder().decode([DailyReadingRecord].self, from: data) else {
-            return
-        }
+        guard let loaded = store.load() else { return }
         records = Dictionary(uniqueKeysWithValues: loaded.map { ($0.date, $0) })
     }
 }
