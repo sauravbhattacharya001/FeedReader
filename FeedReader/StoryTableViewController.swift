@@ -24,6 +24,11 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     
     /// RSS feed parser — handles XML parsing and multi-feed aggregation.
     private let feedParser = RSSFeedParser()
+    
+    /// Reusable persistence store for offline story cache — replaces hand-rolled
+    /// NSKeyedArchiver/NSKeyedUnarchiver boilerplate with the same pattern used
+    /// by BookmarkManager, FeedManager, and OfflineCacheManager.
+    private let storyStore = SecureCodingStore<Story>(filename: "stories")
 
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
@@ -426,12 +431,8 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     // MARK: - Table View Delegate
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let story = displayedStories[indexPath.row]
-        // Mark story as read when tapped
-        ReadStatusManager.shared.markAsRead(story)
-        // Record reading event for statistics
-        let feedName = feedNameForStory(story)
-        ReadingStatsManager.shared.recordRead(story: story, feedName: feedName)
+        // Read marking and stats recording moved to prepare(for:segue:) to
+        // avoid double-firing — didSelectRowAt and prepare both trigger on tap.
     }
     
     // MARK: - Swipe Actions
@@ -503,8 +504,11 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
                 let selectedStory = displayedStories[indexPath.row]
                 storyDetailViewController.story = selectedStory as Story
                 
-                // Mark as read when navigating to detail
+                // Mark as read and record stats in one place (was duplicated
+                // between didSelectRowAt and here — both fire on cell tap)
                 ReadStatusManager.shared.markAsRead(selectedStory)
+                let feedName = selectedStory.sourceFeedName ?? "Unknown"
+                ReadingStatsManager.shared.recordRead(story: selectedStory, feedName: feedName)
             }
         }
     }
@@ -512,36 +516,15 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     // MARK: - Persistence
     
     func saveStories() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: true)
-            try data.write(to: Story.ArchiveURL)
-        } catch {
-            print("Failed to save stories: \(error)")
-        }
+        storyStore.save(stories)
     }
     
     func loadStories() -> [Story]? {
-        guard let data = try? Data(contentsOf: Story.ArchiveURL) else {
-            return nil
-        }
-        return (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story]
+        let loaded = storyStore.load()
+        return loaded.isEmpty ? nil : loaded
     }
     
     // MARK: - Helpers
-    
-    /// Determine which feed a story came from.
-    /// Uses the story's sourceFeedName if set, otherwise falls back to
-    /// the first enabled feed name or "Unknown".
-    private func feedNameForStory(_ story: Story) -> String {
-        if let source = story.sourceFeedName, !source.isEmpty {
-            return source
-        }
-        let enabledFeeds = FeedManager.shared.enabledFeeds
-        if enabledFeeds.count == 1 {
-            return enabledFeeds[0].name
-        }
-        return enabledFeeds.first?.name ?? "Unknown"
-    }
     
     /// Display a brief toast message at the bottom of the screen.
     private func showToast(_ message: String) {
