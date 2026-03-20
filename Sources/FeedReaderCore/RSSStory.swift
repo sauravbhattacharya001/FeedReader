@@ -72,12 +72,19 @@ public class RSSStory: NSObject, @unchecked Sendable {
 
     // MARK: - HTML Sanitization
 
+    /// Pre-compiled regex for stripping HTML tags.
+    /// Avoids recompiling on every `stripHTML` call — significant for
+    /// batch parsing (e.g. 100+ stories per feed refresh).
+    private static let htmlTagRegex: NSRegularExpression = {
+        // Force-unwrap is safe: this pattern is a compile-time constant.
+        return try! NSRegularExpression(pattern: "<[^>]+>", options: [])
+    }()
+
     /// Strips HTML tags and decodes common entities from a string.
     public static func stripHTML(_ html: String) -> String {
-        let stripped = html.replacingOccurrences(
-            of: "<[^>]+>",
-            with: "",
-            options: .regularExpression
+        let range = NSRange(html.startIndex..., in: html)
+        let stripped = htmlTagRegex.stringByReplacingMatches(
+            in: html, options: [], range: range, withTemplate: ""
         )
         return decodeHTMLEntities(stripped).trimmingCharacters(in: .whitespacesAndNewlines)
     }

@@ -352,11 +352,21 @@ public class ArticleArchiveExporter {
         return truncated.isEmpty ? "article" : truncated.replacingOccurrences(of: " ", with: "_")
     }
     
+    /// Escapes HTML special characters in a single pass.
+    /// Avoids creating 4 intermediate String copies that the chained
+    /// `replacingOccurrences` approach would produce.
     private func escapeHTML(_ text: String) -> String {
-        return text
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-            .replacingOccurrences(of: "\"", with: "&quot;")
+        var result = ""
+        result.reserveCapacity(text.count + text.count / 8) // small headroom for entities
+        for ch in text {
+            switch ch {
+            case "&":  result += "&amp;"
+            case "<":  result += "&lt;"
+            case ">":  result += "&gt;"
+            case "\"": result += "&quot;"
+            default:   result.append(ch)
+            }
+        }
+        return result
     }
 }
