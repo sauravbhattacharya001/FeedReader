@@ -20,6 +20,7 @@
 //
 
 import Foundation
+import os.log
 
 // MARK: - Notifications
 
@@ -138,10 +139,11 @@ final class ArticleQuoteJournal {
         reflection: String? = nil,
         tags: [String] = [],
         isFavorite: Bool = false
-    ) -> SavedQuote {
+    ) -> SavedQuote? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            fatalError("Quote text cannot be empty.")
+            os_log("saveQuote called with empty text — ignored", log: FeedReaderLogger.quotes, type: .error)
+            return nil
         }
 
         let quote = SavedQuote(
@@ -423,7 +425,7 @@ final class ArticleQuoteJournal {
             let data = try encoder.encode(quotes)
             try data.write(to: fileURL, options: .atomicWrite)
         } catch {
-            print("[QuoteJournal] Failed to save: \(error.localizedDescription)")
+            os_log("Failed to save: %{private}s", log: FeedReaderLogger.quotes, type: .error, error.localizedDescription)
         }
     }
 
@@ -435,7 +437,7 @@ final class ArticleQuoteJournal {
             decoder.dateDecodingStrategy = .iso8601
             quotes = try decoder.decode([SavedQuote].self, from: data)
         } catch {
-            print("[QuoteJournal] Failed to load: \(error.localizedDescription)")
+            os_log("Failed to load: %{private}s", log: FeedReaderLogger.quotes, type: .error, error.localizedDescription)
             quotes = []
         }
     }

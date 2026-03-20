@@ -397,7 +397,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cellIndentifier = "StoryTableViewCell"
-        let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as! StoryTableViewCell
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: cellIndentifier, for: indexPath) as? StoryTableViewCell else {
+            return UITableViewCell()
+        }
         
         let story = displayedStories[indexPath.row]
         cell.titleLabel.text = story.title
