@@ -774,73 +774,42 @@ class ReadingDataExporter {
             
             let color = HighlightColor(rawValue: hl.color) ?? .yellow
             let existing = highlightsManager.highlights(for: hl.articleLink)
-            let isDuplicate = existing.contains { $0.id == hl.id || $0.text == hl.text }
+            let matchingHL = existing.first { $0.id == hl.id || $0.text == hl.text }
             
+            // Determine whether to add this highlight based on strategy
+            let shouldAdd: Bool
             switch strategy {
             case .skip:
-                if isDuplicate {
-                    skippedCount += 1
-                } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
-                }
+                shouldAdd = matchingHL == nil
             case .overwrite:
-                if isDuplicate {
-                    // Remove existing and re-add
-                    if let existingHL = existing.first(where: { $0.id == hl.id || $0.text == hl.text }) {
-                        highlightsManager.removeHighlight(id: existingHL.id)
-                    }
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
-                } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
+                if let match = matchingHL {
+                    highlightsManager.removeHighlight(id: match.id)
                 }
+                shouldAdd = true
             case .mergeKeepNewer:
-                if isDuplicate {
-                    if let existingHL = existing.first(where: { $0.id == hl.id || $0.text == hl.text }) {
-                        if hl.createdDate > existingHL.createdDate {
-                            highlightsManager.removeHighlight(id: existingHL.id)
-                            highlightsManager.addHighlight(
-                                articleLink: hl.articleLink,
-                                articleTitle: hl.articleTitle,
-                                text: hl.selectedText,
-                                color: color,
-                                note: hl.note
-                            )
-                            importedCount += 1
-                        } else {
-                            skippedCount += 1
-                        }
+                if let match = matchingHL {
+                    if hl.createdDate > match.createdDate {
+                        highlightsManager.removeHighlight(id: match.id)
+                        shouldAdd = true
+                    } else {
+                        shouldAdd = false
                     }
                 } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
+                    shouldAdd = true
                 }
+            }
+            
+            if shouldAdd {
+                highlightsManager.addHighlight(
+                    articleLink: hl.articleLink,
+                    articleTitle: hl.articleTitle,
+                    selectedText: hl.text,
+                    color: color,
+                    annotation: hl.note
+                )
+                importedCount += 1
+            } else {
+                skippedCount += 1
             }
         }
         
