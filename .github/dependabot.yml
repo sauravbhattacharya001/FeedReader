@@ -27,3 +27,17 @@ updates:
       - "dependencies"
       - "docker"
     open-pull-requests-limit: 3
+
+  # Keep Swift dependencies up to date
+  - package-ecosystem: "swift"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "deps(swift)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "swift"
+    open-pull-requests-limit: 5
