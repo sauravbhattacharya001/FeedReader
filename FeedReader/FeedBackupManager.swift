@@ -21,7 +21,7 @@
 //
 
 import Foundation
-import CommonCrypto
+import CryptoKit
 
 // MARK: - Notifications
 
@@ -323,11 +323,32 @@ class FeedBackupManager {
         return metadataList.sorted { $0.createdAt > $1.createdAt }
     }
 
+    // MARK: - Filename Sanitization
+
+    /// Sanitize a filename to prevent path traversal attacks (CWE-22).
+    /// Strips directory separators and ensures the file stays within
+    /// the backup directory.
+    private func sanitizedBackupURL(for filename: String) -> URL? {
+        // Extract just the last path component to strip any directory traversal
+        let sanitized = (filename as NSString).lastPathComponent
+        guard !sanitized.isEmpty,
+              sanitized.hasPrefix(FeedBackupManager.filePrefix),
+              sanitized.hasSuffix(".\(FeedBackupManager.fileExtension)") else {
+            return nil
+        }
+        let url = backupDirectoryURL.appendingPathComponent(sanitized)
+        // Defense-in-depth: verify resolved path is inside backup directory
+        guard url.standardizedFileURL.path.hasPrefix(backupDirectoryURL.standardizedFileURL.path) else {
+            return nil
+        }
+        return url
+    }
+
     // MARK: - Load Backup
 
     /// Load a backup archive from a filename.
     func loadBackup(filename: String) -> BackupArchive? {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = sanitizedBackupURL(for: filename) else { return nil }
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
         return try? decoder.decode(BackupArchive.self, from: data)
     }
@@ -442,7 +463,7 @@ class FeedBackupManager {
 
     /// Delete a specific backup file.
     func deleteBackup(filename: String) -> Bool {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = sanitizedBackupURL(for: filename) else { return false }
         do {
             try fileManager.removeItem(at: fileURL)
             return true
@@ -477,7 +498,7 @@ class FeedBackupManager {
 
     /// Export a backup file by filename.
     func exportBackup(filename: String) -> Data? {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = sanitizedBackupURL(for: filename) else { return nil }
         return try? Data(contentsOf: fileURL)
     }
 
@@ -655,9 +676,18 @@ class FeedBackupManager {
         }
     }
 
+    /// Keys that are safe to restore from a backup. Prevents a crafted
+    /// backup from overwriting arbitrary UserDefaults entries (CWE-915).
+    private static let allowedSettingsKeys: Set<String> = [
+        "darkModeEnabled", "offlineModeEnabled", "notificationsEnabled",
+        "autoRefreshEnabled", "showReadArticles",
+        "refreshIntervalMinutes", "maxCachedArticles", "fontSize"
+    ]
+
     private func restoreSettings(_ data: [String: AnyCodableValue]) {
         let defaults = UserDefaults.standard
         for (key, value) in data {
+            guard FeedBackupManager.allowedSettingsKeys.contains(key) else { continue }
             switch value {
             case .bool(let v):   defaults.set(v, forKey: key)
             case .int(let v):    defaults.set(v, forKey: key)
@@ -691,10 +721,7 @@ class FeedBackupManager {
 
     /// SHA-256 hash of data, returned as hex string.
     private func sha256(_ data: Data) -> String {
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        data.withUnsafeBytes { buffer in
-            _ = CC_SHA256(buffer.baseAddress, CC_LONG(data.count), &hash)
-        }
-        return hash.map { String(format: "%02x", $0) }.joined()
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
