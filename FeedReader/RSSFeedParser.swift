@@ -46,6 +46,13 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
     private var storyGuid = NSMutableString()  // from <guid> element (fallback)
     private var imagePath = NSMutableString()
 
+    /// Whether the current feed uses Atom format. Detected when the root
+    /// `<feed>` element is encountered (Atom 1.0 uses `<feed>` as root
+    /// vs RSS 2.0's `<rss>`). This controls element name mapping for
+    /// `<entry>` vs `<item>`, `<content>`/`<summary>` vs `<description>`,
+    /// and attribute-based `<link>` handling.
+    private var isAtomFeed = false
+
     /// Parse the given data synchronously on the calling thread.
     /// Returns the stories extracted from the feed.
     func parse(data: Data) -> [Story] {
@@ -64,7 +71,19 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
                 attributes attributeDict: [String: String]) {
         currentElement = elementName as NSString
 
-        if (elementName as NSString).isEqual(to: "item") {
+        // Detect Atom feed format from root <feed> element.
+        // Atom 1.0 uses xmlns="http://www.w3.org/2005/Atom" but we also
+        // detect by the element name alone for feeds missing the namespace.
+        if elementName == "feed" {
+            isAtomFeed = true
+        }
+
+        // RSS uses <item>, Atom uses <entry> — both start a story.
+        let isItemStart = isAtomFeed
+            ? elementName == "entry"
+            : elementName == "item"
+
+        if isItemStart {
             // Stop parsing if we've already collected enough stories
             if parsedStories.count >= FeedParseContext.maxStoriesPerFeed {
                 parser.abortParsing()
@@ -77,6 +96,16 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
             storyLink = NSMutableString()
             storyGuid = NSMutableString()
             imagePath = NSMutableString()
+        }
+
+        // Atom <link rel="alternate" href="..."> carries the URL as an
+        // attribute rather than element text. Accept rel="alternate" or
+        // no rel (defaults to alternate per RFC 4287 §4.2.7.2).
+        if isAtomFeed && insideItem && elementName == "link" {
+            let rel = attributeDict["rel"] ?? "alternate"
+            if rel == "alternate", let href = attributeDict["href"], !href.isEmpty {
+                storyLink.setString(href)
+            }
         }
 
         // BBC RSS feeds use <media:thumbnail url="..."/> for images.
@@ -92,20 +121,33 @@ private class FeedParseContext: NSObject, XMLParserDelegate {
 
         if currentElement.isEqual(to: "title") {
             storyTitle.append(string)
-        } else if currentElement.isEqual(to: "description") {
+        } else if currentElement.isEqual(to: "description") || currentElement.isEqual(to: "summary") {
+            // RSS uses <description>, Atom uses <summary> for the short body
             storyDescription.append(string)
         } else if currentElement.isEqual(to: "link") {
-            storyLink.append(string)
-        } else if currentElement.isEqual(to: "guid") {
+            // For RSS, link text is the URL. For Atom, the URL comes from
+            // the href attribute (handled in didStartElement), but some
+            // malformed Atom feeds put text content in <link> — ignore it
+            // for Atom since we already captured href.
+            if !isAtomFeed {
+                storyLink.append(string)
+            }
+        } else if currentElement.isEqual(to: "guid") || currentElement.isEqual(to: "id") {
+            // RSS uses <guid>, Atom uses <id>
             storyGuid.append(string)
-        } else if currentElement.isEqual(to: "content:encoded") || currentElement.isEqual(to: "encoded") {
+        } else if currentElement.isEqual(to: "content:encoded") || currentElement.isEqual(to: "encoded") || currentElement.isEqual(to: "content") {
+            // RSS uses <content:encoded>, Atom uses <content> for the full body
             storyContentEncoded.append(string)
         }
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?) {
-        guard (elementName as NSString).isEqual(to: "item") else { return }
+        // RSS ends with </item>, Atom ends with </entry>
+        let isItemEnd = isAtomFeed
+            ? elementName == "entry"
+            : elementName == "item"
+        guard isItemEnd else { return }
 
         // Prefer <link> for the article URL; fall back to <guid> which
         // may or may not be a permalink (fixes issue #11).

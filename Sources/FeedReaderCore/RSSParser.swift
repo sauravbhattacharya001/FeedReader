@@ -40,9 +40,13 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     private var storyGuid = NSMutableString()  // from <guid> element (fallback)
     private var imagePath = NSMutableString()
 
+    /// Whether the current feed uses Atom format (detected from root <feed> element).
+    private var isAtomFeed = false
+
     /// Parse data synchronously, returning extracted stories.
     func parse(data: Data) -> [RSSStory] {
         stories = []
+        isAtomFeed = false
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = self
         xmlParser.parse()
@@ -54,13 +58,28 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
                 attributes attributeDict: [String: String]) {
         currentElement = elementName as NSString
 
-        if elementName == "item" {
+        // Detect Atom feed format from root <feed> element.
+        if elementName == "feed" {
+            isAtomFeed = true
+        }
+
+        let isItemStart = isAtomFeed ? elementName == "entry" : elementName == "item"
+
+        if isItemStart {
             insideItem = true
             storyTitle = NSMutableString()
             storyDescription = NSMutableString()
             storyLink = NSMutableString()
             storyGuid = NSMutableString()
             imagePath = NSMutableString()
+        }
+
+        // Atom <link rel="alternate" href="..."> carries URL as attribute
+        if isAtomFeed && insideItem && elementName == "link" {
+            let rel = attributeDict["rel"] ?? "alternate"
+            if rel == "alternate", let href = attributeDict["href"], !href.isEmpty {
+                storyLink.setString(href)
+            }
         }
 
         if insideItem && (elementName == "media:thumbnail" || elementName == "enclosure") {
@@ -88,18 +107,21 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     private func appendToCurrentElement(_ string: String) {
         if currentElement.isEqual(to: "title") {
             storyTitle.append(string)
-        } else if currentElement.isEqual(to: "description") {
+        } else if currentElement.isEqual(to: "description") || currentElement.isEqual(to: "summary") {
             storyDescription.append(string)
         } else if currentElement.isEqual(to: "link") {
-            storyLink.append(string)
-        } else if currentElement.isEqual(to: "guid") {
+            if !isAtomFeed { storyLink.append(string) }
+        } else if currentElement.isEqual(to: "guid") || currentElement.isEqual(to: "id") {
             storyGuid.append(string)
+        } else if currentElement.isEqual(to: "content") || currentElement.isEqual(to: "content:encoded") || currentElement.isEqual(to: "encoded") {
+            storyDescription.append(string)
         }
     }
 
     func parser(_ parser: XMLParser, didEndElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?) {
-        guard elementName == "item" else { return }
+        let isItemEnd = isAtomFeed ? elementName == "entry" : elementName == "item"
+        guard isItemEnd else { return }
 
         // Prefer <link> for the article URL; fall back to <guid> which
         // may or may not be a permalink (fixes parity with iOS parser).
