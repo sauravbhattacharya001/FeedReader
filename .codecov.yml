@@ -11,11 +11,11 @@ coverage:
       default:
         target: auto
         threshold: 5%
-        informational: true
+        informational: false
     patch:
       default:
-        target: 70%
-        informational: true
+        target: 50%
+        informational: false
 
   flags:
     xcode-tests:
