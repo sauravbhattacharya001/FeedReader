@@ -25,6 +25,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// RSS feed parser — handles XML parsing and multi-feed aggregation.
     private let feedParser = RSSFeedParser()
 
+    /// Reusable persistence store — replaces hand-rolled NSKeyedArchiver boilerplate.
+    private let storyStore = SecureCodingStore<Story>(filename: "stories")
+
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
@@ -512,19 +515,12 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     // MARK: - Persistence
     
     func saveStories() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: true)
-            try data.write(to: Story.ArchiveURL)
-        } catch {
-            print("Failed to save stories: \(error)")
-        }
+        storyStore.save(stories)
     }
     
     func loadStories() -> [Story]? {
-        guard let data = try? Data(contentsOf: Story.ArchiveURL) else {
-            return nil
-        }
-        return (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story]
+        let loaded = storyStore.load()
+        return loaded.isEmpty ? nil : loaded
     }
     
     // MARK: - Helpers
@@ -543,38 +539,5 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         return enabledFeeds.first?.name ?? "Unknown"
     }
     
-    /// Display a brief toast message at the bottom of the screen.
-    private func showToast(_ message: String) {
-        let toastLabel = UILabel()
-        toastLabel.text = message
-        toastLabel.textAlignment = .center
-        toastLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
-        toastLabel.textColor = .white
-        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-        toastLabel.layer.cornerRadius = 16
-        toastLabel.clipsToBounds = true
-        toastLabel.alpha = 0
-        
-        let textSize = toastLabel.intrinsicContentSize
-        let width = textSize.width + 40
-        let height: CGFloat = 36
-        toastLabel.frame = CGRect(
-            x: (view.frame.width - width) / 2,
-            y: view.frame.height - 120,
-            width: width,
-            height: height
-        )
-        
-        view.addSubview(toastLabel)
-        
-        UIView.animate(withDuration: 0.3, animations: {
-            toastLabel.alpha = 1
-        }) { _ in
-            UIView.animate(withDuration: 0.3, delay: 1.2, options: [], animations: {
-                toastLabel.alpha = 0
-            }) { _ in
-                toastLabel.removeFromSuperview()
-            }
-        }
-    }
+    // Toast is provided by UIViewController+Toast.swift extension
 }
