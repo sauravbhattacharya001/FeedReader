@@ -20,6 +20,8 @@ env:
 permissions:
   contents: read
   packages: write
+  attestations: write
+  id-token: write
 
 jobs:
   docker:
@@ -55,6 +57,7 @@ jobs:
             type=sha
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -64,6 +67,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          sbom: true
+          provenance: mode=max
+
+      - name: Generate SBOM attestation
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-sbom@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: 'sbom.spdx.json'
+        continue-on-error: true
 
       - name: Scan image for vulnerabilities
         if: github.event_name != 'pull_request'
