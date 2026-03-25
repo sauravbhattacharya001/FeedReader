@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Reference — FeedReader Documentation</title>
-    <meta name="description" content="Complete API reference for FeedReaderCore Swift Package: RSSParser, RSSStory, FeedItem, and NetworkReachability.">
+    <meta name="description" content="Complete API reference for FeedReaderCore Swift Package: RSSParser, RSSStory, FeedItem, NetworkReachability, ArticleArchiveExporter, FeedHealthMonitor, and KeywordExtractor.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -253,6 +253,136 @@
             </div>
         </div>
 
+    </div>
+</section>
+
+<section id="archive-exporter">
+    <div class="container">
+        <h2>ArticleArchiveExporter</h2>
+        <p class="api-desc">Exports <code>RSSStory</code> objects as self-contained HTML archive files for offline reading, sharing, or long-term preservation. Supports single and batch export with 4 visual themes (light, dark, sepia, newspaper).</p>
+
+        <h4>Initialization</h4>
+        <div class="code-block">
+<span class="keyword">let</span> exporter = <span class="type">ArticleArchiveExporter</span>(options: .<span class="keyword">default</span>)
+
+<span class="comment">// Or with custom options:</span>
+<span class="keyword">var</span> opts = <span class="type">ArticleArchiveExporter</span>.<span class="type">ExportOptions</span>(
+    theme: .sepia,
+    includeMetadata: <span class="keyword">true</span>,
+    includeTableOfContents: <span class="keyword">true</span>,
+    includeWordCount: <span class="keyword">true</span>,
+    includeEstimatedReadTime: <span class="keyword">true</span>
+)
+<span class="keyword">let</span> exporter = <span class="type">ArticleArchiveExporter</span>(options: opts)
+        </div>
+
+        <h4>Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>Theme</code></td><td>Visual theme enum: <code>.light</code>, <code>.dark</code>, <code>.sepia</code>, <code>.newspaper</code>. Each provides <code>backgroundColor</code>, <code>textColor</code>, <code>accentColor</code>, and <code>fontFamily</code>.</td></tr>
+                <tr><td><code>ExportOptions</code></td><td>Configures theme, metadata inclusion, table of contents, word count, read time, and optional custom CSS.</td></tr>
+                <tr><td><code>ExportResult</code></td><td>Contains the exported <code>filename</code>, <code>htmlContent</code>, <code>articleCount</code>, <code>totalWordCount</code>, and <code>exportDate</code>.</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>exportArticle(_ story: RSSStory) → ExportResult</code></td><td>Export a single article as a standalone HTML file.</td></tr>
+                <tr><td><code>exportArticles(_ stories: [RSSStory]) → ExportResult?</code></td><td>Batch export multiple articles into a single HTML file with table of contents. Returns <code>nil</code> if the array is empty.</td></tr>
+                <tr><td><code>save(_ result: ExportResult, to directory: URL) → URL?</code></td><td>Write the export result to disk. Returns the file URL on success.</td></tr>
+                <tr><td><code>listArchives(in directory: URL) → [(filename, date, size)]</code></td><td>List all <code>.html</code> archive files in a directory.</td></tr>
+                <tr><td><code>deleteArchive(named:in:) → Bool</code></td><td>Delete an archive file by name.</td></tr>
+                <tr><td><code>countWords(_ text: String) → Int</code></td><td>Count words in a text string.</td></tr>
+                <tr><td><code>estimateReadTime(wordCount: Int) → Int</code></td><td>Estimate reading time in minutes (assumes 200 wpm).</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Usage</h4>
+        <div class="code-block">
+<span class="keyword">let</span> exporter = <span class="type">ArticleArchiveExporter</span>(options: .init(theme: .dark))
+<span class="keyword">let</span> result = exporter.<span class="func">exportArticle</span>(story)
+<span class="keyword">if let</span> url = exporter.<span class="func">save</span>(result, to: archiveDir) {
+    <span class="func">print</span>(<span class="string">"Saved to \(url)"</span>)
+}
+        </div>
+    </div>
+</section>
+
+<section id="feed-health-monitor">
+    <div class="container">
+        <h2>FeedHealthMonitor</h2>
+        <p class="api-desc">Monitors feed health by analyzing article publication dates. Classifies feeds as <code>healthy</code>, <code>warning</code>, <code>stale</code>, or <code>dead</code> and generates actionable reports with scores and recommendations.</p>
+
+        <h4>Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>FeedHealthStatus</code></td><td>Enum: <code>.healthy</code>, <code>.warning</code>, <code>.stale</code>, <code>.dead</code>. Comparable by severity.</td></tr>
+                <tr><td><code>FeedHealthResult</code></td><td>Per-feed result with <code>status</code>, <code>score</code> (0–100), <code>daysSinceLastArticle</code>, <code>averageUpdateInterval</code>, <code>issues</code>, and <code>recommendations</code>.</td></tr>
+                <tr><td><code>FeedHealthReport</code></td><td>Aggregate report with <code>results</code>, <code>overallScore</code>, <code>overallStatus</code>, <code>statusCounts</code>, and JSON export via <code>jsonDict</code>.</td></tr>
+                <tr><td><code>FeedHealthConfig</code></td><td>Configures thresholds: <code>warningDays</code>, <code>staleDays</code>, <code>deadDays</code>, <code>minimumArticleCount</code>, <code>maxUpdateIntervalDays</code>.</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>checkFeed(feedName:feedURL:articleDates:) → FeedHealthResult</code></td><td>Analyze a single feed's health based on its article publication dates.</td></tr>
+                <tr><td><code>generateReport(feeds:) → FeedHealthReport</code></td><td>Generate a comprehensive health report for multiple feeds at once.</td></tr>
+                <tr><td><code>detectTrend(articleDates:) → Double?</code></td><td>Detect publishing frequency trend. Returns a multiplier (>1 = accelerating, &lt;1 = decelerating).</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Usage</h4>
+        <div class="code-block">
+<span class="keyword">let</span> monitor = <span class="type">FeedHealthMonitor</span>()
+<span class="keyword">let</span> result = monitor.<span class="func">checkFeed</span>(
+    feedName: <span class="string">"Swift Blog"</span>,
+    feedURL: <span class="string">"https://swift.org/blog/feed.xml"</span>,
+    articleDates: dates
+)
+<span class="func">print</span>(result.summary)  <span class="comment">// "Swift Blog: healthy (92/100)"</span>
+        </div>
+    </div>
+</section>
+
+<section id="keyword-extractor">
+    <div class="container">
+        <h2>KeywordExtractor</h2>
+        <p class="api-desc">Extracts keywords and themes from article text using TF-based frequency analysis with stop-word filtering. Works on individual stories or across collections for theme detection.</p>
+
+        <h4>Properties</h4>
+        <table class="doc-table">
+            <thead><tr><th>Property</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>minimumWordLength: Int</code></td><td>Minimum character length for a word to be considered (default: 3).</td></tr>
+                <tr><td><code>defaultCount: Int</code></td><td>Default number of keywords to return (default: 5).</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>extractKeywords(from text: String, count: Int?) → [String]</code></td><td>Extract top keywords from raw text.</td></tr>
+                <tr><td><code>extractTags(from story: RSSStory, count: Int?) → [String]</code></td><td>Extract keyword tags from a story's title and body.</td></tr>
+                <tr><td><code>extractThemes(from stories: [RSSStory], count: Int?) → [String]</code></td><td>Extract common themes across a collection of stories.</td></tr>
+            </tbody>
+        </table>
+
+        <h4>Usage</h4>
+        <div class="code-block">
+<span class="keyword">let</span> extractor = <span class="type">KeywordExtractor</span>()
+<span class="keyword">let</span> tags = extractor.<span class="func">extractTags</span>(from: story, count: 8)
+<span class="comment">// ["swift", "concurrency", "async", "await", ...]</span>
+
+<span class="keyword">let</span> themes = extractor.<span class="func">extractThemes</span>(from: allStories)
+<span class="comment">// ["programming", "apple", "ios", "development", "swift"]</span>
+        </div>
     </div>
 </section>
 
