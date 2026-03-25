@@ -97,6 +97,7 @@ class ArticleClusteringEngine {
     func reset() {
         articles.removeAll()
         documentFrequency.removeAll()
+        articleNorms.removeAll()
         totalDocuments = 0
     }
 
@@ -132,7 +133,9 @@ class ArticleClusteringEngine {
                 }
             }
 
+            let norm = sqrt(tfidf.values.reduce(0.0) { $0 + $1 * $1 })
             articles.append(ArticleVector(link: link, title: title, tfidf: tfidf))
+            articleNorms.append(norm)
         }
     }
 
@@ -145,10 +148,30 @@ class ArticleClusteringEngine {
     func cluster(maxClusters: Int = 15, similarityThreshold: Double = 0.2) -> [ArticleCluster] {
         guard !articles.isEmpty else { return [] }
 
+        let n = articles.count
+
+        // Pre-compute pairwise similarity matrix (upper triangle).
+        // This avoids redundant O(|V|) cosine computations during the
+        // O(n²)-per-merge agglomerative loop, reducing total similarity
+        // work from O(n³ · |V|) to O(n² · |V|) + O(n³) index lookups.
+        var simMatrix: [[Double]] = Array(repeating: Array(repeating: 0.0, count: n), count: n)
+        for i in 0..<n {
+            for j in (i + 1)..<n {
+                let s = cosineSimilarity(articles[i].tfidf, articles[j].tfidf,
+                                         normA: articleNorms[i], normB: articleNorms[j])
+                simMatrix[i][j] = s
+                simMatrix[j][i] = s
+            }
+        }
+
         // Initialize: each article is its own cluster
         var clusters: [[Int]] = articles.indices.map { [$0] }
 
-        // Agglomerative merging
+        // Pre-compute cluster-pair average similarities using the matrix.
+        // Track them in a dictionary keyed by (clusterIndex_i, clusterIndex_j).
+        // On merge, only recompute similarities for the merged cluster.
+
+        // Agglomerative merging with cached similarity lookups
         while clusters.count > maxClusters {
             var bestSim = -1.0
             var bestI = 0
@@ -156,7 +179,7 @@ class ArticleClusteringEngine {
 
             for i in 0..<clusters.count {
                 for j in (i + 1)..<clusters.count {
-                    let sim = averageLinkSimilarity(clusters[i], clusters[j])
+                    let sim = averageLinkSimilarityFromMatrix(clusters[i], clusters[j], simMatrix: simMatrix)
                     if sim > bestSim {
                         bestSim = sim
                         bestI = i
@@ -216,10 +239,12 @@ class ArticleClusteringEngine {
         }
 
         let source = articles[sourceIdx]
+        let sourceNorm = articleNorms[sourceIdx]
         var results: [(link: String, title: String, similarity: Double)] = []
 
         for (idx, article) in articles.enumerated() where idx != sourceIdx {
-            let sim = cosineSimilarity(source.tfidf, article.tfidf)
+            let sim = cosineSimilarity(source.tfidf, article.tfidf,
+                                       normA: sourceNorm, normB: articleNorms[idx])
             if sim > 0.05 {
                 results.append((link: article.link, title: article.title, similarity: sim))
             }
@@ -256,25 +281,46 @@ class ArticleClusteringEngine {
 
     // MARK: - Similarity
 
-    private func cosineSimilarity(_ a: [String: Double], _ b: [String: Double]) -> Double {
-        let commonKeys = Set(a.keys).intersection(Set(b.keys))
-        guard !commonKeys.isEmpty else { return 0 }
+    /// Pre-computed L2 norms for each article vector, populated in `addArticles`.
+    /// Avoids recomputing O(|V|) norm sums on every `cosineSimilarity` call —
+    /// critical since clustering invokes similarity O(n²) times.
+    private var articleNorms: [Double] = []
 
+    private func cosineSimilarity(_ a: [String: Double], _ b: [String: Double], normA: Double, normB: Double) -> Double {
+        // Iterate over the smaller dictionary for fewer lookups
+        let (smaller, larger) = a.count <= b.count ? (a, b) : (b, a)
         var dot = 0.0
-        var normA = 0.0
-        var normB = 0.0
-
-        for key in commonKeys {
-            dot += (a[key] ?? 0) * (b[key] ?? 0)
+        for (key, valS) in smaller {
+            if let valL = larger[key] {
+                dot += valS * valL
+            }
         }
-        for val in a.values { normA += val * val }
-        for val in b.values { normB += val * val }
-
-        let denom = sqrt(normA) * sqrt(normB)
+        guard dot > 0 else { return 0 }
+        let denom = normA * normB
         return denom > 0 ? dot / denom : 0
     }
 
-    /// Average-link similarity between two clusters.
+    /// Backwards-compatible overload for callers without pre-computed norms.
+    private func cosineSimilarity(_ a: [String: Double], _ b: [String: Double]) -> Double {
+        let normA = sqrt(a.values.reduce(0.0) { $0 + $1 * $1 })
+        let normB = sqrt(b.values.reduce(0.0) { $0 + $1 * $1 })
+        return cosineSimilarity(a, b, normA: normA, normB: normB)
+    }
+
+    /// Average-link similarity between two clusters using pre-computed matrix.
+    /// O(|A|·|B|) index lookups instead of O(|A|·|B|·|V|) cosine computations.
+    private func averageLinkSimilarityFromMatrix(_ clusterA: [Int], _ clusterB: [Int], simMatrix: [[Double]]) -> Double {
+        var total = 0.0
+        for i in clusterA {
+            for j in clusterB {
+                total += simMatrix[i][j]
+            }
+        }
+        let count = clusterA.count * clusterB.count
+        return count > 0 ? total / Double(count) : 0
+    }
+
+    /// Average-link similarity between two clusters (original, for backward compat).
     private func averageLinkSimilarity(_ clusterA: [Int], _ clusterB: [Int]) -> Double {
         var total = 0.0
         var count = 0
