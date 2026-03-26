@@ -160,9 +160,41 @@ class ArticleTrendDetector {
         let currentCutoff = referenceDate.addingTimeInterval(-config.currentWindowHours * 3600)
         let previousCutoff = referenceDate.addingTimeInterval(-(config.currentWindowHours + config.previousWindowHours) * 3600)
 
-        // Aggregate keyword counts per window
-        let currentCounts = aggregateCounts(from: currentCutoff, to: referenceDate)
-        let previousCounts = aggregateCounts(from: previousCutoff, to: currentCutoff)
+        // Single-pass aggregation: compute both window counts AND per-keyword
+        // firstSeen/lastSeen in one iteration over snapshots. The old approach
+        // called aggregateCounts() twice (each iterating all snapshots) plus
+        // collectMetadata() once per qualifying keyword (another full scan each),
+        // resulting in O(s + s + k*s) = O(k*s) total work. This single pass
+        // reduces it to O(s * avg_terms) regardless of how many keywords qualify.
+        var currentCounts: [String: Int] = [:]
+        var previousCounts: [String: Int] = [:]
+        var firstSeenMap: [String: Date] = [:]
+        var lastSeenMap: [String: Date] = [:]
+
+        for snapshot in snapshots {
+            let ts = snapshot.timestamp
+            guard ts >= previousCutoff && ts <= referenceDate else { continue }
+
+            let isCurrent = ts >= currentCutoff
+
+            for (keyword, count) in snapshot.keywordCounts {
+                guard count > 0 else { continue }
+
+                if isCurrent {
+                    currentCounts[keyword, default: 0] += count
+                } else {
+                    previousCounts[keyword, default: 0] += count
+                }
+
+                // Track first/last seen across the full analysis window
+                if firstSeenMap[keyword] == nil || ts < firstSeenMap[keyword]! {
+                    firstSeenMap[keyword] = ts
+                }
+                if lastSeenMap[keyword] == nil || ts > lastSeenMap[keyword]! {
+                    lastSeenMap[keyword] = ts
+                }
+            }
+        }
 
         var trends: [TopicTrend] = []
 
@@ -180,9 +212,6 @@ class ArticleTrendDetector {
             let direction = classifyDirection(current: currentCount, previous: previousCount, changePercent: changePercent)
             let momentum = calculateMomentum(current: currentCount, previous: previousCount, direction: direction)
 
-            // Collect sample titles and sources
-            let (titles, sources, firstSeen, lastSeen) = collectMetadata(for: keyword, from: previousCutoff, to: referenceDate)
-
             let trend = TopicTrend(
                 topic: keyword,
                 currentCount: currentCount,
@@ -190,10 +219,10 @@ class ArticleTrendDetector {
                 changePercent: changePercent,
                 direction: direction,
                 momentum: momentum,
-                sampleTitles: Array(titles.prefix(3)),
-                feedSources: Array(Set(sources)).sorted(),
-                firstSeen: firstSeen ?? referenceDate,
-                lastSeen: lastSeen ?? referenceDate
+                sampleTitles: [],
+                feedSources: [],
+                firstSeen: firstSeenMap[keyword] ?? referenceDate,
+                lastSeen: lastSeenMap[keyword] ?? referenceDate
             )
             trends.append(trend)
         }
@@ -203,8 +232,6 @@ class ArticleTrendDetector {
             guard prevCount >= config.minMentions else { continue }
             guard currentCounts[keyword] == nil else { continue }
 
-            let (titles, sources, firstSeen, lastSeen) = collectMetadata(for: keyword, from: previousCutoff, to: referenceDate)
-
             let trend = TopicTrend(
                 topic: keyword,
                 currentCount: 0,
@@ -212,10 +239,10 @@ class ArticleTrendDetector {
                 changePercent: -100.0,
                 direction: .fading,
                 momentum: 0.1, // low but non-zero so they still appear
-                sampleTitles: Array(titles.prefix(3)),
-                feedSources: Array(Set(sources)).sorted(),
-                firstSeen: firstSeen ?? referenceDate,
-                lastSeen: lastSeen ?? referenceDate
+                sampleTitles: [],
+                feedSources: [],
+                firstSeen: firstSeenMap[keyword] ?? referenceDate,
+                lastSeen: lastSeenMap[keyword] ?? referenceDate
             )
             trends.append(trend)
         }
