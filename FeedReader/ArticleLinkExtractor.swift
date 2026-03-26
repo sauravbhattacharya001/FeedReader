@@ -493,8 +493,20 @@ final class ArticleLinkExtractor {
     ///   - linkId: The ID of the link to check.
     ///   - completion: Called with updated health status.
     func checkLinkHealth(linkId: String, completion: @escaping (LinkHealthStatus) -> Void) {
-        guard let index = links.firstIndex(where: { $0.id == linkId }),
-              let url = URL(string: links[index].url) else {
+        guard let index = links.firstIndex(where: { $0.id == linkId }) else {
+            completion(.dead)
+            return
+        }
+
+        // SSRF protection: reject private/reserved/loopback addresses
+        // before making any outbound request. Article content may contain
+        // crafted links targeting internal services (e.g. cloud metadata
+        // endpoints, localhost admin panels).
+        let urlString = links[index].url
+        guard URLValidator.isSafe(urlString),
+              let url = URL(string: urlString) else {
+            links[index].healthStatus = .dead
+            saveLinks()
             completion(.dead)
             return
         }
