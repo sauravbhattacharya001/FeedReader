@@ -146,6 +146,59 @@ jobs:
             find TestResults -type f 2>/dev/null | head -30
           fi
 
+      - name: Enforce coverage threshold
+        run: |
+          MIN_COVERAGE=40
+          if [ -f coverage-percent.txt ]; then
+            PCT=$(cat coverage-percent.txt)
+            echo "Coverage: ${PCT}%  (minimum: ${MIN_COVERAGE}%)"
+            if (( $(echo "$PCT < $MIN_COVERAGE" | bc -l) )); then
+              echo "::error::Code coverage ${PCT}% is below the minimum threshold of ${MIN_COVERAGE}%"
+              exit 1
+            fi
+            echo "✅ Coverage gate passed"
+          else
+            echo "::warning::No coverage data found — skipping enforcement"
+          fi
+
+      - name: Detect per-file coverage regressions
+        if: always()
+        run: |
+          if [ ! -f coverage.json ]; then
+            echo "No coverage data to analyze."
+            exit 0
+          fi
+          python3 << 'PYEOF'
+          import json, sys
+
+          UNCOVERED_THRESHOLD = 0.10  # Flag files with < 10% coverage
+
+          try:
+              with open("coverage.json") as f:
+                  data = json.load(f)
+
+              low_coverage_files = []
+              for target in data.get("targets", []):
+                  if "Test" in target.get("name", ""):
+                      continue
+                  for src_file in target.get("files", []):
+                      fname = src_file.get("name", "?")
+                      cov = src_file.get("lineCoverage", 0)
+                      executable = src_file.get("executableLines", 0)
+                      if executable >= 10 and cov < UNCOVERED_THRESHOLD:
+                          low_coverage_files.append((fname, cov * 100, executable))
+
+              if low_coverage_files:
+                  print(f"⚠️  {len(low_coverage_files)} file(s) with <10% coverage (≥10 executable lines):")
+                  for fname, pct, lines in sorted(low_coverage_files, key=lambda x: x[1]):
+                      print(f"  {fname}: {pct:.1f}% ({lines} lines)")
+                  print("\nConsider adding tests for these files.")
+              else:
+                  print("✅ No critically uncovered files detected.")
+          except Exception as e:
+              print(f"Warning: {e}", file=sys.stderr)
+          PYEOF
+
       - name: Generate coverage badge
         if: always()
         run: |
@@ -276,6 +329,28 @@ jobs:
             echo "PROFDATA: $PROFDATA"
             echo "BIN: $BIN"
             find .build -name '*.profdata' 2>/dev/null || true
+          fi
+
+      - name: Enforce SPM coverage threshold
+        run: |
+          PROFDATA=$(find .build -name 'default.profdata' 2>/dev/null | head -1)
+          BIN=$(find .build -name 'FeedReaderCorePackageTests.xctest' -o -name '*PackageTests' -type f 2>/dev/null | head -1)
+          MIN_COVERAGE=40
+          if [ -n "$PROFDATA" ] && [ -n "$BIN" ]; then
+            # Extract total coverage percentage
+            REPORT=$(xcrun llvm-cov report "$BIN" -instr-profile="$PROFDATA" \
+              --ignore-filename-regex='Tests/' 2>/dev/null | tail -1)
+            PCT=$(echo "$REPORT" | awk '{print $NF}' | tr -d '%')
+            if [ -n "$PCT" ]; then
+              echo "SPM Coverage: ${PCT}%  (minimum: ${MIN_COVERAGE}%)"
+              if (( $(echo "$PCT < $MIN_COVERAGE" | bc -l) )); then
+                echo "::error::SPM coverage ${PCT}% is below minimum ${MIN_COVERAGE}%"
+                exit 1
+              fi
+              echo "✅ SPM coverage gate passed"
+            fi
+          else
+            echo "::warning::No SPM coverage data — skipping enforcement"
           fi
 
       - name: Upload SPM coverage to Codecov
