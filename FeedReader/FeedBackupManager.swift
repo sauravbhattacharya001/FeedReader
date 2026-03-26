@@ -655,9 +655,19 @@ class FeedBackupManager {
         }
     }
 
+    /// Keys that are safe to restore from a backup. Any key not in this set
+    /// is silently ignored to prevent a crafted backup file from overwriting
+    /// arbitrary UserDefaults entries (e.g. auth tokens, internal flags).
+    private static let allowedSettingsKeys: Set<String> = [
+        "darkModeEnabled", "offlineModeEnabled", "notificationsEnabled",
+        "autoRefreshEnabled", "showReadArticles",
+        "refreshIntervalMinutes", "maxCachedArticles", "fontSize"
+    ]
+
     private func restoreSettings(_ data: [String: AnyCodableValue]) {
         let defaults = UserDefaults.standard
         for (key, value) in data {
+            guard FeedBackupManager.allowedSettingsKeys.contains(key) else { continue }
             switch value {
             case .bool(let v):   defaults.set(v, forKey: key)
             case .int(let v):    defaults.set(v, forKey: key)
