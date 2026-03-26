@@ -105,20 +105,8 @@ class ArticleOutlineGenerator {
 
     // MARK: - Stop Words
 
-    private static let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "as", "was", "are", "be",
-        "been", "being", "have", "has", "had", "do", "does", "did", "will",
-        "would", "could", "should", "may", "might", "can", "this", "that",
-        "these", "those", "i", "you", "he", "she", "we", "they", "me",
-        "him", "her", "us", "them", "my", "your", "his", "its", "our",
-        "their", "what", "which", "who", "when", "where", "how", "not",
-        "no", "if", "then", "than", "so", "just", "also", "very", "much",
-        "more", "most", "some", "any", "all", "each", "every", "both",
-        "few", "many", "such", "about", "up", "out", "into", "over",
-        "after", "before", "between", "under", "again", "there", "here",
-        "through", "during", "above", "below", "while", "because", "until"
-    ]
+    /// Delegates to the canonical stop-word list in TextAnalyzer.
+    private static var stopWords: Set<String> { TextAnalyzer.stopWords }
 
     // MARK: - Heading Patterns
 
