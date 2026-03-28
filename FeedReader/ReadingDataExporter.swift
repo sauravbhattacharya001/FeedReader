@@ -784,7 +784,7 @@ class ReadingDataExporter {
                     highlightsManager.addHighlight(
                         articleLink: hl.articleLink,
                         articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
+                        text: hl.text,
                         color: color,
                         note: hl.note
                     )
@@ -799,7 +799,7 @@ class ReadingDataExporter {
                     highlightsManager.addHighlight(
                         articleLink: hl.articleLink,
                         articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
+                        text: hl.text,
                         color: color,
                         note: hl.note
                     )
@@ -808,7 +808,7 @@ class ReadingDataExporter {
                     highlightsManager.addHighlight(
                         articleLink: hl.articleLink,
                         articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
+                        text: hl.text,
                         color: color,
                         note: hl.note
                     )
@@ -822,7 +822,7 @@ class ReadingDataExporter {
                             highlightsManager.addHighlight(
                                 articleLink: hl.articleLink,
                                 articleTitle: hl.articleTitle,
-                                text: hl.selectedText,
+                                text: hl.text,
                                 color: color,
                                 note: hl.note
                             )
@@ -835,7 +835,7 @@ class ReadingDataExporter {
                     highlightsManager.addHighlight(
                         articleLink: hl.articleLink,
                         articleTitle: hl.articleTitle,
-                        text: hl.selectedText,
+                        text: hl.text,
                         color: color,
                         note: hl.note
                     )
