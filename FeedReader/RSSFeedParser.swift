@@ -285,9 +285,20 @@ class RSSFeedParser: NSObject {
     }
 
     /// Parse stories from a single feed URL using the given session.
+    /// Validates the URL against SSRF rules before fetching (defense-in-depth).
     private func parseFeed(_ url: String, session: URLSession, feedName: String, generation: UInt64) {
         guard let feedURL = URL(string: url) else {
             print("RSSFeedParser: invalid URL — \(url)")
+            feedCompleted(generation: generation)
+            return
+        }
+
+        // Defense-in-depth: validate feed URLs at fetch time, not just
+        // at add time. Protects against SSRF if a feed URL is modified
+        // in storage, imported via OPML, or added through a code path
+        // that bypasses FeedManager.addCustomFeed validation (CWE-918).
+        guard URLValidator.isSafe(url) else {
+            print("RSSFeedParser: URL blocked by SSRF filter — \(url)")
             feedCompleted(generation: generation)
             return
         }
