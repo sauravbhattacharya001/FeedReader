@@ -390,8 +390,10 @@ class ReadingQueueManager {
 
     /// Estimated time to clear the pending queue (formatted).
     func estimatedTimeToEmpty() -> String {
-        let minutes = pendingItems().reduce(0.0) { $0 + $1.estimatedReadingTimeMinutes }
-        if minutes < 1 { return "Queue empty" }
+        let pending = pendingItems()
+        guard !pending.isEmpty else { return "Queue empty" }
+        let minutes = pending.reduce(0.0) { $0 + $1.estimatedReadingTimeMinutes }
+        if minutes < 1 { return "<1min" }
         if minutes < 60 { return "\(Int(minutes.rounded()))min" }
         let hours = Int(minutes / 60)
         let mins = Int(minutes.truncatingRemainder(dividingBy: 60))
