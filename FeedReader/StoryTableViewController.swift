@@ -33,6 +33,11 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Reusable persistence store — replaces hand-rolled NSKeyedArchiver boilerplate.
     private let storyStore = SecureCodingStore<Story>(filename: "stories")
 
+    /// Reusable persistence store for offline story caching — replaces
+    /// hand-rolled NSKeyedArchiver/NSKeyedUnarchiver boilerplate that
+    /// duplicated the pattern already encapsulated in SecureCodingStore.
+    private let storyStore = SecureCodingStore<Story>(filename: "stories")
+
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
     /// network fetch, avoiding UI flicker and scroll-position loss. (fixes #8)
