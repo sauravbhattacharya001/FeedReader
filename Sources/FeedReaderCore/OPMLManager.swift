@@ -141,13 +141,29 @@ public final class OPMLManager {
     // MARK: - Helpers
 
     /// Escape special XML characters in attribute values and text content.
+    ///
+    /// Uses a single-pass algorithm instead of five chained
+    /// `replacingOccurrences(of:with:)` calls, avoiding four intermediate
+    /// `String` allocations per invocation. Particularly impactful during
+    /// OPML export of large feed lists (hundreds of outlines).
     private static func escapeXML(_ string: String) -> String {
-        var result = string
-        result = result.replacingOccurrences(of: "&", with: "&amp;")
-        result = result.replacingOccurrences(of: "<", with: "&lt;")
-        result = result.replacingOccurrences(of: ">", with: "&gt;")
-        result = result.replacingOccurrences(of: "\"", with: "&quot;")
-        result = result.replacingOccurrences(of: "'", with: "&apos;")
+        // Fast path: if the string contains no special characters, return as-is.
+        guard string.contains(where: { $0 == "&" || $0 == "<" || $0 == ">" || $0 == "\"" || $0 == "'" }) else {
+            return string
+        }
+
+        var result = ""
+        result.reserveCapacity(string.count + string.count / 8)
+        for ch in string {
+            switch ch {
+            case "&":  result += "&amp;"
+            case "<":  result += "&lt;"
+            case ">":  result += "&gt;"
+            case "\"": result += "&quot;"
+            case "'":  result += "&apos;"
+            default:   result.append(ch)
+            }
+        }
         return result
     }
 }
