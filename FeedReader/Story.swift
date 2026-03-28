@@ -174,10 +174,34 @@ class Story: NSObject, NSSecureCoding {
         aCoder.encode(sourceFeedName, forKey: PropertyKey.sourceFeedNameKey)
     }
     
+    /// Private initializer that accepts pre-sanitized data, skipping HTML stripping.
+    /// Used by `init?(coder:)` to avoid double-sanitization on unarchive, since
+    /// the body was already sanitized when the Story was first created.
+    private init?(preSanitizedTitle title: String, photo: UIImage?, body: String, link: String, imagePath: String?, sourceFeedName: String?) {
+        self.title = title
+        self.photo = photo
+        self.body = body
+        self.link = link
+        
+        if let path = imagePath, Story.isSafeURL(path) {
+            self.imagePath = path
+        } else {
+            self.imagePath = nil
+        }
+        
+        self.sourceFeedName = sourceFeedName
+        
+        super.init()
+        
+        if title.isEmpty || body.isEmpty || !Story.isSafeURL(link) {
+            return nil
+        }
+    }
+    
     required convenience init?(coder aDecoder: NSCoder) {
         
         guard let title = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.titleKey) as String?,
-              let description = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.descriptionKey) as String?,
+              let body = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.descriptionKey) as String?,
               let link = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.linkKey) as String? else {
             return nil
         }
@@ -187,9 +211,9 @@ class Story: NSObject, NSSecureCoding {
         let imagePath = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.imagePathKey) as String?
         let sourceFeedName = aDecoder.decodeObject(of: NSString.self, forKey: PropertyKey.sourceFeedNameKey) as String?
         
-        // Must call designated initializer.
-        self.init(title: title, photo: photo, description: description, link: link, imagePath: imagePath)
-        self?.sourceFeedName = sourceFeedName
+        // Use pre-sanitized initializer to avoid double HTML stripping.
+        // The body was already sanitized when the Story was first created.
+        self.init(preSanitizedTitle: title, photo: photo, body: body, link: link, imagePath: imagePath, sourceFeedName: sourceFeedName)
     }
 }
 
