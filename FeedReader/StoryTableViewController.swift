@@ -24,6 +24,11 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     
     /// RSS feed parser — handles XML parsing and multi-feed aggregation.
     private let feedParser = RSSFeedParser()
+    
+    /// Persistence store for offline story cache — uses the same
+    /// SecureCodingStore pattern as FeedManager and BookmarkManager,
+    /// replacing hand-rolled NSKeyedArchiver/Unarchiver boilerplate.
+    private let storyStore = SecureCodingStore<Story>(filename: "stories")
 
     /// Tracks whether the feed has been loaded at least once so that
     /// back-navigation from story detail does not trigger a redundant
@@ -512,19 +517,12 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     // MARK: - Persistence
     
     func saveStories() {
-        do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: stories, requiringSecureCoding: true)
-            try data.write(to: Story.ArchiveURL)
-        } catch {
-            print("Failed to save stories: \(error)")
-        }
+        storyStore.save(stories)
     }
     
     func loadStories() -> [Story]? {
-        guard let data = try? Data(contentsOf: Story.ArchiveURL) else {
-            return nil
-        }
-        return (try? NSKeyedUnarchiver.unarchivedObject(ofClasses: [NSArray.self, Story.self], from: data)) as? [Story]
+        let loaded = storyStore.load()
+        return loaded.isEmpty ? nil : loaded
     }
     
     // MARK: - Helpers
