@@ -158,12 +158,29 @@ final class ArticleDarkModeFormatter {
         }
     }
 
+    // MARK: - CSS Sanitization
+
+    /// Sanitize a font-family string to prevent CSS injection (CWE-79).
+    /// Strips characters that could break out of a CSS property value
+    /// (semicolons, braces, angle brackets, backslashes) and limits
+    /// length to prevent excessively long values.
+    private static func sanitizeFontFamily(_ raw: String) -> String {
+        let maxLength = 500
+        let truncated = String(raw.prefix(maxLength))
+        // Allow only safe CSS font-family characters: letters, digits,
+        // spaces, commas, hyphens, single/double quotes, periods.
+        let allowed = CharacterSet.alphanumerics
+            .union(CharacterSet(charactersIn: " ,'-\"."))
+        return String(truncated.unicodeScalars.filter { allowed.contains($0) })
+    }
+
     // MARK: - CSS Generation
 
     /// Generates the dark mode CSS stylesheet for the given settings.
     static func generateCSS(for settings: DarkModeSettings) -> String {
         let c = settings.activeColors
         let fontSize = 16.0 * settings.fontSizeMultiplier
+        let safeFontFamily = sanitizeFontFamily(settings.fontFamily)
 
         var css = """
         :root {
@@ -175,7 +192,7 @@ final class ArticleDarkModeFormatter {
         html, body {
             background-color: \(c.backgroundColor) !important;
             color: \(c.textColor) !important;
-            font-family: \(settings.fontFamily);
+            font-family: \(safeFontFamily);
             font-size: \(fontSize)px;
             line-height: \(settings.lineSpacingMultiplier);
             margin: 0;
