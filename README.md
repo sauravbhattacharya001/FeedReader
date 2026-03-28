@@ -38,6 +38,23 @@
 
 ---
 
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Architecture](#architecture)
+- [Swift Package](#swift-package)
+- [Getting Started](#getting-started)
+- [Test Cases](#test-cases)
+- [Tech Stack](#tech-stack)
+- [Customizing Feed Sources](#customizing-feed-sources)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Overview
 
 FeedReader is a native iOS application that fetches and displays RSS news feeds with a clean table-view interface. It supports offline reading through persistent caching, handles network connectivity changes gracefully, and loads story thumbnails asynchronously with an in-memory cache for smooth scrolling.
@@ -69,6 +86,20 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 🔒 **Security Hardening** — RSS parser security: XXE prevention, URL validation (blocks javascript:/data:/file: schemes), HTML sanitization, and protocol enforcement
 - 📓 **Reading Journal** — Auto-generated daily reading journal combining articles read, highlights, and notes into rich entries. Features reflection prompts, mood tagging, journaling streaks, weekly/monthly digests, full-text search across entries, and Markdown/JSON export
 - 📚 **Vocabulary Builder** — Automatically extracts uncommon words from articles you read, building a personal vocabulary list. Features mastery levels (New → Learning → Familiar → Mastered) with spaced review scheduling, context sentences from source articles, filtering by feed/mastery/date, search, and JSON/CSV export/import
+
+## Quick Start
+
+```bash
+# Clone and open in Xcode
+git clone https://github.com/sauravbhattacharya001/FeedReader.git
+cd FeedReader
+open FeedReader.xcodeproj
+
+# Build and run (⌘R) on any iPhone simulator
+# Run tests (⌘U) — 1941 test cases across 48 suites
+```
+
+> **Using the Swift Package only?** Add `https://github.com/sauravbhattacharya001/FeedReader.git` as a package dependency (from `2.0.0`) and `import FeedReaderCore`.
 
 ## Architecture
 
@@ -330,6 +361,16 @@ static let presets: [Feed] = [
     // ...
 ]
 ```
+
+## Documentation
+
+Full documentation is available at **[sauravbhattacharya001.github.io/FeedReader](https://sauravbhattacharya001.github.io/FeedReader/)**:
+
+- [User Guide](https://sauravbhattacharya001.github.io/FeedReader/guide.html) — Getting started and daily usage
+- [Architecture](https://sauravbhattacharya001.github.io/FeedReader/architecture.html) — Component design and data flow
+- [API Reference](https://sauravbhattacharya001.github.io/FeedReader/api.html) — Swift Package API docs
+- [Smart Features](https://sauravbhattacharya001.github.io/FeedReader/smart-features.html) — Smart feeds, recommendations, and automation
+- [Reading Analytics](https://sauravbhattacharya001.github.io/FeedReader/reading-analytics.html) — Stats, streaks, and journal
 
 ## Contributing
 
