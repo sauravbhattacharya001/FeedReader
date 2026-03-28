@@ -155,6 +155,17 @@ class ReadingHistoryManager {
     /// UserDefaults key for persisting history.
     static let userDefaultsKey = "ReadingHistoryManager.entries"
     
+    /// Serial queue for async persistence — keeps file I/O off the main thread.
+    private let persistQueue = DispatchQueue(label: "com.feedreader.readinghistory.persist",
+                                              qos: .utility)
+
+    /// Pending persistence work item — enables debouncing rapid saves.
+    private var pendingPersist: DispatchWorkItem?
+
+    /// Debounce interval for persistence (seconds). Rapid scroll/time updates
+    /// during active reading coalesce into a single UserDefaults write.
+    private static let persistDebounceInterval: TimeInterval = 1.0
+    
     // MARK: - Initialization
     
     init() {
@@ -211,7 +222,7 @@ class ReadingHistoryManager {
     func updateTimeSpent(link: String, additionalSeconds: Double) {
         guard let index = entryIndex[link] else { return }
         entries[index].timeSpentSeconds += max(additionalSeconds, 0)
-        save()
+        debouncedSave()
         NotificationCenter.default.post(name: .readingHistoryDidChange, object: nil)
     }
     
@@ -219,7 +230,7 @@ class ReadingHistoryManager {
     func updateScrollProgress(link: String, progress: Double) {
         guard let index = entryIndex[link] else { return }
         entries[index].scrollProgress = min(max(progress, 0.0), 1.0)
-        save()
+        debouncedSave()
         NotificationCenter.default.post(name: .readingHistoryDidChange, object: nil)
     }
     
@@ -477,6 +488,30 @@ class ReadingHistoryManager {
         let encoder = JSONCoding.iso8601Encoder
         if let data = try? encoder.encode(entries) {
             UserDefaults.standard.set(data, forKey: ReadingHistoryManager.userDefaultsKey)
+        }
+    }
+
+    /// Schedule a debounced save. Multiple calls within the debounce window
+    /// coalesce into a single UserDefaults write, avoiding redundant I/O
+    /// when scroll progress or time-spent updates fire rapidly during reading.
+    private func debouncedSave() {
+        pendingPersist?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.save()
+        }
+        pendingPersist = workItem
+        persistQueue.asyncAfter(
+            deadline: .now() + ReadingHistoryManager.persistDebounceInterval,
+            execute: workItem
+        )
+    }
+
+    /// Flush any pending debounced save immediately (e.g., before app termination).
+    func flushPersist() {
+        pendingPersist?.cancel()
+        pendingPersist = nil
+        persistQueue.sync { [weak self] in
+            self?.save()
         }
     }
     

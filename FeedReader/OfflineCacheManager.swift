@@ -155,7 +155,7 @@ class OfflineCacheManager {
             return
         }
         let removed = cachedArticles.remove(at: idx)
-        _totalSizeBytes -= removed.estimatedSizeBytes
+        _totalSizeBytes = max(0, _totalSizeBytes - removed.estimatedSizeBytes)
         cacheIndex.remove(story.link)
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
@@ -166,7 +166,7 @@ class OfflineCacheManager {
         guard index >= 0 && index < cachedArticles.count else { return }
         let removed = cachedArticles.remove(at: index)
         cacheIndex.remove(removed.story.link)
-        _totalSizeBytes -= removed.estimatedSizeBytes
+        _totalSizeBytes = max(0, _totalSizeBytes - removed.estimatedSizeBytes)
         persistCache()
         NotificationCenter.default.post(name: .offlineCacheDidChange, object: nil)
     }
@@ -289,7 +289,7 @@ class OfflineCacheManager {
         guard !cachedArticles.isEmpty else { return }
         let removed = cachedArticles.removeLast()
         cacheIndex.remove(removed.story.link)
-        _totalSizeBytes -= removed.estimatedSizeBytes
+        _totalSizeBytes = max(0, _totalSizeBytes - removed.estimatedSizeBytes)
     }
 
     // MARK: - Persistence
