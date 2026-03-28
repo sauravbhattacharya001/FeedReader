@@ -13,6 +13,7 @@
 //
 
 import UIKit
+import os.log
 
 /// Delegate notified when all requested feeds have finished loading.
 protocol RSSFeedParserDelegate: AnyObject {
@@ -288,7 +289,7 @@ class RSSFeedParser: NSObject {
     /// Validates the URL against SSRF rules before fetching (defense-in-depth).
     private func parseFeed(_ url: String, session: URLSession, feedName: String, generation: UInt64) {
         guard let feedURL = URL(string: url) else {
-            print("RSSFeedParser: invalid URL — \(url)")
+            os_log("invalid URL — %{private}s", log: FeedReaderLogger.parser, type: .error, url)
             feedCompleted(generation: generation)
             return
         }
@@ -308,7 +309,7 @@ class RSSFeedParser: NSObject {
 
             guard let data = data, error == nil else {
                 if (error as? URLError)?.code == .cancelled { return }
-                print("RSSFeedParser: fetch failed — \(error?.localizedDescription ?? "unknown")")
+                os_log("fetch failed — %{private}s", log: FeedReaderLogger.parser, type: .error, error?.localizedDescription ?? "unknown")
                 self.feedCompleted(generation: generation)
                 return
             }
@@ -316,7 +317,7 @@ class RSSFeedParser: NSObject {
             // Validate HTTP status
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
-                print("RSSFeedParser: HTTP \(httpResponse.statusCode)")
+                os_log("HTTP %{public}d", log: FeedReaderLogger.parser, type: .error, httpResponse.statusCode)
                 self.feedCompleted(generation: generation)
                 return
             }
@@ -324,7 +325,7 @@ class RSSFeedParser: NSObject {
             // Reject oversized responses to prevent memory exhaustion
             // from malicious or misconfigured feeds (CWE-400).
             if data.count > RSSFeedParser.maxResponseSize {
-                print("RSSFeedParser: response too large (\(data.count) bytes), skipping")
+                os_log("response too large (%{public}d bytes), skipping", log: FeedReaderLogger.parser, type: .error, data.count)
                 self.feedCompleted(generation: generation)
                 return
             }
