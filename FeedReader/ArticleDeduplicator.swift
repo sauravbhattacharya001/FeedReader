@@ -423,6 +423,9 @@ final class ArticleDeduplicator {
     // MARK: - String Similarity
 
     /// Computes title similarity using normalized Levenshtein distance.
+    /// Uses an early-exit optimization: if the length difference alone
+    /// makes it impossible to meet the configured threshold, returns 0
+    /// without computing the full edit distance.
     static func titleSimilarity(_ a: String, _ b: String) -> Double {
         let s1 = a.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let s2 = b.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -430,30 +433,50 @@ final class ArticleDeduplicator {
         if s1.isEmpty || s2.isEmpty { return 0.0 }
 
         let maxLen = max(s1.count, s2.count)
-        let distance = levenshteinDistance(s1, s2)
+        let distance = levenshteinDistance(s1, s2, cutoff: maxLen)
         return 1.0 - (Double(distance) / Double(maxLen))
     }
 
-    /// Standard Levenshtein distance.
-    private static func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
-        let a = Array(s1)
-        let b = Array(s2)
-        var matrix = [[Int]](repeating: [Int](repeating: 0, count: b.count + 1), count: a.count + 1)
-
-        for i in 0...a.count { matrix[i][0] = i }
-        for j in 0...b.count { matrix[0][j] = j }
-
-        for i in 1...a.count {
-            for j in 1...b.count {
-                let cost = a[i - 1] == b[j - 1] ? 0 : 1
-                matrix[i][j] = min(
-                    matrix[i - 1][j] + 1,
-                    matrix[i][j - 1] + 1,
-                    matrix[i - 1][j - 1] + cost
-                )
-            }
+    /// Two-row Levenshtein distance with early termination.
+    ///
+    /// Uses O(min(m,n)) space instead of O(m×n) by keeping only two
+    /// rows of the DP matrix. Bails out early if every value in the
+    /// current row exceeds `cutoff`, since the distance can only
+    /// increase from there.
+    private static func levenshteinDistance(_ s1: String, _ s2: String, cutoff: Int) -> Int {
+        // Ensure s2 is the shorter string for optimal space usage
+        let a: [Character], b: [Character]
+        if s1.count < s2.count {
+            a = Array(s2); b = Array(s1)
+        } else {
+            a = Array(s1); b = Array(s2)
         }
-        return matrix[a.count][b.count]
+        let m = a.count, n = b.count
+
+        // Length difference alone exceeds cutoff — no need to compute
+        if m - n > cutoff { return cutoff + 1 }
+
+        var prev = Array(0...n)
+        var curr = [Int](repeating: 0, count: n + 1)
+
+        for i in 1...m {
+            curr[0] = i
+            var rowMin = curr[0]
+            for j in 1...n {
+                let cost = a[i - 1] == b[j - 1] ? 0 : 1
+                curr[j] = min(
+                    prev[j] + 1,       // deletion
+                    curr[j - 1] + 1,   // insertion
+                    prev[j - 1] + cost // substitution
+                )
+                rowMin = min(rowMin, curr[j])
+            }
+            // Early termination: if the minimum value in this row
+            // already exceeds the cutoff, the final distance will too
+            if rowMin > cutoff { return cutoff + 1 }
+            swap(&prev, &curr)
+        }
+        return prev[n]
     }
 
     // MARK: - Helpers
