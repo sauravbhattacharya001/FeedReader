@@ -140,27 +140,8 @@ class ArticleCrossReferenceEngine {
     private var store: EntityIndexStore
     private let storageKey = "ArticleCrossReferenceEngine.index"
     private let defaults = UserDefaults.standard
-    private let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "its", "this", "that", "was",
-        "are", "were", "been", "being", "has", "had", "have", "do", "does",
-        "did", "will", "would", "could", "should", "may", "might", "can",
-        "not", "no", "nor", "so", "if", "then", "than", "too", "very",
-        "just", "about", "up", "out", "off", "over", "under", "again",
-        "new", "also", "more", "most", "some", "any", "each", "every",
-        "all", "both", "few", "many", "much", "own", "other", "such",
-        "only", "same", "into", "after", "before", "during", "between",
-        "through", "above", "below", "here", "there", "when", "where",
-        "how", "what", "which", "who", "whom", "why", "their", "they",
-        "them", "these", "those", "he", "she", "him", "her", "his",
-        "we", "our", "us", "you", "your", "my", "me", "i", "said",
-        "one", "two", "three", "four", "five", "first", "last", "now",
-        "while", "since", "still", "even", "well", "back", "get", "got",
-        "going", "like", "make", "made", "take", "took", "come", "came",
-        "see", "say", "says", "know", "think", "look", "want", "give",
-        "use", "way", "day", "time", "year", "years", "people", "world",
-        "part", "per", "been", "being", "set", "via", "according"
-    ]
+    /// Delegates to the canonical stop-word list in TextAnalyzer.
+    private var stopWords: Set<String> { TextAnalyzer.stopWords }
 
     /// Common title prefixes that indicate person names.
     private let personPrefixes: Set<String> = [

@@ -44,17 +44,8 @@ class ReadingYearInReview {
     private let calendar = Calendar.current
     
     /// Stop words excluded from topic extraction.
-    private let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "as", "be", "was", "are",
-        "this", "that", "how", "what", "why", "when", "where", "who", "which",
-        "not", "no", "do", "does", "did", "has", "have", "had", "will", "would",
-        "can", "could", "should", "may", "might", "its", "your", "you", "we",
-        "they", "he", "she", "my", "our", "their", "his", "her", "new", "up",
-        "out", "about", "just", "more", "all", "also", "than", "been", "into",
-        "over", "after", "get", "one", "two", "i", "if", "so", "us", "vs",
-        "via", "like", "most", "some", "any", "other", "now", "here", "there"
-    ]
+    /// Delegates to the canonical stop-word list in TextAnalyzer.
+    private var stopWords: Set<String> { TextAnalyzer.stopWords }
     
     // MARK: - Public API
     
