@@ -92,7 +92,29 @@ class PersonalFeedPublisher {
         return xml
     }
     
+    /// Sanitize a user-supplied filename to prevent path traversal.
+    /// Strips directory separators and path components (e.g. "../") so
+    /// the result is always a flat filename safe for `appendingPathComponent`.
+    private func sanitizeFilename(_ filename: String) -> String {
+        // Take only the last path component to strip directory prefixes,
+        // then remove any remaining separator characters.
+        var name = (filename as NSString).lastPathComponent
+        name = name.replacingOccurrences(of: "/", with: "_")
+        name = name.replacingOccurrences(of: "\\", with: "_")
+        // Reject empty or dot-only names that could resolve to the directory itself
+        let trimmed = name.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        if trimmed.isEmpty {
+            return "export"
+        }
+        return name
+    }
+
     /// Export feed to a file URL in the documents directory.
+    ///
+    /// The filename is sanitized to prevent path traversal attacks
+    /// (CWE-22). Directory separators and relative path components
+    /// (e.g. `../../`) are stripped so the file is always written
+    /// inside the Documents directory.
     func exportToFile(stories: [Story], filename: String = "my-curated-feed.xml", format: ExportFormat = .rss) -> URL? {
         let content: String
         let ext: String
@@ -108,13 +130,21 @@ class PersonalFeedPublisher {
             ext = "json"
         }
         
-        let finalFilename = filename.hasSuffix(".\(ext)") ? filename : "\(filename).\(ext)"
+        let safeName = sanitizeFilename(filename)
+        let finalFilename = safeName.hasSuffix(".\(ext)") ? safeName : "\(safeName).\(ext)"
         
         guard let documentsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
             return nil
         }
         
         let fileURL = documentsDir.appendingPathComponent(finalFilename)
+        
+        // Defense-in-depth: verify the resolved path is still inside Documents
+        let resolvedPath = fileURL.standardizedFileURL.path
+        let docsPath = documentsDir.standardizedFileURL.path
+        guard resolvedPath.hasPrefix(docsPath) else {
+            return nil
+        }
         
         do {
             try content.write(to: fileURL, atomically: true, encoding: .utf8)
