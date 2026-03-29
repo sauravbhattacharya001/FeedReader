@@ -422,6 +422,9 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
         let isRead = ReadStatusManager.shared.isRead(story)
         cell.configureReadStatus(isRead: isRead)
         
+        // Configure paywall indicator
+        cell.configurePaywallBadge(for: story)
+        
         // Load thumbnail via shared ImageCache
         cell.photoImage.image = UIImage(named: "sample") // placeholder
         if let imagePathString = story.imagePath {

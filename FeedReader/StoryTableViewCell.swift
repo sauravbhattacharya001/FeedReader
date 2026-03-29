@@ -17,6 +17,19 @@ class StoryTableViewCell: UITableViewCell {
     @IBOutlet weak var descriptionLabel: UILabel!
     @IBOutlet weak var photoImage: UIImageView!
     
+    /// Paywall indicator label.
+    private let paywallBadge: UILabel = {
+        let label = UILabel()
+        label.font = UIFont.systemFont(ofSize: 10, weight: .semibold)
+        label.textColor = .systemOrange
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.isHidden = true
+        return label
+    }()
+    
+    /// Whether the paywall badge has been added to the view hierarchy.
+    private var paywallBadgeAdded = false
+    
     /// Blue dot indicator for unread stories.
     private let unreadDot: UIView = {
         let dot = UIView()
@@ -30,6 +43,26 @@ class StoryTableViewCell: UITableViewCell {
     private var unreadDotAdded = false
     
     // MARK: - Configuration
+    
+    /// Configure paywall indicator for the story.
+    /// - Parameter story: The story to analyze for paywall signals.
+    func configurePaywallBadge(for story: Story) {
+        if !paywallBadgeAdded {
+            contentView.addSubview(paywallBadge)
+            NSLayoutConstraint.activate([
+                paywallBadge.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -8),
+                paywallBadge.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -6)
+            ])
+            paywallBadgeAdded = true
+        }
+        
+        if let text = ArticlePaywallDetector.shared.badgeText(for: story) {
+            paywallBadge.text = text
+            paywallBadge.isHidden = false
+        } else {
+            paywallBadge.isHidden = true
+        }
+    }
     
     /// Configure the cell's read/unread visual state.
     /// - Parameter isRead: Whether the story has been read.
@@ -57,6 +90,7 @@ class StoryTableViewCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         unreadDot.isHidden = true
+        paywallBadge.isHidden = true
         titleLabel?.alpha = 1.0
         descriptionLabel?.alpha = 0.8
     }

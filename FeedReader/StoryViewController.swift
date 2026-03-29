@@ -44,6 +44,13 @@ class StoryViewController: UIViewController {
             photoImage.image = story.photo
             descriptionLabel.text = story.body
             linkTarget = story.link
+            
+            // Show paywall warning if detected
+            let paywallResult = ArticlePaywallDetector.shared.analyze(story: story)
+            if paywallResult.likelihood != .none {
+                let warning = "\(paywallResult.likelihood.emoji) \(paywallResult.likelihood.rawValue)\n\n\(story.body)"
+                descriptionLabel.text = warning
+            }
         }
         
         // Create bookmark, offline, and share buttons for the navigation bar
