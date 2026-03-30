@@ -11,7 +11,7 @@
 #   docker run --rm feedreader swift test  # explicit test run
 
 # ---------- Stage 1: build + test ----------
-FROM swift:5.10-jammy AS builder
+FROM swift:6.3-jammy AS builder
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ RUN echo "=== Syntax checking iOS-only sources ===" && \
     xargs -0 -I{} sh -c 'echo "  Checking: {}" && swiftc -parse "{}" 2>&1 || true'
 
 # ---------- Stage 3: slim runtime ----------
-FROM swift:5.10-jammy-slim
+FROM swift:6.3-jammy-slim
 
 WORKDIR /app
 COPY --from=builder /app/.build/release/ /app/.build/release/
