@@ -774,73 +774,45 @@ class ReadingDataExporter {
             
             let color = HighlightColor(rawValue: hl.color) ?? .yellow
             let existing = highlightsManager.highlights(for: hl.articleLink)
-            let isDuplicate = existing.contains { $0.id == hl.id || $0.text == hl.text }
+            let matchingExisting = existing.first { $0.id == hl.id || $0.text == hl.text }
             
-            switch strategy {
-            case .skip:
-                if isDuplicate {
-                    skippedCount += 1
-                } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.text,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
+            // Determine whether to add (and whether to remove an existing duplicate first)
+            let shouldAdd: Bool
+            let shouldRemoveExisting: Bool
+            
+            if let match = matchingExisting {
+                switch strategy {
+                case .skip:
+                    shouldAdd = false
+                    shouldRemoveExisting = false
+                case .overwrite:
+                    shouldAdd = true
+                    shouldRemoveExisting = true
+                case .mergeKeepNewer:
+                    let isNewer = hl.createdDate > match.createdDate
+                    shouldAdd = isNewer
+                    shouldRemoveExisting = isNewer
                 }
-            case .overwrite:
-                if isDuplicate {
-                    // Remove existing and re-add
-                    if let existingHL = existing.first(where: { $0.id == hl.id || $0.text == hl.text }) {
-                        highlightsManager.removeHighlight(id: existingHL.id)
-                    }
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.text,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
-                } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.text,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
-                }
-            case .mergeKeepNewer:
-                if isDuplicate {
-                    if let existingHL = existing.first(where: { $0.id == hl.id || $0.text == hl.text }) {
-                        if hl.createdDate > existingHL.createdDate {
-                            highlightsManager.removeHighlight(id: existingHL.id)
-                            highlightsManager.addHighlight(
-                                articleLink: hl.articleLink,
-                                articleTitle: hl.articleTitle,
-                                text: hl.text,
-                                color: color,
-                                note: hl.note
-                            )
-                            importedCount += 1
-                        } else {
-                            skippedCount += 1
-                        }
-                    }
-                } else {
-                    highlightsManager.addHighlight(
-                        articleLink: hl.articleLink,
-                        articleTitle: hl.articleTitle,
-                        text: hl.text,
-                        color: color,
-                        note: hl.note
-                    )
-                    importedCount += 1
-                }
+            } else {
+                shouldAdd = true
+                shouldRemoveExisting = false
+            }
+            
+            if shouldRemoveExisting, let match = matchingExisting {
+                highlightsManager.removeHighlight(id: match.id)
+            }
+            
+            if shouldAdd {
+                highlightsManager.addHighlight(
+                    articleLink: hl.articleLink,
+                    articleTitle: hl.articleTitle,
+                    text: hl.text,
+                    color: color,
+                    note: hl.note
+                )
+                importedCount += 1
+            } else {
+                skippedCount += 1
             }
         }
         
@@ -859,45 +831,28 @@ class ReadingDataExporter {
             
             let existing = notesManager.getNote(for: note.articleLink)
             
-            switch strategy {
-            case .skip:
-                if existing != nil {
-                    skippedCount += 1
-                } else {
-                    notesManager.saveNote(
-                        articleLink: note.articleLink,
-                        articleTitle: note.articleTitle,
-                        text: note.text
-                    )
-                    importedCount += 1
-                }
-            case .overwrite:
-                _ = notesManager.setNote(
-                    for: note.articleLink,
-                    title: note.articleTitle,
+            // Determine whether to save based on strategy and existing state
+            let shouldSave: Bool
+            switch (strategy, existing) {
+            case (.skip, .some):
+                shouldSave = false
+            case (.skip, .none), (.overwrite, _):
+                shouldSave = true
+            case (.mergeKeepNewer, .some(let existingNote)):
+                shouldSave = note.modifiedDate > existingNote.modifiedDate
+            case (.mergeKeepNewer, .none):
+                shouldSave = true
+            }
+            
+            if shouldSave {
+                notesManager.saveNote(
+                    articleLink: note.articleLink,
+                    articleTitle: note.articleTitle,
                     text: note.text
                 )
                 importedCount += 1
-            case .mergeKeepNewer:
-                if let existingNote = existing {
-                    if note.modifiedDate > existingNote.modifiedDate {
-                        notesManager.saveNote(
-                            articleLink: note.articleLink,
-                            articleTitle: note.articleTitle,
-                            text: note.text
-                        )
-                        importedCount += 1
-                    } else {
-                        skippedCount += 1
-                    }
-                } else {
-                    notesManager.saveNote(
-                        articleLink: note.articleLink,
-                        articleTitle: note.articleTitle,
-                        text: note.text
-                    )
-                    importedCount += 1
-                }
+            } else {
+                skippedCount += 1
             }
         }
         
@@ -916,46 +871,34 @@ class ReadingDataExporter {
             
             let existing = collectionManager.collection(named: col.name)
             
-            switch strategy {
-            case .skip:
-                if existing != nil {
-                    skippedCount += 1
-                } else {
-                    if let created = collectionManager.createCollection(
-                        name: col.name, icon: col.icon, description: col.description) {
-                        for link in col.articleLinks {
-                            _ = collectionManager.addArticle(link: link, toCollection: created.id)
-                        }
-                        importedCount += 1
-                    }
-                }
-            case .overwrite:
-                if let existing = existing {
+            if case .skip = strategy, existing != nil {
+                skippedCount += 1
+                continue
+            }
+            
+            // For overwrite, delete existing first; for merge, we'll add to it
+            let targetId: String?
+            if let existing = existing {
+                if case .overwrite = strategy {
                     _ = collectionManager.deleteCollection(id: existing.id)
-                }
-                if let created = collectionManager.createCollection(
-                    name: col.name, icon: col.icon, description: col.description) {
-                    for link in col.articleLinks {
-                        _ = collectionManager.addArticle(link: link, toCollection: created.id)
-                    }
-                    importedCount += 1
-                }
-            case .mergeKeepNewer:
-                if let existing = existing {
-                    // Merge: add any articles not already in the collection
-                    for link in col.articleLinks {
-                        _ = collectionManager.addArticle(link: link, toCollection: existing.id)
-                    }
-                    importedCount += 1
+                    targetId = collectionManager.createCollection(
+                        name: col.name, icon: col.icon, description: col.description)?.id
                 } else {
-                    if let created = collectionManager.createCollection(
-                        name: col.name, icon: col.icon, description: col.description) {
-                        for link in col.articleLinks {
-                            _ = collectionManager.addArticle(link: link, toCollection: created.id)
-                        }
-                        importedCount += 1
-                    }
+                    // mergeKeepNewer: add missing articles to existing collection
+                    targetId = existing.id
                 }
+            } else {
+                targetId = collectionManager.createCollection(
+                    name: col.name, icon: col.icon, description: col.description)?.id
+            }
+            
+            if let id = targetId {
+                for link in col.articleLinks {
+                    _ = collectionManager.addArticle(link: link, toCollection: id)
+                }
+                importedCount += 1
+            } else {
+                skippedCount += 1
             }
         }
         
