@@ -23,6 +23,21 @@ public protocol RSSParserDelegate: AnyObject {
     func parserDidFailWithError(_ error: Error?)
 }
 
+// MARK: - Active Element Enum
+
+/// Identifies which XML element is currently being parsed inside an item.
+/// Using an enum eliminates repeated `NSString.isEqual(to:)` comparisons
+/// on every `foundCharacters` / `foundCDATA` callback — a hot path during
+/// large feed parsing. The element is resolved once in `didStartElement`
+/// via a dictionary lookup, then dispatched via a constant-time `switch`.
+private enum ActiveElement {
+    case title
+    case description  // <description>, <summary>, <content>, <content:encoded>, <encoded>
+    case link
+    case guid         // <guid> or <id>
+    case other
+}
+
 // MARK: - Per-Feed Parse Collector
 
 /// Isolates XML parsing state for a single feed so that concurrent
@@ -32,13 +47,31 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
 
     var stories: [RSSStory] = []
 
-    private var currentElement: NSString = ""
+    /// Maps element names to their `ActiveElement` classification.
+    /// Looked up once per `didStartElement` instead of running up to
+    /// 10 string comparisons per `foundCharacters` call.
+    private static let elementMap: [String: ActiveElement] = [
+        "title": .title,
+        "description": .description,
+        "summary": .description,
+        "content": .description,
+        "content:encoded": .description,
+        "encoded": .description,
+        "link": .link,
+        "guid": .guid,
+        "id": .guid,
+    ]
+
+    private var activeElement: ActiveElement = .other
     private var insideItem = false
-    private var storyTitle = NSMutableString()
-    private var storyDescription = NSMutableString()
-    private var storyLink = NSMutableString()  // from <link> element (preferred)
-    private var storyGuid = NSMutableString()  // from <guid> element (fallback)
-    private var imagePath = NSMutableString()
+
+    // Native Swift strings with pre-allocated capacity instead of
+    // NSMutableString — avoids Obj-C bridging overhead on every append.
+    private var storyTitle = ""
+    private var storyDescription = ""
+    private var storyLink = ""
+    private var storyGuid = ""
+    private var imagePath = ""
 
     /// Whether the current feed uses Atom format (detected from root <feed> element).
     private var isAtomFeed = false
@@ -46,6 +79,7 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     /// Parse data synchronously, returning extracted stories.
     func parse(data: Data) -> [RSSStory] {
         stories = []
+        stories.reserveCapacity(32) // Typical RSS feeds have 10-50 items
         isAtomFeed = false
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = self
@@ -56,7 +90,7 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,
                 attributes attributeDict: [String: String]) {
-        currentElement = elementName as NSString
+        activeElement = RSSParseCollector.elementMap[elementName] ?? .other
 
         // Detect Atom feed format from root <feed> element.
         if elementName == "feed" {
@@ -67,24 +101,24 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
 
         if isItemStart {
             insideItem = true
-            storyTitle = NSMutableString()
-            storyDescription = NSMutableString()
-            storyLink = NSMutableString()
-            storyGuid = NSMutableString()
-            imagePath = NSMutableString()
+            storyTitle = ""
+            storyDescription = ""
+            storyLink = ""
+            storyGuid = ""
+            imagePath = ""
         }
 
         // Atom <link rel="alternate" href="..."> carries URL as attribute
         if isAtomFeed && insideItem && elementName == "link" {
             let rel = attributeDict["rel"] ?? "alternate"
             if rel == "alternate", let href = attributeDict["href"], !href.isEmpty {
-                storyLink.setString(href)
+                storyLink = href
             }
         }
 
         if insideItem && (elementName == "media:thumbnail" || elementName == "enclosure") {
-            if let urlAttr = attributeDict["url"], !urlAttr.isEmpty, imagePath.length == 0 {
-                imagePath.setString(urlAttr)
+            if let urlAttr = attributeDict["url"], !urlAttr.isEmpty, imagePath.isEmpty {
+                imagePath = urlAttr
             }
         }
     }
@@ -92,29 +126,32 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     func parser(_ parser: XMLParser, foundCharacters string: String) {
         guard insideItem else { return }
 
-        appendToCurrentElement(string)
+        appendToActiveElement(string)
     }
 
     func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
         guard insideItem else { return }
         guard let string = String(data: CDATABlock, encoding: .utf8) else { return }
 
-        appendToCurrentElement(string)
+        appendToActiveElement(string)
     }
 
     /// Appends text to whichever element buffer is currently active.
-    /// Shared by `foundCharacters` and `foundCDATA` to avoid duplication.
-    private func appendToCurrentElement(_ string: String) {
-        if currentElement.isEqual(to: "title") {
-            storyTitle.append(string)
-        } else if currentElement.isEqual(to: "description") || currentElement.isEqual(to: "summary") {
-            storyDescription.append(string)
-        } else if currentElement.isEqual(to: "link") {
-            if !isAtomFeed { storyLink.append(string) }
-        } else if currentElement.isEqual(to: "guid") || currentElement.isEqual(to: "id") {
-            storyGuid.append(string)
-        } else if currentElement.isEqual(to: "content") || currentElement.isEqual(to: "content:encoded") || currentElement.isEqual(to: "encoded") {
-            storyDescription.append(string)
+    /// Uses a `switch` on the pre-resolved `ActiveElement` enum for
+    /// constant-time dispatch instead of sequential string comparisons.
+    @inline(__always)
+    private func appendToActiveElement(_ string: String) {
+        switch activeElement {
+        case .title:
+            storyTitle += string
+        case .description:
+            storyDescription += string
+        case .link:
+            if !isAtomFeed { storyLink += string }
+        case .guid:
+            storyGuid += string
+        case .other:
+            break
         }
     }
 
@@ -132,8 +169,8 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
         let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let story = RSSStory(
-            title: storyTitle as String,
-            body: storyDescription as String,
+            title: storyTitle,
+            body: storyDescription,
             link: finalLink.components(separatedBy: "\n")[0],
             imagePath: trimmedImagePath.isEmpty ? nil : trimmedImagePath
         ) {
