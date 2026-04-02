@@ -220,10 +220,23 @@ public class RSSParser: NSObject {
     /// Generation counter to ignore callbacks from cancelled sessions.
     private var loadGeneration: UInt64 = 0
 
+    /// Optional cache manager for HTTP conditional GET (ETag / Last-Modified).
+    /// When set, feeds that haven't changed on the server receive a 304
+    /// response and skip download + parse entirely — a significant bandwidth
+    /// and CPU saving for users with many subscriptions.
+    public var cacheManager: FeedCacheManager?
+
     // MARK: - Public API
 
     public override init() {
         super.init()
+    }
+
+    /// Creates a parser with an optional cache manager for conditional GET support.
+    /// - Parameter cacheManager: Cache manager to use for ETag/Last-Modified headers.
+    public convenience init(cacheManager: FeedCacheManager) {
+        self.init()
+        self.cacheManager = cacheManager
     }
 
     /// Parse stories from multiple feed URLs concurrently.
@@ -270,7 +283,13 @@ public class RSSParser: NSObject {
             return
         }
 
-        let task = session.dataTask(with: feedURL) { [weak self] data, response, error in
+        // Build request with conditional GET headers if cache is available.
+        // Servers that support ETag / Last-Modified will return 304 Not
+        // Modified when the feed hasn't changed, avoiding the full download.
+        var request = URLRequest(url: feedURL)
+        cacheManager?.applyCacheHeaders(to: &request, for: feedURL)
+
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
             guard let self = self else { return }
 
             guard let data = data, error == nil else {
@@ -279,10 +298,22 @@ public class RSSParser: NSObject {
                 return
             }
 
+            // 304 Not Modified — feed hasn't changed, skip parsing entirely.
+            // This saves both bandwidth and CPU for unchanged feeds.
+            if let cache = self.cacheManager, cache.isNotModified(response) {
+                self.feedCompleted(generation: generation)
+                return
+            }
+
             if let httpResponse = response as? HTTPURLResponse,
                !(200...299).contains(httpResponse.statusCode) {
                 self.feedCompleted(generation: generation)
                 return
+            }
+
+            // Update cache with new ETag/Last-Modified from the server.
+            if let feedURL = response?.url ?? URL(string: url) {
+                self.cacheManager?.updateCache(from: response, for: feedURL)
             }
 
             // Parse in isolated context — no shared mutable state.
