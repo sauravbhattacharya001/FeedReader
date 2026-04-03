@@ -259,16 +259,7 @@ public class ArticleQuizGenerator {
     }
 
     private func extractSignificantWords(from text: String) -> [String] {
-        let lowered = text.lowercased()
-        var words: [String] = []
-        lowered.enumerateSubstrings(in: lowered.startIndex..., options: .byWords) { word, _, _, _ in
-            guard let word = word,
-                  word.count >= 4,
-                  !Self.stopWords.contains(word),
-                  !word.allSatisfy({ $0.isNumber }) else { return }
-            words.append(word)
-        }
-        return words
+        return TextUtilities.extractSignificantWords(from: text, minimumLength: 4)
     }
 
     private func generateDistractorTopics(excluding: Set<String>, from body: String, rng: inout RandomNumberGenerator) -> [String] {
@@ -303,24 +294,7 @@ public class ArticleQuizGenerator {
 
     // MARK: - Word Lists
 
-    private static let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
-        "for", "of", "with", "by", "from", "is", "it", "as", "was",
-        "are", "be", "been", "being", "have", "has", "had", "do", "does",
-        "did", "will", "would", "could", "should", "may", "might", "can",
-        "shall", "this", "that", "these", "those", "you", "he", "she",
-        "they", "me", "him", "her", "them", "my", "your", "his", "its",
-        "our", "their", "what", "which", "who", "whom", "how", "when",
-        "where", "why", "all", "each", "every", "both", "few", "more",
-        "most", "other", "some", "such", "than", "too", "very", "just",
-        "about", "above", "after", "again", "also", "any", "because",
-        "before", "between", "during", "into", "new", "now", "over",
-        "then", "there", "through", "under", "said", "says", "say",
-        "get", "got", "like", "make", "made", "many", "much", "one",
-        "two", "first", "also", "well", "way", "even", "back", "still",
-        "since", "while", "here", "off", "however", "yet", "per", "via",
-        "been", "were", "not", "only", "own", "same",
-    ]
+    // Stop words are provided by TextUtilities.stopWords
 
     /// Common English words used as distractors.
     private static let commonWords: [String] = [

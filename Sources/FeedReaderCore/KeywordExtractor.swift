@@ -34,28 +34,7 @@ public class KeywordExtractor {
     /// Maximum number of keywords to return by default.
     public var defaultCount: Int = 5
 
-    // MARK: - Stop Words
-
-    /// Common English stop words to exclude from keyword extraction.
-    private static let stopWords: Set<String> = [
-        "the", "a", "an", "and", "or", "but", "in", "on", "at", "to",
-        "for", "of", "with", "by", "from", "is", "it", "as", "was",
-        "are", "be", "been", "being", "have", "has", "had", "do", "does",
-        "did", "will", "would", "could", "should", "may", "might", "can",
-        "shall", "this", "that", "these", "those", "i", "you", "he", "she",
-        "we", "they", "me", "him", "her", "us", "them", "my", "your",
-        "his", "its", "our", "their", "what", "which", "who", "whom",
-        "how", "when", "where", "why", "all", "each", "every", "both",
-        "few", "more", "most", "other", "some", "such", "no", "nor",
-        "not", "only", "own", "same", "so", "than", "too", "very",
-        "just", "about", "above", "after", "again", "also", "any",
-        "because", "before", "between", "during", "if", "into", "new",
-        "now", "over", "then", "there", "through", "under", "up", "out",
-        "said", "says", "say", "get", "got", "like", "make", "made",
-        "many", "much", "one", "two", "first", "also", "well", "way",
-        "even", "back", "still", "since", "while", "here", "off",
-        "however", "yet", "per", "via", "around", "among", "upon",
-    ]
+    // Stop words are provided by TextUtilities.stopWords
 
     // MARK: - Initialization
 
@@ -136,7 +115,7 @@ public class KeywordExtractor {
         lowered.enumerateSubstrings(in: lowered.startIndex..., options: .byWords) { word, _, _, _ in
             guard let word = word,
                   word.count >= self.minimumWordLength,
-                  !KeywordExtractor.stopWords.contains(word),
+                  !TextUtilities.stopWords.contains(word),
                   !word.allSatisfy({ $0.isNumber }) else { return }
             frequencies[word, default: 0] += 1
         }

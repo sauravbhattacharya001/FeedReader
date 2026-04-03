@@ -203,12 +203,12 @@ public class ArticleArchiveExporter {
     
     /// Counts words in a text string.
     public func countWords(_ text: String) -> Int {
-        return text.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }.count
+        return TextUtilities.countWords(text)
     }
     
     /// Estimates reading time in minutes (assumes 200 WPM).
     public func estimateReadTime(wordCount: Int) -> Int {
-        return max(1, wordCount / 200)
+        return TextUtilities.estimateReadTime(wordCount: wordCount)
     }
     
     // MARK: - Private: HTML Building
@@ -352,21 +352,8 @@ public class ArticleArchiveExporter {
         return truncated.isEmpty ? "article" : truncated.replacingOccurrences(of: " ", with: "_")
     }
     
-    /// Escapes HTML special characters in a single pass.
-    /// Avoids creating 4 intermediate String copies that the chained
-    /// `replacingOccurrences` approach would produce.
+    /// Delegates to `TextUtilities.escapeHTML` for single-pass HTML escaping.
     private func escapeHTML(_ text: String) -> String {
-        var result = ""
-        result.reserveCapacity(text.count + text.count / 8) // small headroom for entities
-        for ch in text {
-            switch ch {
-            case "&":  result += "&amp;"
-            case "<":  result += "&lt;"
-            case ">":  result += "&gt;"
-            case "\"": result += "&quot;"
-            default:   result.append(ch)
-            }
-        }
-        return result
+        return TextUtilities.escapeHTML(text)
     }
 }
