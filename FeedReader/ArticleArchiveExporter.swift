@@ -319,7 +319,7 @@ class ArticleArchiveExporter {
     }
     
     private func buildCSS(theme: Theme) -> String {
-        let custom = options.customCSS ?? ""
+        let custom = sanitizeCSS(options.customCSS ?? "")
         return """
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -391,6 +391,49 @@ class ArticleArchiveExporter {
         return truncated.isEmpty ? "article" : truncated.replacingOccurrences(of: " ", with: "_")
     }
     
+    /// Sanitize custom CSS to prevent style-tag breakout (XSS).
+    /// A malicious customCSS string like `</style><script>...</script><style>`
+    /// could escape the `<style>` element and inject arbitrary JavaScript
+    /// into the exported HTML archive. This strips `</style` sequences and
+    /// CSS expressions/imports that can execute code (CWE-79).
+    private func sanitizeCSS(_ css: String) -> String {
+        var result = css
+        // Strip any closing style tag (case-insensitive) — prevents breaking
+        // out of the <style> element. Matches `</style` with optional
+        // whitespace and `>`.
+        let styleClosePattern = try? NSRegularExpression(
+            pattern: "<\\s*/\\s*style",
+            options: .caseInsensitive
+        )
+        result = styleClosePattern?.stringByReplacingMatches(
+            in: result,
+            range: NSRange(result.startIndex..., in: result),
+            withTemplate: "/* blocked */"
+        ) ?? result
+        // Strip opening script/html tags that could be injected
+        let dangerousTagPattern = try? NSRegularExpression(
+            pattern: "<\\s*(?:script|iframe|object|embed|link|meta|svg|img)",
+            options: .caseInsensitive
+        )
+        result = dangerousTagPattern?.stringByReplacingMatches(
+            in: result,
+            range: NSRange(result.startIndex..., in: result),
+            withTemplate: "/* blocked */"
+        ) ?? result
+        // Strip CSS expressions and imports (legacy IE expression(), @import
+        // which can load external resources)
+        let cssExprPattern = try? NSRegularExpression(
+            pattern: "expression\\s*\\(|@import\\s",
+            options: .caseInsensitive
+        )
+        result = cssExprPattern?.stringByReplacingMatches(
+            in: result,
+            range: NSRange(result.startIndex..., in: result),
+            withTemplate: "/* blocked */"
+        ) ?? result
+        return result
+    }
+
     private func escapeHTML(_ text: String) -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")
