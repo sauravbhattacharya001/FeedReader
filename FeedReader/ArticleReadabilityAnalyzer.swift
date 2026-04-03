@@ -107,7 +107,7 @@ class ArticleReadabilityAnalyzer {
     ///
     /// Returns `nil` if the text is empty or contains no words.
     func analyze(_ text: String) -> ReadabilityResult? {
-        let cleaned = stripHTML(text)
+        let cleaned = TextAnalyzer.shared.stripHTML(text)
         let words = tokenize(cleaned)
         guard !words.isEmpty else { return nil }
 
@@ -207,36 +207,6 @@ class ArticleReadabilityAnalyzer {
     }
 
     // MARK: - Text Processing
-
-    /// Strip HTML tags from text (articles may contain raw HTML).
-    func stripHTML(_ text: String) -> String {
-        // Remove <script> and <style> blocks entirely
-        var result = text.replacingOccurrences(
-            of: "<(script|style)[^>]*>[\\s\\S]*?</\\1>",
-            with: " ",
-            options: [.regularExpression, .caseInsensitive]
-        )
-        // Remove all remaining tags
-        result = result.replacingOccurrences(
-            of: "<[^>]+>",
-            with: " ",
-            options: .regularExpression
-        )
-        // Decode common HTML entities
-        result = result.replacingOccurrences(of: "&amp;", with: "&")
-        result = result.replacingOccurrences(of: "&lt;", with: "<")
-        result = result.replacingOccurrences(of: "&gt;", with: ">")
-        result = result.replacingOccurrences(of: "&quot;", with: "\"")
-        result = result.replacingOccurrences(of: "&#39;", with: "'")
-        result = result.replacingOccurrences(of: "&nbsp;", with: " ")
-        // Collapse whitespace
-        result = result.replacingOccurrences(
-            of: "\\s+",
-            with: " ",
-            options: .regularExpression
-        ).trimmingCharacters(in: .whitespacesAndNewlines)
-        return result
-    }
 
     /// Tokenize text into lowercase words (letters only, min 1 char).
     func tokenize(_ text: String) -> [String] {

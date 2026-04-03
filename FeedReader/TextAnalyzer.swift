@@ -114,4 +114,44 @@ class TextAnalyzer {
         let maxCount = Double(counts.values.max() ?? 1)
         return counts.mapValues { Double($0) / maxCount }
     }
+
+    // MARK: - HTML Processing
+
+    /// Strip HTML tags and decode common entities from text.
+    ///
+    /// Removes `<script>` and `<style>` blocks entirely, strips remaining
+    /// tags, decodes the six most common HTML entities, and collapses
+    /// whitespace. This is the canonical implementation — other modules
+    /// should delegate here instead of maintaining private copies.
+    ///
+    /// - Parameter text: Raw text potentially containing HTML markup.
+    /// - Returns: Plain text with tags removed and entities decoded.
+    func stripHTML(_ text: String) -> String {
+        // Remove <script> and <style> blocks entirely
+        var result = text.replacingOccurrences(
+            of: "<(script|style)[^>]*>[\\s\\S]*?</\\1>",
+            with: " ",
+            options: [.regularExpression, .caseInsensitive]
+        )
+        // Remove all remaining tags
+        result = result.replacingOccurrences(
+            of: "<[^>]+>",
+            with: " ",
+            options: .regularExpression
+        )
+        // Decode common HTML entities
+        result = result.replacingOccurrences(of: "&amp;", with: "&")
+        result = result.replacingOccurrences(of: "&lt;", with: "<")
+        result = result.replacingOccurrences(of: "&gt;", with: ">")
+        result = result.replacingOccurrences(of: "&quot;", with: "\"")
+        result = result.replacingOccurrences(of: "&#39;", with: "'")
+        result = result.replacingOccurrences(of: "&nbsp;", with: " ")
+        // Collapse whitespace
+        result = result.replacingOccurrences(
+            of: "\\s+",
+            with: " ",
+            options: .regularExpression
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        return result
+    }
 }

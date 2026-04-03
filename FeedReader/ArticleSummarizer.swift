@@ -69,30 +69,20 @@ struct SummaryResult {
 // MARK: - ArticleSummarizer
 
 /// Singleton extractive summarizer using TF-IDF with positional and title boosts.
+///
+/// Delegates tokenization, stop-word filtering, and HTML stripping to the
+/// shared `TextAnalyzer` to avoid duplicating those utilities.
 class ArticleSummarizer {
 
     static let shared = ArticleSummarizer()
 
-    // Common English stop words to exclude from TF-IDF.
-    private let stopWords: Set<String> = [
-        "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "its", "as", "are", "was",
-        "were", "be", "been", "being", "have", "has", "had", "do", "does",
-        "did", "will", "would", "could", "should", "may", "might", "shall",
-        "can", "this", "that", "these", "those", "i", "you", "he", "she",
-        "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
-        "our", "their", "what", "which", "who", "whom", "how", "when", "where",
-        "why", "if", "then", "than", "not", "no", "nor", "so", "very", "just",
-        "about", "up", "out", "into", "over", "after", "before", "between",
-        "under", "again", "also", "more", "most", "some", "such", "only",
-        "other", "new", "like", "each", "all", "both", "through", "during"
-    ]
+    private let textAnalyzer = TextAnalyzer.shared
 
     // MARK: - Public API
 
     /// Summarize a single text, optionally boosted by a title.
     func summarize(_ text: String, title: String? = nil, config: SummaryConfig = .default) -> SummaryResult? {
-        let cleaned = stripHTML(text).trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleaned = textAnalyzer.stripHTML(text).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return nil }
 
         let sentences = splitSentences(cleaned)
@@ -100,7 +90,7 @@ class ArticleSummarizer {
         guard validSentences.count >= 2 else { return nil }
 
         // Tokenize each sentence
-        let tokenized = validSentences.map { tokenize($0) }
+        let tokenized = validSentences.map { textAnalyzer.tokenize($0, minLength: 2) }
 
         // Build document frequency map
         var docFreq: [String: Int] = [:]
@@ -111,7 +101,7 @@ class ArticleSummarizer {
         }
 
         let n = Double(validSentences.count)
-        let titleWords = title.map { tokenize($0) } ?? []
+        let titleWords = title.map { textAnalyzer.tokenize($0, minLength: 2) } ?? []
 
         // Score each sentence
         var scored: [(index: Int, sentence: String, score: Double)] = []
@@ -208,7 +198,7 @@ class ArticleSummarizer {
 
     /// Generate a combined summary across multiple articles.
     func multiArticleSummary(_ articles: [(text: String, title: String?)], maxSentences: Int = 3, config: SummaryConfig = .default) -> SummaryResult? {
-        let combined = articles.map { stripHTML($0.text).trimmingCharacters(in: .whitespacesAndNewlines) }
+        let combined = articles.map { textAnalyzer.stripHTML($0.text).trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
         guard !combined.isEmpty else { return nil }
         let mergedText = combined.joined(separator: " ")
@@ -245,40 +235,8 @@ class ArticleSummarizer {
         return parts
     }
 
-    /// Tokenize text into lowercase words, filtering stop words.
-    private func tokenize(_ text: String) -> [String] {
-        let lower = text.lowercased()
-        let words = lower.components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty && !stopWords.contains($0) && $0.count > 1 }
-        return words
-    }
-
     /// Count words in a string.
     private func wordCount(_ text: String) -> Int {
         return text.components(separatedBy: .whitespaces).filter { !$0.isEmpty }.count
-    }
-
-    /// Strip HTML tags and decode common entities.
-    private func stripHTML(_ text: String) -> String {
-        var result = text
-        // Remove tags
-        if let regex = try? NSRegularExpression(pattern: "<[^>]+>", options: []) {
-            result = regex.stringByReplacingMatches(
-                in: result,
-                range: NSRange(result.startIndex..., in: result),
-                withTemplate: " "
-            )
-        }
-        // Decode entities
-        result = result.replacingOccurrences(of: "&amp;", with: "&")
-        result = result.replacingOccurrences(of: "&lt;", with: "<")
-        result = result.replacingOccurrences(of: "&gt;", with: ">")
-        result = result.replacingOccurrences(of: "&quot;", with: "\"")
-        result = result.replacingOccurrences(of: "&#39;", with: "'")
-        result = result.replacingOccurrences(of: "&nbsp;", with: " ")
-        // Collapse whitespace
-        result = result.components(separatedBy: .whitespacesAndNewlines)
-            .filter { !$0.isEmpty }.joined(separator: " ")
-        return result
     }
 }
