@@ -108,18 +108,9 @@ public class KeywordExtractor {
     // MARK: - Private
 
     /// Tokenizes text and computes word frequencies, filtering stop words.
+    /// Delegates to `TextUtilities.computeWordFrequencies` to avoid
+    /// duplicating the tokenization and stop-word filtering logic.
     private func computeFrequencies(_ text: String) -> [String: Int] {
-        let lowered = text.lowercased()
-        var frequencies: [String: Int] = [:]
-
-        lowered.enumerateSubstrings(in: lowered.startIndex..., options: .byWords) { word, _, _, _ in
-            guard let word = word,
-                  word.count >= self.minimumWordLength,
-                  !TextUtilities.stopWords.contains(word),
-                  !word.allSatisfy({ $0.isNumber }) else { return }
-            frequencies[word, default: 0] += 1
-        }
-
-        return frequencies
+        return TextUtilities.computeWordFrequencies(from: text, minimumLength: minimumWordLength)
     }
 }

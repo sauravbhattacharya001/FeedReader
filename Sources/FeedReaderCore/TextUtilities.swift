@@ -129,4 +129,26 @@ public enum TextUtilities {
         }
         return words
     }
+
+    // MARK: - Word Frequency Analysis
+
+    /// Computes word frequencies from text, filtering stop words and short/numeric tokens.
+    ///
+    /// This is the frequency-counting counterpart to `extractSignificantWords`.
+    /// Use this when you need term-frequency data (e.g. keyword extraction,
+    /// TF-IDF scoring) rather than just the word list.
+    ///
+    /// - Parameters:
+    ///   - text: The input text to analyze.
+    ///   - minimumLength: Minimum word length to include (default 3).
+    /// - Returns: Dictionary mapping lowercase significant words to their occurrence counts.
+    public static func computeWordFrequencies(from text: String, minimumLength: Int = 3) -> [String: Int] {
+        let words = extractSignificantWords(from: text, minimumLength: minimumLength)
+        var frequencies: [String: Int] = [:]
+        frequencies.reserveCapacity(words.count / 2)
+        for word in words {
+            frequencies[word, default: 0] += 1
+        }
+        return frequencies
+    }
 }
