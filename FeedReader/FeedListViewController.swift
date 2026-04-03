@@ -47,9 +47,17 @@ class FeedListViewController: UITableViewController, UIDocumentPickerDelegate {
             target: self,
             action: #selector(showOPMLMenu)
         )
+        
+        let healthButton = UIBarButtonItem(
+            image: UIImage(systemName: "heart.text.square"),
+            style: .plain,
+            target: self,
+            action: #selector(showHealthDashboard)
+        )
+        healthButton.tintColor = .systemGreen
         opmlButton.accessibilityLabel = "OPML Import/Export"
         
-        navigationItem.leftBarButtonItems = [addButton, opmlButton]
+        navigationItem.leftBarButtonItems = [addButton, opmlButton, healthButton]
         
         NotificationCenter.default.addObserver(
             self,
@@ -266,6 +274,11 @@ class FeedListViewController: UITableViewController, UIDocumentPickerDelegate {
     // MARK: - Actions
     
     /// Show dialog to add a custom RSS feed by URL.
+    @objc private func showHealthDashboard() {
+        let healthVC = FeedHealthDashboardViewController()
+        navigationController?.pushViewController(healthVC, animated: true)
+    }
+    
     @objc private func addCustomFeed() {
         let alert = UIAlertController(
             title: "Add Custom Feed",
