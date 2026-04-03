@@ -316,6 +316,18 @@ public class RSSParser: NSObject {
                 self.cacheManager?.updateCache(from: response, for: feedURL)
             }
 
+            // Validate Content-Type before attempting XML parsing.
+            // Feeds redirected to HTML error/login pages or non-XML
+            // resources would waste CPU and produce garbled results.
+            if let httpResponse = response as? HTTPURLResponse,
+               let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased() {
+                let validTypes = ["xml", "rss", "atom", "text/plain", "octet-stream"]
+                if !validTypes.contains(where: { contentType.contains($0) }) {
+                    self.feedCompleted(generation: generation)
+                    return
+                }
+            }
+
             // Parse in isolated context — no shared mutable state.
             let collector = RSSParseCollector()
             let feedStories = collector.parse(data: data)

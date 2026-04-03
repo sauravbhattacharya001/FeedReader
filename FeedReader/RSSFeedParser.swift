@@ -330,6 +330,20 @@ class RSSFeedParser: NSObject {
                 return
             }
 
+            // Validate Content-Type before attempting XML parsing.
+            // Feeds redirected to HTML error/login pages or non-XML
+            // resources would waste CPU and produce garbled results.
+            if let httpResponse = response as? HTTPURLResponse,
+               let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type")?.lowercased() {
+                let validTypes = ["xml", "rss", "atom", "text/plain", "octet-stream"]
+                if !validTypes.contains(where: { contentType.contains($0) }) {
+                    os_log("unexpected Content-Type '%{public}s' for feed %{private}s, skipping",
+                           log: FeedReaderLogger.parser, type: .error, contentType, url)
+                    self.feedCompleted(generation: generation)
+                    return
+                }
+            }
+
             // Parse in an isolated context — no shared mutable state.
             let context = FeedParseContext()
             let feedStories = context.parse(data: data)
