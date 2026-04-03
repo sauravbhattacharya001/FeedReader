@@ -299,10 +299,19 @@ class FeedAutomationEngine {
     // MARK: - Properties
     
     private(set) var rules: [AutomationRule] = []
+    private var ruleIndex: [String: Int] = [:]  // id → index in rules array
     private(set) var executionHistory: [AutomationExecution] = []
     
     /// Maximum execution history entries to retain.
     var maxHistorySize: Int = 1000
+    
+    /// Rebuild the id→index lookup after any mutation of the rules array.
+    private func rebuildIndex() {
+        ruleIndex.removeAll(keepingCapacity: true)
+        for (i, rule) in rules.enumerated() {
+            ruleIndex[rule.id] = i
+        }
+    }
     
     // MARK: - Rule Management
     
@@ -320,6 +329,7 @@ class FeedAutomationEngine {
         }
         rules.append(rule)
         rules.sort { $0.priority < $1.priority }
+        rebuildIndex()
         NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
         return rule.id
     }
@@ -327,10 +337,11 @@ class FeedAutomationEngine {
     /// Remove a rule by ID. Returns true if found and removed.
     @discardableResult
     func removeRule(id: String) -> Bool {
-        guard let index = rules.firstIndex(where: { $0.id == id }) else {
+        guard let index = ruleIndex[id] else {
             return false
         }
         rules.remove(at: index)
+        rebuildIndex()
         NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
         return true
     }
@@ -338,11 +349,12 @@ class FeedAutomationEngine {
     /// Update an existing rule. Returns true if found and updated.
     @discardableResult
     func updateRule(_ updated: AutomationRule) -> Bool {
-        guard let index = rules.firstIndex(where: { $0.id == updated.id }) else {
+        guard let index = ruleIndex[updated.id] else {
             return false
         }
         rules[index] = updated
         rules.sort { $0.priority < $1.priority }
+        rebuildIndex()
         NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
         return true
     }
@@ -350,7 +362,7 @@ class FeedAutomationEngine {
     /// Enable or disable a rule by ID.
     @discardableResult
     func setRuleEnabled(id: String, enabled: Bool) -> Bool {
-        guard let index = rules.firstIndex(where: { $0.id == id }) else {
+        guard let index = ruleIndex[id] else {
             return false
         }
         rules[index].isEnabled = enabled
@@ -360,21 +372,23 @@ class FeedAutomationEngine {
     
     /// Get a rule by ID.
     func getRule(id: String) -> AutomationRule? {
-        return rules.first { $0.id == id }
+        guard let index = ruleIndex[id] else { return nil }
+        return rules[index]
     }
     
-    /// Get all enabled rules sorted by priority.
+    /// Get all enabled rules (already sorted by priority).
     func enabledRules() -> [AutomationRule] {
-        return rules.filter { $0.isEnabled }.sorted { $0.priority < $1.priority }
+        return rules.filter { $0.isEnabled }
     }
     
     /// Reorder a rule's priority. Adjusts other rules as needed.
     func moveRule(id: String, toPriority newPriority: Int) -> Bool {
-        guard let index = rules.firstIndex(where: { $0.id == id }) else {
+        guard let index = ruleIndex[id] else {
             return false
         }
         rules[index].priority = newPriority
         rules.sort { $0.priority < $1.priority }
+        rebuildIndex()
         NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
         return true
     }
@@ -448,7 +462,7 @@ class FeedAutomationEngine {
                 
                 if !dryRun {
                     // Update rule stats
-                    if let index = rules.firstIndex(where: { $0.id == rule.id }) {
+                    if let index = ruleIndex[rule.id] {
                         rules[index].triggerCount += 1
                         rules[index].lastTriggeredAt = now
                         rules[index].dailyTriggers.append(now)
@@ -651,6 +665,7 @@ class FeedAutomationEngine {
         }
         
         rules.sort { $0.priority < $1.priority }
+        rebuildIndex()
         if added > 0 {
             NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
         }
@@ -747,6 +762,7 @@ class FeedAutomationEngine {
     /// Remove all rules.
     func removeAll() {
         rules.removeAll()
+        ruleIndex.removeAll()
         NotificationCenter.default.post(name: .automationRulesDidChange, object: nil)
     }
     
