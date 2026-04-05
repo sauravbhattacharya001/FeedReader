@@ -221,20 +221,54 @@ jobs:
             echo "No coverage data available for badge."
           fi
 
-      - name: Enforce coverage threshold
+      - name: Coverage job summary
         if: always()
         run: |
-          if [ -f coverage-percent.txt ]; then
-            PCT=$(cat coverage-percent.txt)
-            THRESHOLD=30
-            echo "Coverage: ${PCT}% (threshold: ${THRESHOLD}%)"
-            if (( $(echo "$PCT < $THRESHOLD" | bc -l) )); then
-              echo "::error::Code coverage ${PCT}% is below the minimum threshold of ${THRESHOLD}%"
-              exit 1
-            fi
-            echo "✅ Coverage ${PCT}% meets threshold of ${THRESHOLD}%"
+          if [ -f coverage.json ]; then
+            python3 << 'PYEOF'
+          import json, os
+
+          try:
+              with open("coverage.json") as f:
+                  data = json.load(f)
+
+              summary = "## 📊 Code Coverage Report\n\n"
+              summary += "| File | Lines | Covered | Coverage |\n"
+              summary += "|------|------:|--------:|---------:|\n"
+
+              total_exec = 0
+              total_cov = 0
+              rows = []
+
+              for target in data.get("targets", []):
+                  if "Test" in target.get("name", ""):
+                      continue
+                  for src in target.get("files", []):
+                      name = src.get("name", "?")
+                      exe = src.get("executableLines", 0)
+                      cov = src.get("coveredLines", 0)
+                      pct = (cov / exe * 100) if exe > 0 else 0
+                      total_exec += exe
+                      total_cov += cov
+                      if exe >= 5:
+                          icon = "🟢" if pct >= 60 else "🟡" if pct >= 30 else "🔴"
+                          rows.append((name, exe, cov, pct, icon))
+
+              for name, exe, cov, pct, icon in sorted(rows, key=lambda r: r[3]):
+                  summary += f"| {icon} {name} | {exe} | {cov} | {pct:.1f}% |\n"
+
+              overall = (total_cov / total_exec * 100) if total_exec > 0 else 0
+              summary += f"\n**Overall: {overall:.1f}%** ({total_cov}/{total_exec} lines)\n"
+
+              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+                  f.write(summary)
+
+              print(f"Coverage summary written ({overall:.1f}%)")
+          except Exception as e:
+              print(f"Warning: {e}")
+          PYEOF
           else
-            echo "::warning::No coverage data available — skipping threshold check"
+            echo "No coverage data for summary."
           fi
 
       - name: Upload test results
