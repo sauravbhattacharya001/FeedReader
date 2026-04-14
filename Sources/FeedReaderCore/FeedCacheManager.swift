@@ -58,13 +58,28 @@ public final class FeedCacheManager: @unchecked Sendable {
     /// File URL for persisting cache to disk (nil = memory-only).
     private let persistenceURL: URL?
 
+    /// Pending save work item — used to debounce rapid cache updates.
+    /// When multiple feeds complete in quick succession (e.g. during a
+    /// bulk refresh of 50+ subscriptions), coalescing disk writes into
+    /// a single save avoids redundant JSON encoding + I/O overhead.
+    private var pendingSave: DispatchWorkItem?
+
+    /// Debounce interval for disk persistence (seconds).
+    /// Cache updates within this window are coalesced into one write.
+    private let saveDebounceInterval: TimeInterval
+
     // MARK: - Initialization
 
     /// Creates a cache manager.
-    /// - Parameter persistenceURL: Optional file URL to persist cache across launches.
-    ///   Pass `nil` for in-memory-only caching (useful for testing).
-    public init(persistenceURL: URL? = nil) {
+    /// - Parameters:
+    ///   - persistenceURL: Optional file URL to persist cache across launches.
+    ///     Pass `nil` for in-memory-only caching (useful for testing).
+    ///   - saveDebounceInterval: Seconds to wait before flushing to disk
+    ///     (default 0.5). Subsequent saves within the window reset the timer,
+    ///     coalescing many updates into one I/O operation.
+    public init(persistenceURL: URL? = nil, saveDebounceInterval: TimeInterval = 0.5) {
         self.persistenceURL = persistenceURL
+        self.saveDebounceInterval = saveDebounceInterval
         if let url = persistenceURL {
             loadFromDisk(url)
         }
@@ -74,6 +89,14 @@ public final class FeedCacheManager: @unchecked Sendable {
     public convenience init(cacheDirectory: URL) {
         let fileURL = cacheDirectory.appendingPathComponent("feed_cache_metadata.json")
         self.init(persistenceURL: fileURL)
+    }
+
+    deinit {
+        // Flush any pending save synchronously so data isn't lost on teardown.
+        queue.sync {
+            pendingSave?.cancel()
+            saveToDiskNow()
+        }
     }
 
     // MARK: - Public API
@@ -130,7 +153,7 @@ public final class FeedCacheManager: @unchecked Sendable {
 
         queue.async { [weak self] in
             self?.entries[key] = entry
-            self?.saveToDisk()
+            self?.scheduleSave()
         }
     }
 
@@ -139,7 +162,7 @@ public final class FeedCacheManager: @unchecked Sendable {
         let key = normalizeURL(url)
         queue.async { [weak self] in
             self?.entries.removeValue(forKey: key)
-            self?.saveToDisk()
+            self?.scheduleSave()
         }
     }
 
@@ -147,7 +170,7 @@ public final class FeedCacheManager: @unchecked Sendable {
     public func invalidateAll() {
         queue.async { [weak self] in
             self?.entries.removeAll()
-            self?.saveToDisk()
+            self?.scheduleSave()
         }
     }
 
@@ -168,7 +191,19 @@ public final class FeedCacheManager: @unchecked Sendable {
         let cutoff = Date().addingTimeInterval(-maxAge)
         queue.async { [weak self] in
             self?.entries = self?.entries.filter { $0.value.updatedAt > cutoff } ?? [:]
-            self?.saveToDisk()
+            self?.scheduleSave()
+        }
+    }
+
+    /// Immediately flushes any pending debounced save to disk.
+    ///
+    /// Call before app suspension or when you need to guarantee persistence.
+    /// Safe to call from any thread.
+    public func flush() {
+        queue.sync {
+            pendingSave?.cancel()
+            pendingSave = nil
+            saveToDiskNow()
         }
     }
 
@@ -190,8 +225,22 @@ public final class FeedCacheManager: @unchecked Sendable {
         entries = decoded
     }
 
-    /// Persists cache to disk if a persistence URL is configured.
-    private func saveToDisk() {
+    /// Schedules a debounced save. Must be called on `queue`.
+    ///
+    /// Cancels any previously scheduled save and starts a new timer.
+    /// When many feeds complete within a short window (common during
+    /// bulk refresh), this collapses N disk writes into one.
+    private func scheduleSave() {
+        pendingSave?.cancel()
+        let item = DispatchWorkItem { [weak self] in
+            self?.saveToDiskNow()
+        }
+        pendingSave = item
+        queue.asyncAfter(deadline: .now() + saveDebounceInterval, execute: item)
+    }
+
+    /// Persists cache to disk immediately. Must be called on `queue`.
+    private func saveToDiskNow() {
         guard let url = persistenceURL else { return }
         guard let data = try? JSONEncoder().encode(entries) else { return }
         try? data.write(to: url, options: .atomic)
