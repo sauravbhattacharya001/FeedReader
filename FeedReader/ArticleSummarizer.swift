@@ -73,20 +73,8 @@ class ArticleSummarizer {
 
     static let shared = ArticleSummarizer()
 
-    // Common English stop words to exclude from TF-IDF.
-    private let stopWords: Set<String> = [
-        "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-        "of", "with", "by", "from", "is", "it", "its", "as", "are", "was",
-        "were", "be", "been", "being", "have", "has", "had", "do", "does",
-        "did", "will", "would", "could", "should", "may", "might", "shall",
-        "can", "this", "that", "these", "those", "i", "you", "he", "she",
-        "we", "they", "me", "him", "her", "us", "them", "my", "your", "his",
-        "our", "their", "what", "which", "who", "whom", "how", "when", "where",
-        "why", "if", "then", "than", "not", "no", "nor", "so", "very", "just",
-        "about", "up", "out", "into", "over", "after", "before", "between",
-        "under", "again", "also", "more", "most", "some", "such", "only",
-        "other", "new", "like", "each", "all", "both", "through", "during"
-    ]
+    // Delegate to the canonical stop-word list in TextAnalyzer.
+    private var stopWords: Set<String> { TextAnalyzer.stopWords }
 
     // MARK: - Public API
 

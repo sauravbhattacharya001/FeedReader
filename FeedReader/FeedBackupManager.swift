@@ -21,7 +21,7 @@
 //
 
 import Foundation
-import CommonCrypto
+import CryptoKit
 
 // MARK: - Notifications
 
@@ -701,10 +701,7 @@ class FeedBackupManager {
 
     /// SHA-256 hash of data, returned as hex string.
     private func sha256(_ data: Data) -> String {
-        var hash = [UInt8](repeating: 0, count: Int(CC_SHA256_DIGEST_LENGTH))
-        data.withUnsafeBytes { buffer in
-            _ = CC_SHA256(buffer.baseAddress, CC_LONG(data.count), &hash)
-        }
-        return hash.map { String(format: "%02x", $0) }.joined()
+        let digest = SHA256.hash(data: data)
+        return digest.map { String(format: "%02x", $0) }.joined()
     }
 }
