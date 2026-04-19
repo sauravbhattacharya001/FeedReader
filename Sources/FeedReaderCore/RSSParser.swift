@@ -65,12 +65,15 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     private var activeElement: ActiveElement = .other
     private var insideItem = false
 
-    // Native Swift strings with pre-allocated capacity instead of
-    // NSMutableString — avoids Obj-C bridging overhead on every append.
-    private var storyTitle = ""
-    private var storyDescription = ""
-    private var storyLink = ""
-    private var storyGuid = ""
+    // Fragment buffers: XML parsers call foundCharacters/foundCDATA many
+    // times per element (e.g. every 4KB chunk). Appending to a String
+    // with `+=` copies the entire accumulated buffer each time — O(n²)
+    // for n total characters. Instead, we collect fragments in arrays
+    // and join once when the <item> ends, giving O(n) total cost.
+    private var titleFragments: [String] = []
+    private var descriptionFragments: [String] = []
+    private var linkFragments: [String] = []
+    private var guidFragments: [String] = []
     private var imagePath = ""
 
     /// Whether the current feed uses Atom format (detected from root <feed> element).
@@ -101,10 +104,10 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
 
         if isItemStart {
             insideItem = true
-            storyTitle = ""
-            storyDescription = ""
-            storyLink = ""
-            storyGuid = ""
+            titleFragments.removeAll(keepingCapacity: true)
+            descriptionFragments.removeAll(keepingCapacity: true)
+            linkFragments.removeAll(keepingCapacity: true)
+            guidFragments.removeAll(keepingCapacity: true)
             imagePath = ""
         }
 
@@ -143,13 +146,13 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
     private func appendToActiveElement(_ string: String) {
         switch activeElement {
         case .title:
-            storyTitle += string
+            titleFragments.append(string)
         case .description:
-            storyDescription += string
+            descriptionFragments.append(string)
         case .link:
-            if !isAtomFeed { storyLink += string }
+            if !isAtomFeed { linkFragments.append(string) }
         case .guid:
-            storyGuid += string
+            guidFragments.append(string)
         case .other:
             break
         }
@@ -160,10 +163,14 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
         let isItemEnd = isAtomFeed ? elementName == "entry" : elementName == "item"
         guard isItemEnd else { return }
 
+        // Join fragments once per item — O(n) vs O(n²) from repeated `+=`.
+        let storyTitle = titleFragments.joined()
+        let storyDescription = descriptionFragments.joined()
+
         // Prefer <link> for the article URL; fall back to <guid> which
         // may or may not be a permalink (fixes parity with iOS parser).
-        let trimmedLink = storyLink.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedGuid = storyGuid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedLink = linkFragments.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedGuid = guidFragments.joined().trimmingCharacters(in: .whitespacesAndNewlines)
         let finalLink = trimmedLink.isEmpty ? trimmedGuid : trimmedLink
 
         let trimmedImagePath = imagePath.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -80,6 +80,14 @@ public class KeywordExtractor {
     }
 
     /// Extracts keywords from multiple stories, finding common themes.
+    ///
+    /// Uses document-frequency (DF) scoring: a word is a "theme" if it
+    /// appears in multiple stories. Previously this called `extractKeywords`
+    /// per story (which sorts all frequencies to pick the top-20), wasting
+    /// work since we only need the *set* of significant words per document.
+    /// Now we compute the significant-word set directly, skipping the
+    /// frequency sort entirely — O(W) per story instead of O(W log W).
+    ///
     /// - Parameters:
     ///   - stories: Array of RSS stories.
     ///   - count: Maximum number of keywords to return.
@@ -87,12 +95,19 @@ public class KeywordExtractor {
     public func extractThemes(from stories: [RSSStory], count: Int? = nil) -> [String] {
         let limit = count ?? defaultCount
         var combined: [String: Int] = [:]
+        combined.reserveCapacity(200)
 
-        // Count in how many stories each keyword appears (document frequency)
+        // Count in how many stories each significant word appears (document frequency).
+        // Using extractSignificantWords + Set avoids the full frequency-count +
+        // sort pipeline that extractKeywords performs — we only need presence, not rank.
         for story in stories {
-            let storyKeywords = Set(extractKeywords(from: "\(story.title) \(story.body)", count: 20))
-            for keyword in storyKeywords {
-                combined[keyword, default: 0] += 1
+            let words = TextUtilities.extractSignificantWords(
+                from: "\(story.title) \(story.body)",
+                minimumLength: minimumWordLength
+            )
+            let uniqueWords = Set(words)
+            for word in uniqueWords {
+                combined[word, default: 0] += 1
             }
         }
 
