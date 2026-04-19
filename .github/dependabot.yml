@@ -13,6 +13,10 @@ updates:
       - "dependencies"
       - "github-actions"
     open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   # Keep Docker base images up to date
   - package-ecosystem: "docker"
@@ -41,3 +45,11 @@ updates:
       - "dependencies"
       - "swift"
     open-pull-requests-limit: 5
+    groups:
+      swift-minor-patch:
+        update-types:
+          - "minor"
+          - "patch"
+      swift-major:
+        update-types:
+          - "major"
