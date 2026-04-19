@@ -55,3 +55,9 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO
+
+      - name: Build SPM package (FeedReaderCore)
+        run: swift build
+
+      - name: Run SPM tests (FeedReaderCore)
+        run: swift test
