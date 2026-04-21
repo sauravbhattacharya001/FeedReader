@@ -5,8 +5,8 @@ Thank you for considering contributing to FeedReader! Whether it's a bug fix, ne
 ## Table of Contents
 
 - [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
 - [Development Setup](#development-setup)
-- [Architecture Overview](#architecture-overview)
 - [Coding Standards](#coding-standards)
 - [Making Changes](#making-changes)
 - [Testing](#testing)
@@ -22,19 +22,71 @@ Thank you for considering contributing to FeedReader! Whether it's a bug fix, ne
    git clone https://github.com/<your-username>/FeedReader.git
    cd FeedReader
    ```
-3. **Open** the project in Xcode:
-   ```bash
-   open FeedReader.xcodeproj
-   ```
+3. **Choose your workflow:**
+   - **Full app:** Open `FeedReader.xcodeproj` in Xcode
+   - **Core library only:** Use Swift Package Manager (see below)
 4. **Build and run** on a simulator (Cmd+R) to verify everything works.
+
+## Project Structure
+
+FeedReader has two layers: the iOS app and a standalone core library.
+
+```
+FeedReader/
+├── FeedReader/                      # iOS app (150+ Swift files)
+│   ├── AppDelegate.swift            # App lifecycle
+│   ├── RSSFeedParser.swift          # Original XML parser
+│   ├── Story.swift / Feed.swift     # App data models
+│   ├── FeedManager.swift            # Multi-feed management
+│   ├── BookmarkManager.swift        # Bookmark persistence (NSCoding)
+│   ├── ImageCache.swift             # Async image loading + NSCache
+│   ├── Reachability.swift           # Network connectivity
+│   ├── Article*.swift               # Article analysis, export, quiz, etc.
+│   ├── Feed*.swift                  # Feed health, autopilot, serendipity, etc.
+│   ├── *ViewController.swift        # UIKit view controllers
+│   └── Base.lproj/                  # Storyboards
+│
+├── Sources/FeedReaderCore/          # SPM library (platform-independent core)
+│   ├── RSSParser.swift              # Standalone RSS parser
+│   ├── FeedItem.swift / RSSStory.swift  # Core models
+│   ├── FeedCacheManager.swift       # Feed caching
+│   ├── FeedHealthMonitor.swift      # Feed health tracking
+│   ├── KeywordExtractor.swift       # Text analysis
+│   ├── TextUtilities.swift          # String helpers
+│   ├── OPMLManager.swift            # OPML import/export
+│   └── ArticleArchiveExporter.swift # Archive export
+│
+├── FeedReaderTests/                 # XCTest suite for the iOS app (107 test files)
+├── Tests/FeedReaderCoreTests/       # XCTest suite for the SPM library
+├── docs/                            # Generated documentation
+├── Package.swift                    # SPM manifest (swift-tools-version:5.9)
+├── FeedReaderCore.podspec           # CocoaPods spec
+└── Dockerfile                       # Docker build environment
+```
+
+**Key distinction:** `FeedReader/` is the full iOS app with UIKit. `Sources/FeedReaderCore/` is the headless core library distributed via SPM and CocoaPods — it has no UIKit dependency and can be used in any Swift project.
 
 ## Development Setup
 
 ### Requirements
 
-- **Xcode 8+** (Swift 3 codebase)
-- **iOS 10+** Simulator or device
+- **Xcode 15+** (Swift 5.9+)
+- **iOS 14+** Simulator or device
 - **macOS** with Xcode Command Line Tools installed
+
+### Building the iOS App
+
+```bash
+open FeedReader.xcodeproj
+# Build: Cmd+B | Run: Cmd+R | Test: Cmd+U
+```
+
+### Building the Core Library (SPM)
+
+```bash
+swift build
+swift test
+```
 
 ### No External Dependencies
 
@@ -44,54 +96,36 @@ FeedReader uses zero third-party libraries. Everything is built with Apple frame
 - `NSCache` / `NSCoding` — caching and persistence
 - `SystemConfiguration` — network reachability
 
-No CocoaPods, Carthage, or SPM setup needed.
-
-## Architecture Overview
-
-The project follows a straightforward MVC pattern:
-
-```
-FeedReader/
-├── AppDelegate.swift                 # App lifecycle
-├── RSSFeedParser.swift               # XML parsing for RSS feeds
-├── Story.swift                       # Story data model (NSCoding)
-├── Feed.swift                        # Feed source model
-├── FeedManager.swift                 # Multi-feed source management
-├── BookmarkManager.swift             # Bookmark persistence
-├── ImageCache.swift                  # Async image loading + NSCache
-├── Reachability.swift                # Network connectivity detection
-├── StoryTableViewController.swift    # Main feed list (UITableViewController)
-├── StoryViewController.swift         # Story detail view
-├── StoryTableViewCell.swift          # Custom table cell
-├── FeedListViewController.swift      # Feed source management UI
-├── BookmarksViewController.swift     # Saved stories UI
-├── NoInternetFoundViewController.swift # Offline fallback screen
-└── Base.lproj/                       # Storyboards
-```
-
-**Key data flows:**
-- `RSSFeedParser` fetches and parses XML → produces `[Story]`
-- `StoryTableViewController` displays stories, handles search/filter, caching
-- `ImageCache` loads thumbnails asynchronously with in-memory caching
-- `BookmarkManager` persists bookmarked stories via `NSCoding`
-- `FeedManager` manages multiple feed sources with presets and custom URLs
+No CocoaPods, Carthage, or SPM dependency setup needed.
 
 ## Coding Standards
 
 ### Swift Style
 
-- Follow existing code conventions in the project (Swift 3 style)
+- Follow existing code conventions (Swift 5 style)
 - Use `// MARK: -` sections to organize view controller code
 - Prefer descriptive variable and method names
 - Keep methods focused — one responsibility per method
 - Use `guard` for early returns over nested `if` blocks
 
-### Patterns to Follow
+### Architecture Patterns
 
 - **Delegate pattern** for parser callbacks and view controller communication
-- **NSCoding** for persistence (not Codable, since this is Swift 3)
+- **NSCoding** for persistence in the app layer
+- **Codable** for models in `FeedReaderCore`
 - **NSCache** for in-memory caching (not custom dictionaries)
-- **SCNetworkReachability** for network checks (no third-party reachability libraries)
+- **Protocol-oriented design** for testable interfaces
+
+### Where to Put New Code
+
+| Type | Location |
+|------|----------|
+| Platform-independent logic (parsing, models, text processing) | `Sources/FeedReaderCore/` |
+| iOS-specific UI, view controllers, UIKit extensions | `FeedReader/` |
+| Tests for core library | `Tests/FeedReaderCoreTests/` |
+| Tests for iOS app | `FeedReaderTests/` |
+
+When in doubt, prefer `FeedReaderCore` — it's easier to test and reuse.
 
 ### Things to Avoid
 
@@ -109,11 +143,7 @@ FeedReader/
 
 2. **Make your changes** in small, logical commits.
 
-3. **Test thoroughly:**
-   - Build and run on simulator
-   - Test with and without network connectivity
-   - Verify offline caching still works
-   - Check bookmarks persist across app restarts
+3. **Test thoroughly** (see [Testing](#testing) below).
 
 4. **Commit** with a clear message:
    ```bash
@@ -125,25 +155,28 @@ FeedReader/
 
 ## Testing
 
-### Running Tests
+FeedReader has two test suites. See [TESTING.md](TESTING.md) for the full testing guide.
+
+### Quick Start
 
 ```bash
-# Via Xcode
-Cmd+U
+# SPM core library tests (fast, no simulator needed)
+swift test
 
-# Via command line
-xcodebuild test -project FeedReader.xcodeproj -scheme FeedReader -destination 'platform=iOS Simulator,name=iPhone 15'
+# Full iOS app tests via Xcode
+xcodebuild test \
+  -project FeedReader.xcodeproj \
+  -scheme FeedReader \
+  -destination 'platform=iOS Simulator,name=iPhone 15'
 ```
 
-### Test Coverage Areas
+### What to Test
 
-Tests live in `FeedReaderTests/`. When contributing, consider adding tests for:
-
-- **Model logic** — `Story` encoding/decoding, equality, date handling
-- **Feed parsing** — `RSSFeedParser` with various XML inputs
-- **BookmarkManager** — add, remove, duplicate handling, persistence
-- **ImageCache** — cache hits, cache misses, eviction
-- **FeedManager** — feed CRUD, preset feeds, custom URLs
+- **Model logic** — encoding/decoding, equality, date handling
+- **Feed parsing** — `RSSParser` / `RSSFeedParser` with various XML inputs
+- **Managers** — BookmarkManager, FeedManager, FeedCacheManager CRUD operations
+- **Core library** — KeywordExtractor, TextUtilities, OPMLManager
+- **UI** — manual testing for view controller changes (see checklist below)
 
 ### Manual Testing Checklist
 
@@ -152,7 +185,7 @@ Before submitting a PR, verify:
 - [ ] App launches and displays feed stories
 - [ ] Pull-to-refresh fetches new stories
 - [ ] Stories load correctly when tapping a feed
-- [ ] Bookmarking a story works (swipe or button)
+- [ ] Bookmarking a story works
 - [ ] Bookmarks screen shows saved stories
 - [ ] Search filters stories in real-time
 - [ ] Disabling network shows cached stories / offline screen
@@ -178,6 +211,7 @@ Before submitting a PR, verify:
 - Include before/after screenshots for any UI changes.
 - Reference related issues (e.g., "Fixes #12").
 - Make sure CI passes before requesting review.
+- If your change touches `FeedReaderCore`, add or update SPM tests.
 
 ## Reporting Issues
 
