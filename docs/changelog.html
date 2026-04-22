@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changelog — FeedReader Documentation</title>
+    <meta name="description" content="Release history and changelog for FeedReader iOS RSS reader.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="index.html" class="logo">
+            <img src="https://raw.githubusercontent.com/sauravbhattacharya001/FeedReader/master/FeedReader/Assets.xcassets/AppIcon.appiconset/rss180.png" alt="FeedReader">
+            FeedReader
+        </a>
+        <ul class="nav-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="guide.html">Guide</a></li>
+            <li><a href="api.html">API Reference</a></li>
+            <li><a href="architecture.html">Architecture</a></li>
+            <li><a href="smart-features.html">Smart Features</a></li>
+            <li><a href="content-management.html">Content Management</a></li>
+            <li><a href="reading-analytics.html">Reading Analytics</a></li>
+            <li><a href="learning-study.html">Learning &amp; Study</a></li>
+            <li><a href="changelog.html" class="active">Changelog</a></li>
+            <li><a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="page-header page-content">
+    <h1>📋 Changelog</h1>
+    <p>All notable changes to FeedReader, organized by release.</p>
+</header>
+
+<section>
+    <div class="container prose">
+
+        <div class="release-entry" id="v1.3.0">
+            <h2>v1.3.0 <span style="color: var(--gray); font-weight: normal; font-size: 0.75em;">— February 19, 2026</span></h2>
+            <h3>Read/Unread Tracking</h3>
+            <ul>
+                <li><strong>Auto-mark as read</strong> — Stories automatically marked as read when tapped or viewed in detail</li>
+                <li><strong>Blue dot indicator</strong> — Unread stories display a blue dot for quick identification</li>
+                <li><strong>Visual dimming</strong> — Read stories appear slightly dimmed (lower opacity) for visual scanning</li>
+                <li><strong>Unread count in title</strong> — Navigation bar shows "(X unread)" when unread stories exist</li>
+                <li><strong>Segmented filter</strong> — All/Unread/Read filter with live counts in the table header</li>
+                <li><strong>Mark All Read</strong> — ✓ button in nav bar to mark all stories as read with confirmation</li>
+                <li><strong>Swipe to toggle</strong> — Swipe left on any story to toggle read/unread status</li>
+                <li><strong>Persistent storage</strong> — Read status persisted via UserDefaults with automatic pruning (max 5,000 links)</li>
+                <li><strong>Efficient lookups</strong> — O(1) read status checks via Set-based index</li>
+                <li><strong>Change notifications</strong> — <code>.readStatusDidChange</code> notification for reactive UI updates</li>
+                <li><strong>42 new tests</strong> — ReadStatusManager lifecycle, filter, count, persistence, notifications, edge cases</li>
+            </ul>
+        </div>
+
+        <div class="release-entry" id="v1.2.0">
+            <h2>v1.2.0 <span style="color: var(--gray); font-weight: normal; font-size: 0.75em;">— February 15, 2026</span></h2>
+            <h3>Multi-Feed Support</h3>
+            <ul>
+                <li><strong>Feed Manager</strong> — New feed management screen via 📡 antenna icon in the navigation bar</li>
+                <li><strong>10 built-in presets</strong> — BBC World, BBC Tech, BBC Science, BBC Business, NPR, Reuters, TechCrunch, Ars Technica, Hacker News, The Verge</li>
+                <li><strong>Custom feeds</strong> — Add any RSS/Atom feed by URL with validation</li>
+                <li><strong>Feed toggling</strong> — Enable/disable individual feeds without removing them</li>
+                <li><strong>Feed reordering</strong> — Drag-to-reorder feeds in edit mode</li>
+                <li><strong>Multi-feed aggregation</strong> — Stories from all enabled feeds merged with duplicate detection by link URL</li>
+                <li><strong>Persistent storage</strong> — Feed configuration persisted via NSSecureCoding</li>
+                <li><strong>35 new tests</strong> — Feed model, FeedManager CRUD, toggle, reorder, custom URL validation, reset</li>
+            </ul>
+        </div>
+
+        <div class="release-entry" id="v1.1.0">
+            <h2>v1.1.0 <span style="color: var(--gray); font-weight: normal; font-size: 0.75em;">— February 14, 2026</span></h2>
+            <h3>Bookmarks &amp; Search</h3>
+            <ul>
+                <li>Bookmark and search functionality added</li>
+            </ul>
+        </div>
+
+        <div class="release-entry" id="v1.0.0">
+            <h2>v1.0.0 <span style="color: var(--gray); font-weight: normal; font-size: 0.75em;">— Initial Release</span></h2>
+            <h3>Initial Stable Release</h3>
+            <ul>
+                <li><strong>RSS feed parsing</strong> — XMLParser-based RSS/XML reader, configured for BBC World News</li>
+                <li><strong>Offline caching</strong> — Stories persisted via NSCoding / NSKeyedArchiver</li>
+                <li><strong>Network detection</strong> — SCNetworkReachability-based connectivity checks with offline UI</li>
+                <li><strong>Async image loading</strong> — Background-thread thumbnail loading with NSCache</li>
+                <li><strong>Detail view</strong> — Full description with link to original article in Safari</li>
+                <li><strong>Smart refresh</strong> — Avoids redundant network fetches on back-navigation</li>
+            </ul>
+            <h3>Bug Fixes (pre-release)</h3>
+            <ul>
+                <li>Fixed force-unwrap crashes on malformed feed data</li>
+                <li>Moved RSS feed fetching off main thread to prevent UI freezes</li>
+                <li>Fixed dead image-loading code — thumbnails now load from URL</li>
+                <li>Replaced deprecated Reuters RSS feed with BBC News</li>
+                <li>Added NSCache-based image caching to prevent redundant requests on scroll</li>
+                <li>Fixed redundant feed reload on back-navigation</li>
+            </ul>
+            <h3>Security &amp; Quality</h3>
+            <ul>
+                <li>Replaced all force-unwraps with safe guard-let patterns</li>
+                <li>Migrated deprecated APIs (NSKeyedArchiver, UIApplication.openURL)</li>
+                <li>Switched to HTTPS for all network requests</li>
+                <li>Safe decoding in <code>Story.init(coder:)</code> to prevent crashes on corrupted archives</li>
+                <li>Comprehensive unit tests for model, XML parser, and view controllers</li>
+                <li>CI workflow, Docker build/push, GitHub Copilot agent setup</li>
+            </ul>
+        </div>
+
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <p>© 2026 FeedReader &mdash; Built with ❤️ for iOS</p>
+    </div>
+</footer>
+
+</body>
+</html>
