@@ -217,10 +217,20 @@ final class ArticleDeduplicator {
         let cutoff = Calendar.current.date(byAdding: .day, value: -config.maxArticleAgeDays, to: Date())!
         let candidates = articles.filter { ($0.publishedDate ?? Date()) >= cutoff }
 
-        // Build lookup maps
+        // Pre-compute unique articles once (used by title + fingerprint phases)
+        let uniqueArticles = candidates.uniqued(by: \.id)
+
+        // Pre-compute normalized URLs — avoids re-deriving per pair in O(n²) title loop
+        var normalizedURLs: [String: String] = [:]
+        normalizedURLs.reserveCapacity(uniqueArticles.count)
+        for article in uniqueArticles {
+            normalizedURLs[article.id] = article.normalizedURL
+        }
+
+        // Build lookup maps using pre-computed URLs
         var urlMap: [String: [DeduplicationArticle]] = [:]
-        for article in candidates {
-            let key = article.normalizedURL
+        for article in uniqueArticles {
+            let key = normalizedURLs[article.id]!
             urlMap[key, default: []].append(article)
         }
 
@@ -246,13 +256,12 @@ final class ArticleDeduplicator {
 
         // 2. Title-based detection
         if config.titleDetectionEnabled {
-            let uniqueArticles = candidates.uniqued(by: \.id)
             for i in 0..<uniqueArticles.count {
                 for j in (i + 1)..<uniqueArticles.count {
                     let a = uniqueArticles[i]
                     let b = uniqueArticles[j]
-                    // Skip if same URL (already caught above)
-                    if a.normalizedURL == b.normalizedURL { continue }
+                    // Skip if same URL (already caught above) — uses cached values
+                    if normalizedURLs[a.id]! == normalizedURLs[b.id]! { continue }
                     // Skip if not cross-feed and same feed
                     if !config.crossFeedDetection && a.feedName == b.feedName { continue }
 
@@ -279,7 +288,7 @@ final class ArticleDeduplicator {
 
         // 3. Content fingerprint detection
         if config.contentDetectionEnabled {
-            let uniqueArticles = candidates.uniqued(by: \.id)
+            // Pre-compute fingerprints once (contentFingerprint is O(n) per article)
             var fingerprintMap: [UInt64: [DeduplicationArticle]] = [:]
             for article in uniqueArticles {
                 let fp = article.contentFingerprint
