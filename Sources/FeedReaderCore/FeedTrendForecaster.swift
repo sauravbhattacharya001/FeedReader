@@ -338,39 +338,41 @@ public class FeedTrendForecaster {
 
     /// Computes momentum via linear regression slope on daily mention counts,
     /// normalized to 0.0–1.0.
+    ///
+    /// Uses closed-form sums for the evenly-spaced x-axis (0, 1, …, n−1)
+    /// to avoid allocating temporary arrays per keyword. Only `sumY` and
+    /// `sumXY` need to be computed from `dailyCounts`; `sumX`, `sumX²`,
+    /// and the denominator are arithmetic-series constants.
     private func computeMomentum(dailyCounts: [Int: Int], windowDays: Int) -> Double {
         guard windowDays > 1 else { return 0.5 }
 
-        // Build full daily series (0 for days with no mentions)
-        var xs: [Double] = []
-        var ys: [Double] = []
-        for day in 0..<windowDays {
-            xs.append(Double(day))
-            ys.append(Double(dailyCounts[day] ?? 0))
+        let n = Double(windowDays)
+
+        // Closed-form sums for x = 0, 1, …, n-1:
+        //   sumX  = n(n-1)/2
+        //   sumX2 = n(n-1)(2n-1)/6
+        let sumX  = n * (n - 1.0) / 2.0
+        let sumX2 = n * (n - 1.0) * (2.0 * n - 1.0) / 6.0
+
+        let denominator = n * sumX2 - sumX * sumX
+        guard abs(denominator) > 1e-10 else { return 0.5 }
+
+        // Single pass over dailyCounts to compute sumY and sumXY.
+        // Days with no entries contribute 0, so we only iterate present keys.
+        var sumY  = 0.0
+        var sumXY = 0.0
+        for (day, count) in dailyCounts {
+            let c = Double(count)
+            sumY  += c
+            sumXY += Double(day) * c
         }
 
-        let slope = linearRegressionSlope(xs: xs, ys: ys)
+        let slope = (n * sumXY - sumX * sumY) / denominator
 
         // Normalize: a slope of 1 article/day increase = momentum ~0.8
         // Sigmoid-like mapping
         let normalized = 1.0 / (1.0 + exp(-slope * 3.0))
         return min(1.0, max(0.0, normalized))
-    }
-
-    /// Least-squares linear regression slope.
-    private func linearRegressionSlope(xs: [Double], ys: [Double]) -> Double {
-        let n = Double(xs.count)
-        guard n > 1 else { return 0 }
-
-        let sumX = xs.reduce(0, +)
-        let sumY = ys.reduce(0, +)
-        let sumXY = zip(xs, ys).reduce(0.0) { $0 + $1.0 * $1.1 }
-        let sumX2 = xs.reduce(0.0) { $0 + $1 * $1 }
-
-        let denominator = n * sumX2 - sumX * sumX
-        guard abs(denominator) > 1e-10 else { return 0 }
-
-        return (n * sumXY - sumX * sumY) / denominator
     }
 
     // MARK: - Phase Classification
