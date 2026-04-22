@@ -327,13 +327,13 @@ final class ReadLaterExporter {
         // Group by feed source
         let grouped = Dictionary(grouping: articles, by: { $0.sourceFeed ?? "Uncategorized" })
         for (feed, feedArticles) in grouped.sorted(by: { $0.key < $1.key }) {
-            html += "        <DT><H3>\(escapeHTML(feed))</H3>\n"
+            html += "        <DT><H3>\(feed.htmlEscaped)</H3>\n"
             html += "        <DL><p>\n"
             for article in feedArticles {
                 let timestamp = Int(article.addedDate.timeIntervalSince1970)
-                html += "            <DT><A HREF=\"\(escapeHTML(article.url))\" ADD_DATE=\"\(timestamp)\">\(escapeHTML(article.title))</A>\n"
+                html += "            <DT><A HREF=\"\(article.url.htmlEscaped)\" ADD_DATE=\"\(timestamp)\">\(article.title.htmlEscaped)</A>\n"
                 if !article.excerpt.isEmpty {
-                    html += "            <DD>\(escapeHTML(article.excerpt))\n"
+                    html += "            <DD>\(article.excerpt.htmlEscaped)\n"
                 }
             }
             html += "        </DL><p>\n"
@@ -438,7 +438,7 @@ final class ReadLaterExporter {
         saveHistory()
     }
     
-    private func escapeHTML(_ string: String) -> String {
+    private func _ string: String.htmlEscaped -> String {
         return string
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

@@ -223,11 +223,11 @@ class ShareManager {
     
     private func generateHTML(story: Story, options: ShareOptions) -> String {
         var html = "<div class=\"shared-article\">\n"
-        html += "  <h2><a href=\"\(escapeHTML(story.link))\">\(escapeHTML(story.title))</a></h2>\n"
+        html += "  <h2><a href=\"\(story.link.htmlEscaped)\">\(story.title.htmlEscaped)</a></h2>\n"
         
         var meta: [String] = []
         if options.includeSource, let source = story.sourceFeedName {
-            meta.append("<span class=\"source\">\(escapeHTML(source))</span>")
+            meta.append("<span class=\"source\">\(source.htmlEscaped)</span>")
         }
         if options.includeReadingTime {
             let time = estimateReadingTime(text: story.body, wpm: options.wordsPerMinute)
@@ -238,11 +238,11 @@ class ShareManager {
         }
         
         if options.includeExcerpt {
-            html += "  <blockquote>\(escapeHTML(truncate(story.body, to: options.excerptLength)))</blockquote>\n"
+            html += "  <blockquote>\(truncate(story.body, to: options.excerptLength).htmlEscaped)</blockquote>\n"
         }
         
         if options.includeAttribution {
-            html += "  <p class=\"attribution\"><em>\(escapeHTML(options.attributionText))</em></p>\n"
+            html += "  <p class=\"attribution\"><em>\(options.attributionText.htmlEscaped)</em></p>\n"
         }
         
         html += "</div>"
@@ -359,17 +359,17 @@ class ShareManager {
     
     private func generateDigestHTML(stories: [Story], title: String, options: ShareOptions) -> String {
         var html = "<div class=\"article-digest\">\n"
-        html += "  <h1>\(escapeHTML(title))</h1>\n"
+        html += "  <h1>\(title.htmlEscaped)</h1>\n"
         html += "  <ul>\n"
         
         for story in stories {
             html += "    <li>\n"
-            html += "      <a href=\"\(escapeHTML(story.link))\">\(escapeHTML(story.title))</a>\n"
+            html += "      <a href=\"\(story.link.htmlEscaped)\">\(story.title.htmlEscaped)</a>\n"
             if options.includeSource, let source = story.sourceFeedName {
-                html += "      <span class=\"source\"> — \(escapeHTML(source))</span>\n"
+                html += "      <span class=\"source\"> — \(source.htmlEscaped)</span>\n"
             }
             if options.includeExcerpt {
-                html += "      <p>\(escapeHTML(truncate(story.body, to: 150)))</p>\n"
+                html += "      <p>\(truncate(story.body, to: 150).htmlEscaped)</p>\n"
             }
             html += "    </li>\n"
         }
@@ -377,7 +377,7 @@ class ShareManager {
         html += "  </ul>\n"
         
         if options.includeAttribution {
-            html += "  <p class=\"attribution\"><em>\(escapeHTML(options.attributionText))</em></p>\n"
+            html += "  <p class=\"attribution\"><em>\(options.attributionText.htmlEscaped)</em></p>\n"
         }
         
         html += "</div>"
@@ -431,7 +431,7 @@ class ShareManager {
     }
     
     /// Escape HTML special characters.
-    private func escapeHTML(_ text: String) -> String {
+    private func _ text: String.htmlEscaped -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

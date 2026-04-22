@@ -328,16 +328,16 @@ class ArticleReadingListSharer {
         
         let itemsHTML = list.items.sorted(by: { $0.sortOrder < $1.sortOrder }).map { item -> String in
             let noteHTML = item.curatorNote.isEmpty ? "" : """
-                <p class="note">💬 \(escapeHTML(item.curatorNote))</p>
+                <p class="note">💬 \(item.curatorNote.htmlEscaped)</p>
             """
             let feedLink = item.feedURL.isEmpty ? "" : """
-                <a href="feed://\(escapeHTML(item.feedURL))" class="subscribe" title="Subscribe to this feed">＋ Subscribe</a>
+                <a href="feed://\(item.feedURL.htmlEscaped)" class="subscribe" title="Subscribe to this feed">＋ Subscribe</a>
             """
             return """
             <div class="item">
-                <h3><a href="\(escapeHTML(item.articleLink))" target="_blank">\(escapeHTML(item.articleTitle))</a></h3>
+                <h3><a href="\(item.articleLink.htmlEscaped)" target="_blank">\(item.articleTitle.htmlEscaped)</a></h3>
                 <div class="meta">
-                    <span class="feed">\(escapeHTML(item.feedName))</span>
+                    <span class="feed">\(item.feedName.htmlEscaped)</span>
                     \(feedLink)
                 </div>
                 \(noteHTML)
@@ -346,7 +346,7 @@ class ArticleReadingListSharer {
         }.joined(separator: "\n")
         
         let tagsHTML = list.tags.isEmpty ? "" : """
-            <div class="tags">\(list.tags.map { "<span class=\"tag\">\(escapeHTML($0))</span>" }.joined())</div>
+            <div class="tags">\(list.tags.map { "<span class=\"tag\">\($0.htmlEscaped)</span>" }.joined())</div>
         """
         
         return """
@@ -355,7 +355,7 @@ class ArticleReadingListSharer {
         <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>\(escapeHTML(list.title)) — Reading List</title>
+        <title>\(list.title.htmlEscaped) — Reading List</title>
         <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -396,9 +396,9 @@ class ArticleReadingListSharer {
         <body>
         <header>
             <div class="emoji">\(list.coverEmoji)</div>
-            <h1>\(escapeHTML(list.title))</h1>
-            <p class="desc">\(escapeHTML(list.description))</p>
-            <p class="author">Curated by \(escapeHTML(list.author))</p>
+            <h1>\(list.title.htmlEscaped)</h1>
+            <p class="desc">\(list.description.htmlEscaped)</p>
+            <p class="author">Curated by \(list.author.htmlEscaped)</p>
             \(tagsHTML)
         </header>
         <p class="count">\(list.items.count) article\(list.items.count == 1 ? "" : "s") · Updated \(dateFormatter.string(from: list.updatedAt))</p>
@@ -486,7 +486,7 @@ class ArticleReadingListSharer {
     
     // MARK: - Helpers
     
-    private func escapeHTML(_ string: String) -> String {
+    private func _ string: String.htmlEscaped -> String {
         return string
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
@@ -495,7 +495,7 @@ class ArticleReadingListSharer {
     }
     
     private func escapeXML(_ string: String) -> String {
-        return escapeHTML(string).replacingOccurrences(of: "'", with: "&apos;")
+        return string.htmlEscaped.replacingOccurrences(of: "'", with: "&apos;")
     }
     
     // MARK: - Persistence

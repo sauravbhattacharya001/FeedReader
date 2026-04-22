@@ -492,7 +492,7 @@ class DigestGenerator {
         html.append("<html lang=\"en\"><head>")
         html.append("<meta charset=\"UTF-8\">")
         html.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">")
-        html.append("<title>Reading Digest — \(escapeHTML(periodLabel))</title>")
+        html.append("<title>Reading Digest — \(periodLabel.htmlEscaped)</title>")
         html.append("<style>")
         html.append("body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:700px;margin:2em auto;padding:0 1em;color:#333;line-height:1.6}")
         html.append("h1{color:#1a1a2e;border-bottom:2px solid #e8e8e8;padding-bottom:.3em}")
@@ -507,17 +507,17 @@ class DigestGenerator {
         html.append(".footer{color:#999;font-size:.85em;margin-top:2em;border-top:1px solid #eee;padding-top:.5em}")
         html.append("</style></head><body>")
         
-        html.append("<h1>📖 Reading Digest — \(escapeHTML(periodLabel))</h1>")
-        html.append("<p><em>\(escapeHTML(dateRangeLabel))</em></p>")
+        html.append("<h1>📖 Reading Digest — \(periodLabel.htmlEscaped)</h1>")
+        html.append("<p><em>\(dateRangeLabel.htmlEscaped)</em></p>")
         
         if options.includeStats {
             html.append("<div class=\"stats\"><table>")
             html.append("<tr><td>Articles read</td><td>\(totalArticles)</td></tr>")
             html.append("<tr><td>Feeds</td><td>\(totalFeeds)</td></tr>")
-            html.append("<tr><td>Total reading time</td><td>\(escapeHTML(formatTimeLabel(totalTime)))</td></tr>")
+            html.append("<tr><td>Total reading time</td><td>\(formatTimeLabel(totalTime).htmlEscaped)</td></tr>")
             if totalArticles > 0 {
                 let avgTime = totalTime / Double(totalArticles)
-                html.append("<tr><td>Avg. per article</td><td>\(escapeHTML(formatTimeLabel(avgTime)))</td></tr>")
+                html.append("<tr><td>Avg. per article</td><td>\(formatTimeLabel(avgTime).htmlEscaped)</td></tr>")
             }
             html.append("</table></div>")
         }
@@ -530,25 +530,25 @@ class DigestGenerator {
         
         for group in feedGroups {
             if options.groupByFeed {
-                html.append("<h2>\(escapeHTML(group.feedName))</h2>")
-                html.append("<p><em>\(group.articles.count) article\(group.articles.count == 1 ? "" : "s") · \(escapeHTML(group.totalTimeLabel))</em></p>")
+                html.append("<h2>\(group.feedName.htmlEscaped)</h2>")
+                html.append("<p><em>\(group.articles.count) article\(group.articles.count == 1 ? "" : "s") · \(group.totalTimeLabel.htmlEscaped)</em></p>")
             }
             
             for article in group.articles {
                 html.append("<div class=\"article\">")
-                html.append("<a href=\"\(escapeHTML(article.link))\">\(escapeHTML(article.title))</a>")
+                html.append("<a href=\"\(article.link.htmlEscaped)\">\(article.title.htmlEscaped)</a>")
                 if options.includeReadingTime {
                     html.append("<div class=\"meta\">")
-                    html.append("<span class=\"badge\">⏱ \(escapeHTML(article.readingTimeLabel))</span>")
-                    html.append("<span class=\"badge\">\(escapeHTML(article.progressLabel)) read</span>")
-                    html.append("\(escapeHTML(Self.dateFormatter.string(from: article.readAt)))")
+                    html.append("<span class=\"badge\">⏱ \(article.readingTimeLabel.htmlEscaped)</span>")
+                    html.append("<span class=\"badge\">\(article.progressLabel.htmlEscaped) read</span>")
+                    html.append("\(Self.dateFormatter.string(from: article.readAt).htmlEscaped)")
                     html.append("</div>")
                 }
                 html.append("</div>")
             }
         }
         
-        html.append("<div class=\"footer\">Generated \(escapeHTML(Self.dateTimeFormatter.string(from: generatedAt)))</div>")
+        html.append("<div class=\"footer\">Generated \(Self.dateTimeFormatter.string(from: generatedAt).htmlEscaped)</div>")
         html.append("</body></html>")
         
         return html.joined(separator: "\n")
@@ -560,7 +560,7 @@ class DigestGenerator {
         return formatReadingTimeLabel(seconds)
     }
     
-    private func escapeHTML(_ text: String) -> String {
+    private func _ text: String.htmlEscaped -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")

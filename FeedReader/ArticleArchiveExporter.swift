@@ -205,7 +205,7 @@ class ArticleArchiveExporter {
         if options.includeMetadata {
             var metaParts: [String] = []
             if let source = story.sourceFeedName {
-                metaParts.append("<span class=\"meta-item\">📰 \(escapeHTML(source))</span>")
+                metaParts.append("<span class=\"meta-item\">📰 \(source.htmlEscaped)</span>")
             }
             if options.includeWordCount {
                 metaParts.append("<span class=\"meta-item\">📝 \(wordCount) words</span>")
@@ -213,7 +213,7 @@ class ArticleArchiveExporter {
             if options.includeEstimatedReadTime {
                 metaParts.append("<span class=\"meta-item\">⏱ \(readTime) min read</span>")
             }
-            metaParts.append("<span class=\"meta-item\">📅 Exported \(escapeHTML(exportDate))</span>")
+            metaParts.append("<span class=\"meta-item\">📅 Exported \(exportDate.htmlEscaped)</span>")
             metaSection = "<div class=\"meta\">\(metaParts.joined(separator: " · "))</div>"
         }
         
@@ -224,20 +224,20 @@ class ArticleArchiveExporter {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta name="generator" content="FeedReader Archive Exporter">
-            <title>\(escapeHTML(story.title))</title>
+            <title>\(story.title.htmlEscaped)</title>
             <style>\(buildCSS(theme: theme))</style>
         </head>
         <body>
             <article class="archive-article">
                 <header>
-                    <h1>\(escapeHTML(story.title))</h1>
+                    <h1>\(story.title.htmlEscaped)</h1>
                     \(metaSection)
                 </header>
                 <div class="article-body">
                     \(formatBody(story.body))
                 </div>
                 <footer>
-                    <a href="\(escapeHTML(story.link))" class="source-link">🔗 Original Article</a>
+                    <a href="\(story.link.htmlEscaped)" class="source-link">🔗 Original Article</a>
                     <p class="archive-note">Archived with FeedReader</p>
                 </footer>
             </article>
@@ -254,7 +254,7 @@ class ArticleArchiveExporter {
         var toc = ""
         if options.includeTableOfContents {
             let tocItems = stories.enumerated().map { (i, story) in
-                "<li><a href=\"#article-\(i)\">\(escapeHTML(story.title))</a></li>"
+                "<li><a href=\"#article-\(i)\">\(story.title.htmlEscaped)</a></li>"
             }.joined(separator: "\n")
             toc = """
             <nav class="toc">
@@ -272,7 +272,7 @@ class ArticleArchiveExporter {
             if options.includeMetadata {
                 var parts: [String] = []
                 if let source = story.sourceFeedName {
-                    parts.append("📰 \(escapeHTML(source))")
+                    parts.append("📰 \(source.htmlEscaped)")
                 }
                 if options.includeWordCount { parts.append("📝 \(wc) words") }
                 if options.includeEstimatedReadTime { parts.append("⏱ \(rt) min") }
@@ -281,12 +281,12 @@ class ArticleArchiveExporter {
             return """
             <article id="article-\(i)" class="archive-article">
                 <header>
-                    <h2>\(escapeHTML(story.title))</h2>
+                    <h2>\(story.title.htmlEscaped)</h2>
                     \(meta)
                 </header>
                 <div class="article-body">\(formatBody(story.body))</div>
                 <footer>
-                    <a href="\(escapeHTML(story.link))" class="source-link">🔗 Original</a>
+                    <a href="\(story.link.htmlEscaped)" class="source-link">🔗 Original</a>
                     <a href="#top" class="back-to-top">↑ Top</a>
                 </footer>
             </article>
@@ -306,7 +306,7 @@ class ArticleArchiveExporter {
         <body id="top">
             <header class="archive-header">
                 <h1>📚 FeedReader Archive</h1>
-                <p>\(stories.count) articles · \(totalWordCount) words · Exported \(escapeHTML(exportDate))</p>
+                <p>\(stories.count) articles · \(totalWordCount) words · Exported \(exportDate.htmlEscaped)</p>
             </header>
             \(toc)
             \(articlesHTML)
@@ -378,9 +378,9 @@ class ArticleArchiveExporter {
         let paragraphs = body.components(separatedBy: "\n\n")
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
-            .map { "<p>\(escapeHTML($0))</p>" }
+            .map { "<p>\($0.htmlEscaped)</p>" }
         
-        return paragraphs.isEmpty ? "<p>\(escapeHTML(body))</p>" : paragraphs.joined(separator: "\n")
+        return paragraphs.isEmpty ? "<p>\(body.htmlEscaped)</p>" : paragraphs.joined(separator: "\n")
     }
     
     private func sanitizeFilename(_ title: String) -> String {
@@ -434,7 +434,7 @@ class ArticleArchiveExporter {
         return result
     }
 
-    private func escapeHTML(_ text: String) -> String {
+    private func _ text: String.htmlEscaped -> String {
         return text
             .replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
