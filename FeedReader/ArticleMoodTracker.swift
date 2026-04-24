@@ -307,10 +307,6 @@ public final class ArticleMoodTracker {
 
     /// Export all mood data as JSON.
     public func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
         struct ExportData: Codable {
             let exportDate: Date
             let totalEntries: Int
@@ -320,7 +316,7 @@ public final class ArticleMoodTracker {
 
         let data = ExportData(exportDate: Date(), totalEntries: entries.count,
                               customMoods: customMoods, entries: entries)
-        return try? encoder.encode(data)
+        return try? JSONCoding.iso8601PrettyEncoder.encode(data)
     }
 
     /// Export mood data as CSV string.
@@ -359,18 +355,14 @@ public final class ArticleMoodTracker {
 
     private func save() {
         let model = StorageModel(entries: entries, customMoods: customMoods)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(model) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(model) {
             try? data.write(to: storageURL, options: .atomic)
         }
     }
 
     private func load() {
         guard let data = try? Data(contentsOf: storageURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let model = try? decoder.decode(StorageModel.self, from: data) {
+        if let model = try? JSONCoding.iso8601Decoder.decode(StorageModel.self, from: data) {
             entries = model.entries
             customMoods = model.customMoods
         }

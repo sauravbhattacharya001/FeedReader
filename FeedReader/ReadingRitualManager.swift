@@ -460,10 +460,7 @@ class ReadingRitualManager {
             let sessions: [RitualSession]
         }
         let export = Export(rituals: rituals, sessions: sessions)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(export),
+        guard let data = try? JSONCoding.iso8601PrettyEncoder.encode(export),
               let json = String(data: data, encoding: .utf8) else {
             return "{}"
         }
@@ -579,31 +576,23 @@ class ReadingRitualManager {
     // MARK: - Persistence
 
     private func saveRituals() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(rituals) else { return }
+        guard let data = try? JSONCoding.iso8601Encoder.encode(rituals) else { return }
         try? data.write(to: storageURL, options: .atomic)
     }
 
     private func loadRituals() {
         guard let data = try? Data(contentsOf: storageURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        rituals = (try? decoder.decode([ReadingRitual].self, from: data)) ?? []
+        rituals = (try? JSONCoding.iso8601Decoder.decode([ReadingRitual].self, from: data)) ?? []
     }
 
     private func saveSessions() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(sessions) else { return }
+        guard let data = try? JSONCoding.iso8601Encoder.encode(sessions) else { return }
         try? data.write(to: sessionsURL, options: .atomic)
     }
 
     private func loadSessions() {
         guard let data = try? Data(contentsOf: sessionsURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        sessions = (try? decoder.decode([RitualSession].self, from: data)) ?? []
+        sessions = (try? JSONCoding.iso8601Decoder.decode([RitualSession].self, from: data)) ?? []
     }
 }
 

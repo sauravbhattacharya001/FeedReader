@@ -408,10 +408,7 @@ class FeedEngagementScoreboard {
 
     /// Export all records as JSON data.
     func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        return try? encoder.encode(Array(records.values))
+        return try? JSONCoding.iso8601PrettyEncoder.encode(Array(records.values))
     }
 
     // MARK: - Private Helpers
@@ -440,31 +437,27 @@ class FeedEngagementScoreboard {
     // MARK: - Persistence
 
     private func saveRecords() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(records) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(records) {
             UserDefaults.standard.set(data, forKey: storageKey)
         }
     }
 
     private func loadRecords() {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode([String: FeedEngagementRecord].self, from: data) {
+        if let loaded = try? JSONCoding.iso8601Decoder.decode([String: FeedEngagementRecord].self, from: data) {
             records = loaded
         }
     }
 
     private func saveWeights() {
-        if let data = try? JSONEncoder().encode(weights) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(weights) {
             UserDefaults.standard.set(data, forKey: weightsKey)
         }
     }
 
     private func loadWeights() {
         guard let data = UserDefaults.standard.data(forKey: weightsKey) else { return }
-        if let loaded = try? JSONDecoder().decode(EngagementWeights.self, from: data) {
+        if let loaded = try? JSONCoding.iso8601Decoder.decode(EngagementWeights.self, from: data) {
             weights = loaded
         }
     }

@@ -374,15 +374,12 @@ final class ArticleEngagementPredictor {
 
     /// Exports all outcomes as JSON data.
     func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         struct Export: Codable {
             let outcomes: [ReadingOutcome]
             let model: EngagementModel
             let exportDate: Date
         }
-        return try? encoder.encode(Export(outcomes: outcomes, model: model, exportDate: Date()))
+        return try? JSONCoding.iso8601PrettyEncoder.encode(Export(outcomes: outcomes, model: model, exportDate: Date()))
     }
 
     /// Resets all data.
@@ -406,18 +403,14 @@ final class ArticleEngagementPredictor {
 
     private func save() {
         let storage = Storage(outcomes: outcomes, model: model)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(storage) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(storage) {
             try? data.write(to: storageURL, options: .atomic)
         }
     }
 
     private func load() {
         guard let data = try? Data(contentsOf: storageURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let storage = try? decoder.decode(Storage.self, from: data) {
+        if let storage = try? JSONCoding.iso8601Decoder.decode(Storage.self, from: data) {
             outcomes = storage.outcomes
             model = storage.model
         }

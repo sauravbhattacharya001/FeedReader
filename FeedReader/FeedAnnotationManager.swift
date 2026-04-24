@@ -379,16 +379,11 @@ class FeedAnnotationManager {
     // MARK: - Export
 
     func exportJSON() -> Data? {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(annotations)
+        return try? JSONCoding.iso8601PrettyEncoder.encode(annotations)
     }
 
     func importJSON(_ data: Data) -> Int {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let imported = try? decoder.decode([Annotation].self, from: data) else { return 0 }
+        guard let imported = try? JSONCoding.iso8601Decoder.decode([Annotation].self, from: data) else { return 0 }
         let existingIds = Set(annotations.map { $0.id })
         var added = 0
         for a in imported {
@@ -447,18 +442,14 @@ class FeedAnnotationManager {
     // MARK: - Persistence
 
     private func saveAnnotations() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(annotations) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(annotations) {
             userDefaults.set(data, forKey: Self.userDefaultsKey)
         }
     }
 
     private func loadAnnotations() {
         guard let data = userDefaults.data(forKey: Self.userDefaultsKey) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let loaded = try? decoder.decode([Annotation].self, from: data) {
+        if let loaded = try? JSONCoding.iso8601Decoder.decode([Annotation].self, from: data) {
             annotations = loaded
         }
     }

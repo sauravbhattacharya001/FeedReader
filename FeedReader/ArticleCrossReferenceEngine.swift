@@ -174,7 +174,7 @@ class ArticleCrossReferenceEngine {
 
     private init() {
         if let data = defaults.data(forKey: storageKey),
-           let decoded = try? JSONDecoder().decode(EntityIndexStore.self, from: data) {
+           let decoded = try? JSONCoding.iso8601Decoder.decode(EntityIndexStore.self, from: data) {
             store = decoded
         } else {
             store = .empty
@@ -444,20 +444,13 @@ class ArticleCrossReferenceEngine {
 
     /// Export the entity index as JSON data.
     func exportJSON(prettyPrint: Bool = true) -> Data? {
-        let encoder = JSONEncoder()
-        if prettyPrint {
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        }
-        encoder.dateEncodingStrategy = .iso8601
+        let encoder = prettyPrint ? JSONCoding.iso8601PrettyEncoder : JSONCoding.iso8601Encoder
         return try? encoder.encode(store)
     }
 
     /// Import an entity index from JSON data, merging with existing.
     func importJSON(_ data: Data, merge: Bool = true) -> Bool {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
-        guard let imported = try? decoder.decode(EntityIndexStore.self, from: data) else {
+        guard let imported = try? JSONCoding.iso8601Decoder.decode(EntityIndexStore.self, from: data) else {
             return false
         }
 
@@ -749,9 +742,7 @@ class ArticleCrossReferenceEngine {
     // MARK: - Persistence
 
     private func save() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(store) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(store) {
             defaults.set(data, forKey: storageKey)
         }
     }

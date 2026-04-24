@@ -504,16 +504,11 @@ final class ArticleDeduplicator {
 
     private static func loadJSON<T: Decodable>(from path: String) -> T? {
         guard let data = FileManager.default.contents(atPath: path) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(T.self, from: data)
+        return try? JSONCoding.iso8601Decoder.decode(T.self, from: data)
     }
 
     private static func saveJSON<T: Encodable>(_ value: T, to path: String) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(value) else { return }
+        guard let data = try? JSONCoding.iso8601PrettyEncoder.encode(value) else { return }
         FileManager.default.createFile(atPath: path, contents: data)
     }
 }

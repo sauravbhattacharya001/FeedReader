@@ -328,10 +328,7 @@ class FeedDiffTracker {
             }
         )
         
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(exportData)
+        return try? JSONCoding.iso8601PrettyEncoder.encode(exportData)
     }
     
     /// Export diff history as a JSON string.
@@ -407,10 +404,7 @@ class FeedDiffTracker {
             snapshotHistory: snapshotHistory
         )
         
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        
-        guard let data = try? encoder.encode(payload) else {
+        guard let data = try? JSONCoding.iso8601Encoder.encode(payload) else {
             print("FeedDiffTracker: Failed to encode data")
             return
         }
@@ -429,10 +423,7 @@ class FeedDiffTracker {
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
         
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
-        guard let payload = try? decoder.decode(StoragePayload.self, from: data) else {
+        guard let payload = try? JSONCoding.iso8601Decoder.decode(StoragePayload.self, from: data) else {
             print("FeedDiffTracker: Failed to decode stored data")
             return
         }
@@ -453,9 +444,7 @@ class FeedDiffTracker {
             snapshotHistory[feedURL] = Array(snapshots.prefix(keep))
         }
         
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(StoragePayload(
+        if let data = try? JSONCoding.iso8601Encoder.encode(StoragePayload(
             latestSnapshots: latestSnapshots,
             diffHistory: diffHistory,
             snapshotHistory: snapshotHistory

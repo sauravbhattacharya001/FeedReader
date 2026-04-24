@@ -454,10 +454,7 @@ final class FeedAnomalyDetector {
     /// Export report as JSON data.
     func exportJSON(feedName: String? = nil) -> Data? {
         let report = generateReport(feedName: feedName)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(report)
+        return try? JSONCoding.iso8601PrettyEncoder.encode(report)
     }
 
     // MARK: - Detection Channels
@@ -709,18 +706,14 @@ final class FeedAnomalyDetector {
 
     private func saveState() {
         let state = PersistedState(baselines: baselines, anomalies: anomalies, trustScores: trustScores)
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(state) {
+        if let data = try? JSONCoding.iso8601Encoder.encode(state) {
             try? data.write(to: URL(fileURLWithPath: persistencePath), options: .atomic)
         }
     }
 
     private func loadState() {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: persistencePath)) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let state = try? decoder.decode(PersistedState.self, from: data) {
+        if let state = try? JSONCoding.iso8601Decoder.decode(PersistedState.self, from: data) {
             self.baselines = state.baselines
             self.anomalies = state.anomalies
             self.trustScores = state.trustScores
