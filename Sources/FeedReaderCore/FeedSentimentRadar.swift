@@ -256,8 +256,11 @@ public class FeedSentimentRadar {
     ///   - date: Optional article date.
     /// - Returns: Sentiment analysis result.
     public func analyze(title: String, text: String = "") -> ArticleSentiment {
-        let combinedText = title + " " + text
-        let words = tokenize(combinedText)
+        // Tokenize title once and reuse for the title-boost pass below,
+        // avoiding the redundant second tokenize(title) call.
+        let titleWords = tokenize(title)
+        let bodyWords = text.isEmpty ? [String]() : tokenize(text)
+        let words = titleWords + bodyWords
 
         var positiveSum: Double = 0
         var negativeSum: Double = 0
@@ -297,8 +300,7 @@ public class FeedSentimentRadar {
             }
         }
 
-        // Also score the title separately with a boost
-        let titleWords = tokenize(title)
+        // Apply title boost using already-tokenized title words (no re-tokenization).
         for word in titleWords {
             if let posScore = SentimentLexicon.positive[word] {
                 positiveSum += posScore * 0.5  // Title boost
@@ -470,18 +472,41 @@ public class FeedSentimentRadar {
 
     // MARK: - Private Helpers
 
+    /// Single-pass tokenizer that scans unicode scalars directly, building
+    /// lowercase words in-place without allocating per-scalar `Character`
+    /// values or an intermediate cleaned `String`.
     private func tokenize(_ text: String) -> [String] {
-        let lower = text.lowercased()
-        let cleaned = lower.unicodeScalars.map { char -> Character in
-            if CharacterSet.letters.contains(char) || CharacterSet.whitespaces.contains(char) {
-                return Character(char)
+        var result: [String] = []
+        var current: [UnicodeScalar] = []
+
+        for scalar in text.unicodeScalars {
+            if CharacterSet.letters.contains(scalar) {
+                // Inline ASCII lowercase; fall back to String conversion for non-ASCII.
+                let lower: UnicodeScalar
+                if scalar.value >= 0x41 && scalar.value <= 0x5A {
+                    lower = UnicodeScalar(scalar.value + 32)!
+                } else {
+                    lower = scalar
+                }
+                current.append(lower)
+            } else {
+                if current.count > 1 {
+                    let word = String(String.UnicodeScalarView(current))
+                    if !TextUtilities.stopWords.contains(word) {
+                        result.append(word)
+                    }
+                }
+                current.removeAll(keepingCapacity: true)
             }
-            return " "
         }
-        return String(cleaned)
-            .split(separator: " ")
-            .map { String($0) }
-            .filter { $0.count > 1 && !TextUtilities.stopWords.contains($0) }
+        // Flush trailing word
+        if current.count > 1 {
+            let word = String(String.UnicodeScalarView(current))
+            if !TextUtilities.stopWords.contains(word) {
+                result.append(word)
+            }
+        }
+        return result
     }
 
     private func isNegatedAt(index: Int, words: [String]) -> Bool {
