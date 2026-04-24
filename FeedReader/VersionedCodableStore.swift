@@ -13,6 +13,7 @@
 //
 
 import Foundation
+import os.log
 
 /// Envelope that wraps persisted data with a schema version.
 struct VersionedEnvelope<T: Codable>: Codable {
@@ -272,14 +273,10 @@ final class VersionedCodableStore<T: Codable> {
     // MARK: - Logging
 
     private func logError(_ message: String) {
-        #if DEBUG
-        print("[VersionedCodableStore ERROR] \(message)")
-        #endif
+        os_log("[VersionedCodableStore] %{private}s", log: FeedReaderLogger.storage, type: .error, message)
     }
 
     private func logWarning(_ message: String) {
-        #if DEBUG
-        print("[VersionedCodableStore WARN] \(message)")
-        #endif
+        os_log("[VersionedCodableStore] %{private}s", log: FeedReaderLogger.storage, type: .info, message)
     }
 }

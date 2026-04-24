@@ -13,6 +13,7 @@
 //
 
 import Foundation
+import os.log
 
 /// A reusable, type-safe persistence wrapper around NSKeyedArchiver/NSKeyedUnarchiver
 /// for arrays of NSSecureCoding objects stored in the Documents directory.
@@ -58,7 +59,7 @@ final class SecureCodingStore<T: NSObject & NSSecureCoding> {
             )
             try data.write(to: archiveURL, options: .atomic)
         } catch {
-            print("[\(label)] Failed to save: \(error)")
+            os_log("[%{public}s] Failed to save: %{private}s", log: FeedReaderLogger.storage, type: .error, label, error.localizedDescription)
         }
     }
 

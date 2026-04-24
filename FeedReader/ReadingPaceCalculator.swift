@@ -21,6 +21,7 @@
 //
 
 import Foundation
+import os.log
 
 // MARK: - Notifications
 
@@ -358,7 +359,7 @@ class ReadingPaceCalculator {
             let data = try JSONEncoder().encode(wrapper)
             try data.write(to: fileURL, options: .atomic)
         } catch {
-            print("[ReadingPaceCalculator] Save failed: \(error)")
+            os_log("Save failed: %{private}s", log: FeedReaderLogger.general, type: .error, error.localizedDescription)
         }
     }
 
@@ -372,7 +373,7 @@ class ReadingPaceCalculator {
                 targetDeadline = dateFormatter.date(from: ds)
             }
         } catch {
-            print("[ReadingPaceCalculator] Load failed: \(error)")
+            os_log("Load failed: %{private}s", log: FeedReaderLogger.general, type: .error, error.localizedDescription)
         }
     }
 }

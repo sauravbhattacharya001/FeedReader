@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os.log
 
 /// Represents a single revision snapshot of an article.
 struct ArticleRevision: Codable, Equatable {
@@ -89,7 +90,7 @@ class ArticleEditTracker {
             if lastRevision.title == revision.title && lastRevision.body == revision.body {
                 return nil // No change
             }
-            // Content changed — compute diff
+            // Content changed - compute diff
             let summary = computeChangeSummary(old: lastRevision, new: revision)
             history.append(revision)
             if history.count > maxRevisionsPerArticle {
@@ -239,7 +240,7 @@ class ArticleEditTracker {
             let data = try JSONEncoder().encode(revisions)
             try data.write(to: ArticleEditTracker.storageURL, options: .atomic)
         } catch {
-            print("ArticleEditTracker: save failed — \(error.localizedDescription)")
+            os_log("save failed: %{private}s", log: FeedReaderLogger.edit, type: .error, error.localizedDescription)
         }
     }
 
@@ -249,7 +250,7 @@ class ArticleEditTracker {
             let data = try Data(contentsOf: ArticleEditTracker.storageURL)
             revisions = try JSONDecoder().decode([String: [ArticleRevision]].self, from: data)
         } catch {
-            print("ArticleEditTracker: load failed — \(error.localizedDescription)")
+            os_log("load failed: %{private}s", log: FeedReaderLogger.edit, type: .error, error.localizedDescription)
             revisions = [:]
         }
     }

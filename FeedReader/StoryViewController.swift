@@ -8,6 +8,7 @@
 
 import UIKit
 import AVFoundation
+import os.log
 
 class StoryViewController: UIViewController {
     
@@ -265,7 +266,7 @@ class StoryViewController: UIViewController {
         // scheme injection from malicious RSS feed data.
         guard Story.isSafeURL(linkTarget),
               let url = URL(string: linkTarget) else {
-            print("Blocked unsafe URL: \(linkTarget)")
+            os_log("Blocked unsafe URL: %{private}s", log: FeedReaderLogger.general, type: .error, linkTarget)
             return
         }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)

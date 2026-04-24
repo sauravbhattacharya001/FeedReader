@@ -299,7 +299,7 @@ class RSSFeedParser: NSObject {
         // in storage, imported via OPML, or added through a code path
         // that bypasses FeedManager.addCustomFeed validation (CWE-918).
         guard URLValidator.isSafe(url) else {
-            print("RSSFeedParser: URL blocked by SSRF filter — \(url)")
+            os_log("URL blocked by SSRF filter — %{private}s", log: FeedReaderLogger.parser, type: .error, url)
             feedCompleted(generation: generation)
             return
         }

@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import os.log
 
 class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UISearchResultsUpdating, UITableViewDataSourcePrefetching {
     
@@ -368,7 +369,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     }
     
     func parserDidFailWithError(_ error: Error?) {
-        print("Feed parsing error: \(error?.localizedDescription ?? "unknown")")
+        os_log("Feed parsing error: %{private}s", log: FeedReaderLogger.parser, type: .error, error?.localizedDescription ?? "unknown")
         activityIndicator.stopAnimating()
         refreshControl?.endRefreshing()
     }
@@ -383,7 +384,7 @@ class StoryTableViewController: UITableViewController, RSSFeedParserDelegate, UI
     /// Parse stories from a local file path (for unit testing).
     func beginParsingTest(_ path: String) {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else {
-            print("Failed to load test data from path: \(path)")
+            os_log("Failed to load test data from path: %{private}s", log: FeedReaderLogger.parser, type: .error, path)
             return
         }
         stories = feedParser.parseData(data)

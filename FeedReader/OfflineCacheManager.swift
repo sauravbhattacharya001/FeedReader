@@ -9,6 +9,7 @@
 //
 
 import UIKit
+import os.log
 
 /// Notification posted when the offline cache changes (save/remove/clear).
 extension Notification.Name {
@@ -318,7 +319,7 @@ class OfflineCacheManager {
                 )
                 try data.write(to: OfflineCacheManager.archiveURL, options: .atomic)
             } catch {
-                print("Failed to save offline cache: \(error)")
+                os_log("Failed to save offline cache: %{private}s", log: FeedReaderLogger.cache, type: .error, error.localizedDescription)
             }
         }
         pendingPersist = workItem
@@ -342,7 +343,7 @@ class OfflineCacheManager {
                 )
                 try data.write(to: OfflineCacheManager.archiveURL, options: .atomic)
             } catch {
-                print("Failed to flush offline cache: \(error)")
+                os_log("Failed to flush offline cache: %{private}s", log: FeedReaderLogger.cache, type: .error, error.localizedDescription)
             }
         }
     }

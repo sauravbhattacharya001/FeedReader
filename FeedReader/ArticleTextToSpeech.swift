@@ -9,6 +9,7 @@
 
 import Foundation
 import AVFoundation
+import os.log
 
 // MARK: - TTS Configuration
 
@@ -214,7 +215,7 @@ final class ArticleTextToSpeech: NSObject {
             try session.setActive(true)
         } catch {
             // Non-fatal; speech may still work
-            print("[TTS] Audio session config failed: \(error)")
+            os_log("Audio session config failed: %{private}s", log: FeedReaderLogger.tts, type: .error, error.localizedDescription)
         }
     }
 

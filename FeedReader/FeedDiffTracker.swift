@@ -19,6 +19,7 @@
 //
 
 import Foundation
+import os.log
 
 // MARK: - Notifications
 
@@ -405,14 +406,14 @@ class FeedDiffTracker {
         )
         
         guard let data = try? JSONCoding.iso8601Encoder.encode(payload) else {
-            print("FeedDiffTracker: Failed to encode data")
+            os_log("Failed to encode data", log: FeedReaderLogger.diff, type: .error)
             return
         }
         
         // Guard against unbounded storage growth
         let maxBytes = 5 * 1024 * 1024  // 5 MB limit
         guard data.count <= maxBytes else {
-            print("FeedDiffTracker: Storage exceeds \(maxBytes / 1024)KB limit, pruning oldest entries")
+            os_log("Storage exceeds %{public}dKB limit, pruning oldest entries", log: FeedReaderLogger.diff, type: .info, maxBytes / 1024)
             pruneOldest()
             return
         }
@@ -424,7 +425,7 @@ class FeedDiffTracker {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return }
         
         guard let payload = try? JSONCoding.iso8601Decoder.decode(StoragePayload.self, from: data) else {
-            print("FeedDiffTracker: Failed to decode stored data")
+            os_log("Failed to decode stored data", log: FeedReaderLogger.diff, type: .error)
             return
         }
         

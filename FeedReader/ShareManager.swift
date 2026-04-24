@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os.log
 
 /// Format for shared article content.
 enum ShareFormat {
@@ -503,7 +504,7 @@ class ShareManager {
             let data = try JSONEncoder().encode(shareHistory)
             try data.write(to: ShareManager.historyURL)
         } catch {
-            print("Failed to save share history: \(error)")
+            os_log("Failed to save share history: %{private}s", log: FeedReaderLogger.share, type: .error, error.localizedDescription)
         }
     }
     

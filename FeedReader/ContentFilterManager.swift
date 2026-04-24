@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import os.log
 
 /// Result of importing filters from JSON.
 struct ImportResult {
@@ -373,7 +374,7 @@ class ContentFilterManager {
             )
             UserDefaults.standard.set(data, forKey: ContentFilterManager.userDefaultsKey)
         } catch {
-            print("Failed to save content filters: \(error)")
+            os_log("Failed to save content filters: %{private}s", log: FeedReaderLogger.filter, type: .error, error.localizedDescription)
         }
     }
     

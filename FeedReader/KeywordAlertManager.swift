@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os.log
 
 /// Notification posted when keyword alerts change (add/remove/toggle).
 extension Notification.Name {
@@ -186,7 +187,7 @@ class KeywordAlertManager {
             )
             try data.write(to: KeywordAlertManager.archiveURL)
         } catch {
-            print("KeywordAlertManager: Failed to save alerts — \(error)")
+            os_log("Failed to save alerts: %{private}s", log: FeedReaderLogger.alerts, type: .error, error.localizedDescription)
         }
     }
     
@@ -201,7 +202,7 @@ class KeywordAlertManager {
             let unarchived = try NSKeyedUnarchiver.unarchivedObject(ofClasses: allowedClasses, from: data)
             alerts = (unarchived as? [KeywordAlert]) ?? []
         } catch {
-            print("KeywordAlertManager: Failed to load alerts — \(error)")
+            os_log("Failed to load alerts: %{private}s", log: FeedReaderLogger.alerts, type: .error, error.localizedDescription)
             alerts = []
         }
     }

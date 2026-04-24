@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import os.log
 
 // MARK: - SmartFeed Model
 
@@ -264,7 +265,7 @@ class SmartFeedManager {
             )
             UserDefaults.standard.set(data, forKey: SmartFeedManager.userDefaultsKey)
         } catch {
-            print("Failed to save smart feeds: \(error)")
+            os_log("Failed to save smart feeds: %{private}s", log: FeedReaderLogger.smartFeed, type: .error, error.localizedDescription)
         }
     }
     
