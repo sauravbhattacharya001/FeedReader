@@ -191,6 +191,10 @@ final class ReadingBingoManager {
     private let cardHistoryKey = "ReadingBingo_CardHistory"
     private let statsKey = "ReadingBingo_Stats"
 
+    private let currentCardStore = UserDefaultsCodableStore<BingoCard>(key: "ReadingBingo_CurrentCard")
+    private let cardHistoryStore = UserDefaultsCodableStore<[BingoCard]>(key: "ReadingBingo_CardHistory")
+    private let statsStore = UserDefaultsCodableStore<BingoStats>(key: "ReadingBingo_Stats")
+
     // MARK: - State
 
     /// The currently active bingo card, or nil if none.
@@ -472,36 +476,29 @@ final class ReadingBingoManager {
     // MARK: - Persistence
 
     private func persistCurrentCard() {
-        if let card = currentCard, let data = try? JSONEncoder().encode(card) {
-            UserDefaults.standard.set(data, forKey: currentCardKey)
+        if let card = currentCard {
+            currentCardStore.save(card)
         } else {
-            UserDefaults.standard.removeObject(forKey: currentCardKey)
+            currentCardStore.remove()
         }
     }
 
     private func persistHistory() {
-        if let data = try? JSONEncoder().encode(cardHistory) {
-            UserDefaults.standard.set(data, forKey: cardHistoryKey)
-        }
+        cardHistoryStore.save(cardHistory)
     }
 
     private func persistStats() {
-        if let data = try? JSONEncoder().encode(stats) {
-            UserDefaults.standard.set(data, forKey: statsKey)
-        }
+        statsStore.save(stats)
     }
 
     private func loadState() {
-        if let data = UserDefaults.standard.data(forKey: currentCardKey),
-           let card = try? JSONDecoder().decode(BingoCard.self, from: data) {
+        if let card = currentCardStore.load() {
             currentCard = card
         }
-        if let data = UserDefaults.standard.data(forKey: cardHistoryKey),
-           let history = try? JSONDecoder().decode([BingoCard].self, from: data) {
+        if let history = cardHistoryStore.load() {
             cardHistory = history
         }
-        if let data = UserDefaults.standard.data(forKey: statsKey),
-           let s = try? JSONDecoder().decode(BingoStats.self, from: data) {
+        if let s = statsStore.load() {
             stats = s
         }
     }

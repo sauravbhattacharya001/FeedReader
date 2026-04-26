@@ -126,11 +126,15 @@ class ArticleExpiryManager {
     
     static let shared = ArticleExpiryManager()
     
-    // MARK: - Storage Keys
+    // MARK: - Storage
     
     private let policiesKey = "ArticleExpiryPolicies"
     private let logKey = "ArticleExpiryLog"
     private let lastRunKey = "ArticleExpiryLastRun"
+    
+    private let policiesStore = UserDefaultsCodableStore<[ExpiryPolicy]>(key: "ArticleExpiryPolicies")
+    private let logStore = UserDefaultsCodableStore<[ExpiryLogEntry]>(key: "ArticleExpiryLog")
+    private let lastRunStore = UserDefaultsCodableStore<Date>(key: "ArticleExpiryLastRun")
     
     // MARK: - Properties
     
@@ -148,10 +152,7 @@ class ArticleExpiryManager {
     init() {
         loadPolicies()
         loadLog()
-        if let data = UserDefaults.standard.data(forKey: lastRunKey),
-           let date = try? JSONDecoder().decode(Date.self, from: data) {
-            lastRunDate = date
-        }
+        lastRunDate = lastRunStore.load()
     }
     
     // MARK: - Policy Management
@@ -338,9 +339,7 @@ class ArticleExpiryManager {
         saveLog()
         
         lastRunDate = referenceDate
-        if let data = try? JSONEncoder().encode(referenceDate) {
-            UserDefaults.standard.set(data, forKey: lastRunKey)
-        }
+        lastRunStore.save(referenceDate)
         
         let result = ExpirySweepResult(
             timestamp: referenceDate,
@@ -397,31 +396,19 @@ class ArticleExpiryManager {
     // MARK: - Persistence
     
     private func savePolicies() {
-        if let data = try? JSONEncoder().encode(policies) {
-            UserDefaults.standard.set(data, forKey: policiesKey)
-        }
+        policiesStore.save(policies)
     }
     
     private func loadPolicies() {
-        guard let data = UserDefaults.standard.data(forKey: policiesKey),
-              let decoded = try? JSONDecoder().decode([ExpiryPolicy].self, from: data) else {
-            return
-        }
-        policies = decoded
+        policies = policiesStore.load() ?? []
     }
     
     private func saveLog() {
-        if let data = try? JSONEncoder().encode(expiryLog) {
-            UserDefaults.standard.set(data, forKey: logKey)
-        }
+        logStore.save(expiryLog)
     }
     
     private func loadLog() {
-        guard let data = UserDefaults.standard.data(forKey: logKey),
-              let decoded = try? JSONDecoder().decode([ExpiryLogEntry].self, from: data) else {
-            return
-        }
-        expiryLog = decoded
+        expiryLog = logStore.load() ?? []
     }
     
     /// Reset all policies and logs (for testing).
@@ -429,8 +416,8 @@ class ArticleExpiryManager {
         policies = []
         expiryLog = []
         lastRunDate = nil
-        UserDefaults.standard.removeObject(forKey: policiesKey)
-        UserDefaults.standard.removeObject(forKey: logKey)
-        UserDefaults.standard.removeObject(forKey: lastRunKey)
+        policiesStore.remove()
+        logStore.remove()
+        lastRunStore.remove()
     }
 }

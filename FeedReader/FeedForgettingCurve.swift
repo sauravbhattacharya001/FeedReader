@@ -182,6 +182,7 @@ class FeedForgettingCurve {
     static let shared = FeedForgettingCurve()
 
     private static let storageKey = "feedForgettingCurveData"
+    private let tracesStore = UserDefaultsCodableStore<[MemoryTrace]>(key: "feedForgettingCurveData")
     private static let autoMonitorKey = "feedForgettingCurveAutoMonitor"
     private static let defaultThreshold: Double = 0.3
 
@@ -204,22 +205,12 @@ class FeedForgettingCurve {
     // MARK: Persistence
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: FeedForgettingCurve.storageKey) else { return }
-        do {
-            traces = try JSONDecoder().decode([MemoryTrace].self, from: data)
-        } catch {
-            traces = []
-        }
+        traces = tracesStore.load() ?? []
     }
 
     private func save() {
-        do {
-            let data = try JSONEncoder().encode(traces)
-            UserDefaults.standard.set(data, forKey: FeedForgettingCurve.storageKey)
-            NotificationCenter.default.post(name: .forgettingCurveDidChange, object: self)
-        } catch {
-            // Silent fail — data will be retried next save.
-        }
+        tracesStore.save(traces)
+        NotificationCenter.default.post(name: .forgettingCurveDidChange, object: self)
     }
 
     // MARK: - Recording

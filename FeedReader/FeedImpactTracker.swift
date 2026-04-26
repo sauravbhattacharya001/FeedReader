@@ -246,6 +246,10 @@ final class FeedImpactTracker {
     private let ripplesStorageKey = "FeedImpactTracker_ripples"
     private let alertsStorageKey = "FeedImpactTracker_alerts"
 
+    private let entriesStore = UserDefaultsCodableStore<[ImpactEntry]>(key: "FeedImpactTracker_entries")
+    private let ripplesStore = UserDefaultsCodableStore<[ImpactRipple]>(key: "FeedImpactTracker_ripples")
+    private let alertsStore = UserDefaultsCodableStore<[ImpactAlert]>(key: "FeedImpactTracker_alerts")
+
     private let similarityThreshold: Double = 0.15
     private let viralThreshold: Int = 5 // ripples in 24h
     private let crossFeedThreshold: Int = 3 // unique feeds
@@ -764,35 +768,16 @@ final class FeedImpactTracker {
 
     /// Save all state to UserDefaults.
     private func saveState() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(entries) {
-            UserDefaults.standard.set(data, forKey: storageKey)
-        }
-        if let data = try? encoder.encode(ripples) {
-            UserDefaults.standard.set(data, forKey: ripplesStorageKey)
-        }
-        if let data = try? encoder.encode(alerts) {
-            UserDefaults.standard.set(data, forKey: alertsStorageKey)
-        }
+        entriesStore.save(entries)
+        ripplesStore.save(ripples)
+        alertsStore.save(alerts)
     }
 
     /// Load state from UserDefaults.
     private func loadState() {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        if let data = UserDefaults.standard.data(forKey: storageKey),
-           let decoded = try? decoder.decode([ImpactEntry].self, from: data) {
-            entries = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: ripplesStorageKey),
-           let decoded = try? decoder.decode([ImpactRipple].self, from: data) {
-            ripples = decoded
-        }
-        if let data = UserDefaults.standard.data(forKey: alertsStorageKey),
-           let decoded = try? decoder.decode([ImpactAlert].self, from: data) {
-            alerts = decoded
-        }
+        entries = entriesStore.load() ?? []
+        ripples = ripplesStore.load() ?? []
+        alerts = alertsStore.load() ?? []
     }
 
     /// Clear all tracked data.
