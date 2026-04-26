@@ -234,11 +234,44 @@ final class ArticleDeduplicator {
             urlMap[key, default: []].append(article)
         }
 
+        // Build O(1) grouped-article index from existing groups.
+        // Maps each article ID to the set of group indices it belongs to,
+        // so isAlreadyGrouped checks are O(min-group-count) instead of O(G×A).
+        var articleToGroupIndices: [String: [Int]] = [:]
+        for (gi, g) in duplicateGroups.enumerated() {
+            for aid in g.articleIds {
+                articleToGroupIndices[aid, default: []].append(gi)
+            }
+        }
+
+        // Track new-group pairs with a Set<String> of canonical pair keys
+        // so we avoid O(newGroups) scans with Set reconstruction per check.
+        var newGroupPairKeys: Set<String> = []
+
+        /// Returns a canonical key for a pair of article IDs.
+        func pairKey(_ id1: String, _ id2: String) -> String {
+            id1 < id2 ? "\(id1)\0\(id2)" : "\(id2)\0\(id1)"
+        }
+
+        /// Checks if all given IDs are already covered by an existing group,
+        /// using the indexed lookup instead of scanning all groups.
+        func isAlreadyGroupedFast(_ ids: [String]) -> Bool {
+            guard let firstId = ids.first,
+                  let groupIndices = articleToGroupIndices[firstId] else { return false }
+            let idSet = Set(ids)
+            for gi in groupIndices {
+                if idSet.isSubset(of: duplicateGroups[gi].articleIds) {
+                    return true
+                }
+            }
+            return false
+        }
+
         // 1. URL-based detection
         if config.urlDetectionEnabled {
             for (_, group) in urlMap where group.count > 1 {
                 let ids = group.map { $0.id }
-                if !isAlreadyGrouped(ids) {
+                if !isAlreadyGroupedFast(ids) {
                     let dg = DuplicateGroup(
                         id: UUID().uuidString,
                         primaryArticleId: group.sorted(by: { ($0.publishedDate ?? .distantFuture) < ($1.publishedDate ?? .distantFuture) }).first!.id,
@@ -250,29 +283,50 @@ final class ArticleDeduplicator {
                         detectedAt: Date()
                     )
                     newGroups.append(dg)
+                    // Register pair keys for dedup within this scan
+                    for k in 0..<ids.count {
+                        for l in (k+1)..<ids.count {
+                            newGroupPairKeys.insert(pairKey(ids[k], ids[l]))
+                        }
+                    }
                 }
             }
         }
 
-        // 2. Title-based detection
+        // 2. Title-based detection — O(n²) pair loop; inner checks now O(1)
         if config.titleDetectionEnabled {
-            for i in 0..<uniqueArticles.count {
-                for j in (i + 1)..<uniqueArticles.count {
-                    let a = uniqueArticles[i]
-                    let b = uniqueArticles[j]
+            // Pre-compute lowercased trimmed titles to avoid re-deriving per pair
+            let preparedTitles: [(article: DeduplicationArticle, lowerTitle: String)] =
+                uniqueArticles.map { ($0, $0.title.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)) }
+
+            for i in 0..<preparedTitles.count {
+                let (a, titleA) = preparedTitles[i]
+                let lenA = titleA.count
+                for j in (i + 1)..<preparedTitles.count {
+                    let (b, titleB) = preparedTitles[j]
                     // Skip if same URL (already caught above) — uses cached values
                     if normalizedURLs[a.id]! == normalizedURLs[b.id]! { continue }
                     // Skip if not cross-feed and same feed
                     if !config.crossFeedDetection && a.feedName == b.feedName { continue }
 
+                    // Early reject: if length difference alone exceeds the
+                    // tolerance implied by the threshold, skip the expensive
+                    // Levenshtein computation entirely.
+                    let lenB = titleB.count
+                    let maxLen = max(lenA, lenB)
+                    if maxLen > 0 {
+                        let maxAllowedDistance = Int(Double(maxLen) * (1.0 - config.titleSimilarityThreshold))
+                        if abs(lenA - lenB) > maxAllowedDistance { continue }
+                    }
+
                     let similarity = Self.titleSimilarity(a.title, b.title)
                     if similarity >= config.titleSimilarityThreshold {
-                        let ids = [a.id, b.id]
-                        if !isAlreadyGrouped(ids) && !newGroups.contains(where: { Set($0.articleIds) == Set(ids) }) {
+                        let pk = pairKey(a.id, b.id)
+                        if !isAlreadyGroupedFast([a.id, b.id]) && !newGroupPairKeys.contains(pk) {
                             let dg = DuplicateGroup(
                                 id: UUID().uuidString,
                                 primaryArticleId: (a.publishedDate ?? .distantFuture) <= (b.publishedDate ?? .distantFuture) ? a.id : b.id,
-                                articleIds: ids,
+                                articleIds: [a.id, b.id],
                                 similarityScore: similarity,
                                 detectionMethod: .similarTitle,
                                 isReviewed: false,
@@ -280,6 +334,7 @@ final class ArticleDeduplicator {
                                 detectedAt: Date()
                             )
                             newGroups.append(dg)
+                            newGroupPairKeys.insert(pk)
                         }
                     }
                 }
@@ -296,7 +351,12 @@ final class ArticleDeduplicator {
             }
             for (_, group) in fingerprintMap where group.count > 1 {
                 let ids = group.map { $0.id }
-                if !isAlreadyGrouped(ids) && !newGroups.contains(where: { Set($0.articleIds).isSuperset(of: Set(ids)) }) {
+                let idSet = Set(ids)
+                // Check existing groups via index
+                let alreadyCovered = isAlreadyGroupedFast(ids)
+                // Check new groups: any new group that is a superset of these ids
+                let newCovered = newGroups.contains { Set($0.articleIds).isSuperset(of: idSet) }
+                if !alreadyCovered && !newCovered {
                     let dg = DuplicateGroup(
                         id: UUID().uuidString,
                         primaryArticleId: group.sorted(by: { ($0.publishedDate ?? .distantFuture) < ($1.publishedDate ?? .distantFuture) }).first!.id,
