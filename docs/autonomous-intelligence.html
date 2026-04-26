@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autonomous Intelligence — FeedReader Documentation</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="FeedReader's autonomous intelligence features: predictive alerts, knowledge graphs, debate analysis, burnout detection, and more.">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo"><a href="index.html">📖 FeedReader</a></div>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="guide.html">Getting Started</a></li>
+      <li><a href="api.html">API Reference</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="smart-features.html">Smart Features</a></li>
+      <li><a href="content-management.html">Content Management</a></li>
+      <li><a href="reading-analytics.html">Reading Analytics</a></li>
+      <li><a href="learning-study.html">Learning &amp; Study</a></li>
+      <li><a href="autonomous-intelligence.html" class="active">Autonomous Intelligence</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <h1>🤖 Autonomous Intelligence</h1>
+    <p class="subtitle">
+      FeedReader's autonomous intelligence layer continuously analyzes your reading behavior and feed content
+      to surface insights, detect patterns, and proactively guide your reading — all fully offline with no
+      external API calls.
+    </p>
+
+    <div class="toc">
+      <h3>On This Page</h3>
+      <ul>
+        <li><a href="#predictive-alerts">Predictive Alerts</a></li>
+        <li><a href="#knowledge-graph">Knowledge Graph</a></li>
+        <li><a href="#curiosity-engine">Curiosity Engine</a></li>
+        <li><a href="#debate-arena">Debate Arena</a></li>
+        <li><a href="#narrative-tracker">Narrative Tracker</a></li>
+        <li><a href="#signal-booster">Signal Booster</a></li>
+        <li><a href="#serendipity-engine">Serendipity Engine</a></li>
+        <li><a href="#impact-tracker">Impact Tracker</a></li>
+        <li><a href="#burnout-detector">Burnout Detector</a></li>
+        <li><a href="#autopilot">Autopilot</a></li>
+        <li><a href="#inbox-zero">Inbox Zero</a></li>
+      </ul>
+    </div>
+
+    <!-- Predictive Alerts -->
+    <section id="predictive-alerts">
+      <h2>⚡ Predictive Alerts</h2>
+      <p>
+        <code>FeedPredictiveAlerts</code> learns feed publishing patterns and generates proactive alerts
+        before events happen. It detects publication surges, topic shifts, breaking stories, and
+        anomalous publishing behavior.
+      </p>
+
+      <h3>Alert Types</h3>
+      <table>
+        <thead><tr><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>publicationSurge</code></td><td>Predicted spike in article volume from a feed</td></tr>
+          <tr><td><code>topicShift</code></td><td>Detected shift in a feed's primary topic coverage</td></tr>
+          <tr><td><code>breakingStory</code></td><td>Emerging story detected across multiple feeds</td></tr>
+          <tr><td><code>anomaly</code></td><td>Unusual publishing pattern (unexpected silence or burst)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Usage</h3>
+      <pre><code class="swift">let alerts = FeedPredictiveAlerts.shared
+
+// The engine learns from feed activity automatically.
+// Check for pending alerts:
+let pending = alerts.activeAlerts
+for alert in pending {
+    print("\(alert.severity): \(alert.title) — \(alert.message)")
+    print("Confidence: \(Int(alert.confidence * 100))%")
+}
+
+// Dismiss or verify alerts to improve accuracy:
+alerts.dismiss(alertId: alert.id)
+alerts.verify(alertId: alert.id, wasAccurate: true)</code></pre>
+
+      <div class="callout">
+        <strong>Agentic behavior:</strong> In auto-monitor mode, predictive alerts post
+        <code>NSNotification</code> events that the UI layer can observe to show proactive cards
+        without user interaction.
+      </div>
+    </section>
+
+    <!-- Knowledge Graph -->
+    <section id="knowledge-graph">
+      <h2>🕸️ Knowledge Graph</h2>
+      <p>
+        <code>FeedKnowledgeGraph</code> extracts entities (people, organizations, topics, locations)
+        from articles using heuristic NLP, then builds a connected entity graph based on co-occurrence.
+        It enables discovering related past reads, emerging entities, entity timelines, and topic clusters.
+      </p>
+
+      <h3>How It Works</h3>
+      <ol>
+        <li>Article titles and bodies are scanned for entities using capitalization heuristics, suffix patterns, and a built-in gazetteer</li>
+        <li>Extracted entities become graph nodes; co-occurrence in the same article creates weighted edges</li>
+        <li>The graph enables discovery: related articles share entities, entity timelines show narrative arcs</li>
+        <li>Auto-monitor mode periodically detects emerging entities and posts notifications</li>
+      </ol>
+
+      <h3>Usage</h3>
+      <pre><code class="swift">let graph = FeedKnowledgeGraph()
+
+// Ingest articles
+graph.ingest(articleId: "a1",
+             title: "OpenAI launches GPT-5",
+             body: "Sam Altman announced...",
+             date: Date())
+
+// Query the graph
+let related = graph.relatedArticles(for: "a1")
+let timeline = graph.entityTimeline(entity: "OpenAI")
+let clusters = graph.entityClusters()</code></pre>
+    </section>
+
+    <!-- Curiosity Engine -->
+    <section id="curiosity-engine">
+      <h2>🔍 Curiosity Engine</h2>
+      <p>
+        <code>FeedCuriosityEngine</code> analyzes reading patterns to identify knowledge gaps, generate
+        unanswered questions, and suggest exploration paths. It encourages deeper reading by detecting
+        surface-level engagement and nudging toward deeper understanding.
+      </p>
+
+      <h3>Key Concepts</h3>
+      <ul>
+        <li><strong>Curiosity Map:</strong> Topics with depth scores showing how deeply you've explored each area</li>
+        <li><strong>Gap Detection:</strong> Topics read shallowly but frequently (high breadth, low depth)</li>
+        <li><strong>Question Generation:</strong> Open-ended questions based on topic intersections and unexplored edges</li>
+        <li><strong>Exploration Paths:</strong> Suggested sequences of reads that would deepen understanding in gap areas</li>
+      </ul>
+
+      <h3>Usage</h3>
+      <pre><code class="swift">let engine = FeedCuriosityEngine()
+
+// Ingest with depth signals
+engine.ingest(articleId: "a1",
+              title: "Intro to Quantum Computing",
+              topics: ["quantum", "computing"],
+              keywords: ["qubit", "superposition"],
+              readingDepth: 0.3,  // scroll percentage
+              timeSpent: 45,      // seconds
+              highlightsMade: 0)
+
+// Get knowledge gaps and exploration suggestions
+let gaps = engine.knowledgeGaps()
+let questions = engine.generateQuestions()
+let paths = engine.explorationPaths()</code></pre>
+    </section>
+
+    <!-- Debate Arena -->
+    <section id="debate-arena">
+      <h2>⚔️ Debate Arena</h2>
+      <p>
+        <code>FeedDebateArena</code> identifies opposing viewpoints across RSS feeds on the same topic.
+        It extracts claims, classifies stances, clusters arguments into debate topics, calculates
+        balance scores, detects echo chambers, and generates cross-topic insights.
+      </p>
+
+      <h3>Capabilities</h3>
+      <ul>
+        <li><strong>Claim Extraction:</strong> Automatically extracts claims from articles and classifies stance (for/against/mixed/neutral)</li>
+        <li><strong>Debate Clustering:</strong> Groups related arguments into debate topics via Jaccard keyword similarity</li>
+        <li><strong>Balance Scoring:</strong> Detects one-sided coverage across your feed subscriptions</li>
+        <li><strong>Echo Chamber Detection:</strong> Identifies when your feeds consistently present only one perspective</li>
+        <li><strong>Bridge Concepts:</strong> Finds hidden consensus and framing gaps between opposing sides</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <strong>Why this matters:</strong> Most readers unknowingly consume one-sided coverage.
+        The Debate Arena makes information asymmetry visible so you can seek out missing perspectives.
+      </div>
+    </section>
+
+    <!-- Narrative Tracker -->
+    <section id="narrative-tracker">
+      <h2>📰 Narrative Tracker</h2>
+      <p>
+        <code>FeedNarrativeTracker</code> tracks evolving story narratives across feeds over time.
+        It groups related articles into "narrative threads," detects how stories develop (new info,
+        contradictions, corrections, escalations), and proactively surfaces stories needing follow-up.
+      </p>
+
+      <h3>Features</h3>
+      <ul>
+        <li>Auto-groups related articles into narrative threads via keyword similarity</li>
+        <li>Detects narrative shifts: tone changes, contradictions, escalations</li>
+        <li>Flags developing stories that need follow-up attention</li>
+        <li>Generates narrative timeline summaries</li>
+        <li>Identifies information gaps and unanswered questions within a story arc</li>
+      </ul>
+    </section>
+
+    <!-- Signal Booster -->
+    <section id="signal-booster">
+      <h2>📡 Signal Booster</h2>
+      <p>
+        <code>FeedSignalBooster</code> monitors articles across all subscribed feeds and detects
+        when multiple independent sources converge on the same topic within a time window.
+        Convergence from independent sources indicates a trending or breaking story worth your attention.
+      </p>
+
+      <h3>How It Works</h3>
+      <ol>
+        <li>New articles are tokenized into keyword n-grams</li>
+        <li>Keywords are grouped into topic clusters using Jaccard similarity</li>
+        <li>When a cluster hits the convergence threshold (N feeds in a time window), a signal boost triggers</li>
+        <li>Boosted topics are ranked by signal strength (feed count × recency)</li>
+      </ol>
+    </section>
+
+    <!-- Serendipity Engine -->
+    <section id="serendipity-engine">
+      <h2>✨ Serendipity Engine</h2>
+      <p>
+        <code>FeedSerendipityEngine</code> finds <em>unexpected</em> connections between articles
+        across different feeds. Unlike similarity search (which finds similar articles), this engine
+        specifically looks for surprising connections — articles linked through bridging concepts,
+        lateral associations, or thematic contrasts.
+      </p>
+
+      <h3>Key Features</h3>
+      <ul>
+        <li><strong>Serendipity Paths:</strong> Chains of loosely connected articles forming unexpected reading journeys (A→B→C where A and C seem unrelated)</li>
+        <li><strong>Bridge Concepts:</strong> Concepts that connect disparate topics in surprising ways</li>
+        <li><strong>Surprise Scoring:</strong> Ranks discoveries by how unexpected they are — the less obvious the connection, the higher the score</li>
+      </ul>
+    </section>
+
+    <!-- Impact Tracker -->
+    <section id="impact-tracker">
+      <h2>💥 Impact Tracker</h2>
+      <p>
+        <code>FeedImpactTracker</code> measures how influential articles are over time. It detects
+        when later articles reference, follow up on, or relate to tracked articles, building an
+        evolving "impact score" through lifecycle phases.
+      </p>
+
+      <h3>Lifecycle Phases</h3>
+      <table>
+        <thead><tr><th>Phase</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td>🌱 Emerging</td><td>Article just published, initial ripples detected</td></tr>
+          <tr><td>📈 Growing</td><td>Increasing follow-ups and citations across feeds</td></tr>
+          <tr><td>🔥 Peaking</td><td>Maximum cross-feed attention and engagement</td></tr>
+          <tr><td>🌅 Fading</td><td>Activity declining, story winding down</td></tr>
+          <tr><td>💤 Dormant</td><td>No recent activity, story archived</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Alert Types</h3>
+      <p>The tracker fires 6 alert types: viral detection, phase transitions, cross-feed spread,
+         follow-up notifications, citation alerts, and contradiction detection.</p>
+    </section>
+
+    <!-- Burnout Detector -->
+    <section id="burnout-detector">
+      <h2>🛡️ Burnout Detector</h2>
+      <p>
+        <code>FeedBurnoutDetector</code> monitors reading patterns for signs of information overload.
+        It produces a <code>BurnoutReport</code> with a 0–100 risk score, individual signal breakdowns,
+        trend direction, and actionable suggestions.
+      </p>
+
+      <h3>Monitored Signals</h3>
+      <ul>
+        <li><strong>Completion Rate Decline:</strong> Opening but not finishing articles</li>
+        <li><strong>Excessive Session Frequency:</strong> Doom-scrolling detection</li>
+        <li><strong>Late-Night Binges:</strong> Unhealthy reading hours</li>
+        <li><strong>Feed Switching Rate:</strong> Rapid feed-hopping without reading</li>
+        <li><strong>Unread Pile-Up:</strong> Growing backlog stress indicator</li>
+        <li><strong>Reading Time Spikes:</strong> Sudden increases in daily reading time</li>
+      </ul>
+
+      <div class="callout callout-warning">
+        <strong>Your wellbeing matters.</strong> When burnout risk is high, FeedReader suggests
+        taking breaks, reducing subscriptions, or enabling Autopilot to curate a smaller queue.
+      </div>
+    </section>
+
+    <!-- Autopilot -->
+    <section id="autopilot">
+      <h2>🧭 Autopilot</h2>
+      <p>
+        <code>FeedAutopilot</code> is an autonomous reading queue curator that learns your preferences
+        and auto-generates a prioritized daily reading queue within a configurable time budget.
+      </p>
+
+      <h3>How It Works</h3>
+      <ol>
+        <li>Observes reading history to build a preference model (topics, feeds, article lengths, times)</li>
+        <li>Scores unread articles with a weighted multi-factor model</li>
+        <li>Selects the best articles that fit within your time budget</li>
+        <li>Provides "why" explanations for each pick</li>
+        <li>Learns from accept/skip/snooze feedback to improve over time</li>
+      </ol>
+
+      <h3>Configuration</h3>
+      <pre><code class="swift">let autopilot = FeedAutopilot.shared
+
+// Set daily time budget
+autopilot.config.dailyTimeBudgetMinutes = 30
+
+// Adjust diversity (0.0 = all favorites, 1.0 = maximum variety)
+autopilot.config.diversityWeight = 0.3
+
+// Generate today's queue
+let queue = autopilot.generateQueue()
+for pick in queue {
+    print("\(pick.article.title) — \(pick.reason)")
+}</code></pre>
+    </section>
+
+    <!-- Inbox Zero -->
+    <section id="inbox-zero">
+      <h2>📭 Inbox Zero</h2>
+      <p>
+        <code>FeedInboxZero</code> helps systematically clear your unread article queue. It analyzes
+        the backlog, categorizes articles into action buckets, suggests batch operations, and tracks
+        progress toward inbox zero with streaks and milestones.
+      </p>
+
+      <h3>Action Buckets</h3>
+      <table>
+        <thead><tr><th>Bucket</th><th>Criteria</th></tr></thead>
+        <tbody>
+          <tr><td>🔴 Must Read</td><td>High relevance, from favorite feeds</td></tr>
+          <tr><td>⚡ Quick Scan</td><td>Short articles, low-medium relevance</td></tr>
+          <tr><td>📦 Archive</td><td>Low relevance, duplicated content</td></tr>
+          <tr><td>⏰ Defer</td><td>Interesting but not urgent, scheduled for later</td></tr>
+          <tr><td>🗑️ Bulk Dismiss</td><td>Noise, duplicates, stale content</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Features</h3>
+      <ul>
+        <li>Clearance plans with estimated time per bucket</li>
+        <li>Daily/weekly clearance velocity tracking with zero-date prediction</li>
+        <li>Streak awards for consecutive days reducing the queue</li>
+        <li>Backlog accumulation pattern detection with feed adjustment suggestions</li>
+        <li>Auto-archive for articles past configurable staleness threshold</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>FeedReader Documentation — <a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></p>
+    </footer>
+  </main>
+</body>
+</html>
+</code></pre>
+</body>
+</html>
