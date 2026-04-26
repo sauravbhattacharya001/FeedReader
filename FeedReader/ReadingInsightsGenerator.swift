@@ -610,12 +610,19 @@ class ReadingInsightsGenerator {
         let cal = Calendar.current
         let df = DateFormatting.isoDate
 
+        // Pre-bucket event counts by date string in a single O(E) pass,
+        // avoiding the previous O(days × events) repeated filter+format.
+        var eventsByDate: [String: Int] = [:]
+        for e in events {
+            let key = df.string(from: e.timestamp)
+            eventsByDate[key, default: 0] += 1
+        }
+
         var dailyCounts: [Int] = []
         var date = start
         while date <= end {
             let key = df.string(from: date)
-            let count = events.filter { df.string(from: $0.timestamp) == key }.count
-            dailyCounts.append(count)
+            dailyCounts.append(eventsByDate[key] ?? 0)
             date = cal.date(byAdding: .day, value: 1, to: date)!
         }
 
