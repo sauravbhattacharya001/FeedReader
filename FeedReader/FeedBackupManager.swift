@@ -284,6 +284,33 @@ class FeedBackupManager {
         return archive
     }
 
+    // MARK: - Filename Sanitization
+
+    /// Sanitize a user-supplied backup filename to prevent path traversal
+    /// (CWE-22). Strips directory separators and relative path components
+    /// so the result always resolves inside the Backups directory.
+    private func sanitizeFilename(_ filename: String) -> String? {
+        // Take only the last path component to strip directory prefixes
+        var name = (filename as NSString).lastPathComponent
+        name = name.replacingOccurrences(of: "/", with: "_")
+        name = name.replacingOccurrences(of: "\\", with: "_")
+        let trimmed = name.trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+        guard !trimmed.isEmpty else { return nil }
+        return name
+    }
+
+    /// Resolve a filename to a URL inside the backup directory, with
+    /// defense-in-depth containment verification.
+    private func safeBackupURL(for filename: String) -> URL? {
+        guard let safe = sanitizeFilename(filename) else { return nil }
+        let fileURL = backupDirectoryURL.appendingPathComponent(safe)
+        // Verify the resolved path is still inside the backup directory
+        let resolvedPath = fileURL.standardizedFileURL.path
+        let backupPath = backupDirectoryURL.standardizedFileURL.path
+        guard resolvedPath.hasPrefix(backupPath) else { return nil }
+        return fileURL
+    }
+
     // MARK: - List Backups
 
     /// List all available backups, most recent first.
@@ -326,8 +353,12 @@ class FeedBackupManager {
     // MARK: - Load Backup
 
     /// Load a backup archive from a filename.
+    ///
+    /// The filename is sanitized to prevent path traversal attacks
+    /// (CWE-22). Directory separators and relative path components are
+    /// stripped so the file is always read from the Backups directory.
     func loadBackup(filename: String) -> BackupArchive? {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = safeBackupURL(for: filename) else { return nil }
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
         return try? decoder.decode(BackupArchive.self, from: data)
     }
@@ -441,8 +472,11 @@ class FeedBackupManager {
     // MARK: - Delete Backup
 
     /// Delete a specific backup file.
+    ///
+    /// The filename is sanitized to prevent path traversal attacks
+    /// (CWE-22). Only files inside the Backups directory can be deleted.
     func deleteBackup(filename: String) -> Bool {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = safeBackupURL(for: filename) else { return false }
         do {
             try fileManager.removeItem(at: fileURL)
             return true
@@ -476,8 +510,11 @@ class FeedBackupManager {
     }
 
     /// Export a backup file by filename.
+    ///
+    /// The filename is sanitized to prevent path traversal attacks
+    /// (CWE-22). Only files inside the Backups directory can be exported.
     func exportBackup(filename: String) -> Data? {
-        let fileURL = backupDirectoryURL.appendingPathComponent(filename)
+        guard let fileURL = safeBackupURL(for: filename) else { return nil }
         return try? Data(contentsOf: fileURL)
     }
 
