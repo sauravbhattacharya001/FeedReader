@@ -4,15 +4,32 @@ Thank you for considering contributing to FeedReader! Whether it's a bug fix, ne
 
 ## Table of Contents
 
+- [First-Time Contributors](#first-time-contributors)
 - [Getting Started](#getting-started)
 - [Project Structure](#project-structure)
 - [Development Setup](#development-setup)
 - [Coding Standards](#coding-standards)
+- [Commit Message Convention](#commit-message-convention)
 - [Making Changes](#making-changes)
 - [Testing](#testing)
+- [Debugging Common Issues](#debugging-common-issues)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Reporting Issues](#reporting-issues)
 - [Code of Conduct](#code-of-conduct)
+
+## First-Time Contributors
+
+New to FeedReader? Here's the fastest path to your first contribution:
+
+1. Look for issues labeled [`good first issue`](https://github.com/sauravbhattacharya001/FeedReader/labels/good%20first%20issue) — these are scoped and well-documented.
+2. Read [ARCHITECTURE.md](ARCHITECTURE.md) for a high-level map of the codebase.
+3. Start with `Sources/FeedReaderCore/` — it has no UIKit dependency, builds fast with `swift build`, and has the best test coverage.
+4. If you're unfamiliar with Swift/iOS, `Tests/FeedReaderCoreTests/` is a great place to add value without touching app UI.
+
+**Quick wins:**
+- Improve a docstring or add `/// - Parameter` documentation to a public method
+- Add a missing test case for an edge condition (see [TESTING.md](TESTING.md) for coverage gaps)
+- Fix a typo or broken link in documentation
 
 ## Getting Started
 
@@ -134,6 +151,47 @@ When in doubt, prefer `FeedReaderCore` — it's easier to test and reuse.
 - Don't trust RSS feed content — sanitize/validate external data
 - Don't force-unwrap optionals unless the value is guaranteed (e.g., storyboard outlets)
 
+## Commit Message Convention
+
+We use a lightweight [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```
+<type>(<scope>): <short summary>
+
+<optional body — explain *why*, not *what*>
+
+Fixes #<issue-number>
+```
+
+**Types:**
+
+| Type | When to use |
+|------|-------------|
+| `feat` | New feature or capability |
+| `fix` | Bug fix |
+| `refactor` | Code restructuring (no behavior change) |
+| `test` | Adding or improving tests |
+| `docs` | Documentation only |
+| `perf` | Performance improvement |
+| `security` | Security hardening |
+| `chore` | Build config, CI, tooling |
+
+**Scopes:** `core` (FeedReaderCore), `app` (iOS app), `tests`, `ci`, `docs`
+
+**Examples:**
+```bash
+git commit -m "fix(core): handle empty CDATA sections in RSS items
+
+RSSParser.swift crashed on <description><![CDATA[]]></description>
+because the CDATA handler assumed non-empty content.
+
+Fixes #42"
+
+git commit -m "test(core): add edge cases for KeywordExtractor"
+
+git commit -m "perf(app): lazy-load thumbnails in StoryTableViewCell"
+```
+
 ## Making Changes
 
 1. **Create a feature branch** from `master`:
@@ -141,13 +199,13 @@ When in doubt, prefer `FeedReaderCore` — it's easier to test and reuse.
    git checkout -b feature/my-improvement
    ```
 
-2. **Make your changes** in small, logical commits.
+2. **Make your changes** in small, logical commits following the [commit convention](#commit-message-convention).
 
 3. **Test thoroughly** (see [Testing](#testing) below).
 
 4. **Commit** with a clear message:
    ```bash
-   git commit -m "Add swipe-to-delete for bookmarks
+   git commit -m "feat(app): add swipe-to-delete for bookmarks
    
    Implements UITableViewDelegate editingStyle to allow
    removing bookmarks with a swipe gesture."
@@ -219,9 +277,41 @@ Before submitting a PR, verify:
 - Use the [Feature Request](https://github.com/sauravbhattacharya001/FeedReader/issues/new?template=feature_request.yml) template for ideas.
 - For **security vulnerabilities**, follow [SECURITY.md](SECURITY.md) — do not open a public issue.
 
+## Debugging Common Issues
+
+### Build Failures
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `No such module 'UIKit'` in SPM build | SPM targets can't use UIKit | Move UIKit code to `FeedReader/`, keep `Sources/FeedReaderCore/` platform-independent |
+| `NSKeyedUnarchiver` crash on launch | `Story` model changed without migration | Delete the app from simulator (Cmd+Shift+H → long press → Remove), or reset simulator (Device → Erase All Content) |
+| Storyboard segue crash | Identifier mismatch | Verify `"ShowDetail"` identifier in `Main.storyboard` matches `prepare(for:sender:)` |
+| Tests fail with `canOpenURL` error | `UIApplication` unavailable in test host | Mock URL validation instead of calling `UIApplication.shared` directly |
+| `swift build` succeeds but `xcodebuild` fails | Xcode project references differ from `Package.swift` | Ensure new files are added to both the Xcode project and `Package.swift` sources |
+
+### Network & Feed Issues
+
+- **No stories appearing**: Check `Reachability.swift` — the BBC feed URL may have changed or be geo-blocked. Try a different RSS source temporarily.
+- **Images not loading**: `ImageCache` uses `NSCache` which evicts under memory pressure. Verify the image URL returns valid data with `curl`.
+- **Stale cached data**: NSCoding archives are in the app's documents directory. Clear with `FileManager.default.removeItem(at: archivePath)`.
+
+### Running Tests Without Xcode
+
+The SPM test suite runs on any macOS or Linux machine with Swift installed:
+
+```bash
+# macOS (no Xcode project needed)
+swift test --parallel
+
+# Linux (Docker)
+docker build -t feedreader . && docker run feedreader swift test
+```
+
+For iOS-specific tests (anything in `FeedReaderTests/`), you need Xcode and a simulator.
+
 ## Code of Conduct
 
-Be respectful and constructive. We're all here to build something useful. Harassment, trolling, and unconstructive criticism won't be tolerated.
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior via the repository's issue tracker or by contacting the maintainer directly.
 
 ## License
 
