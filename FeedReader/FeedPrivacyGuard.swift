@@ -398,38 +398,80 @@ class FeedPrivacyGuard {
         "deviceid.io",
     ]
 
-    /// Patterns that indicate tracking pixels (tiny/invisible images).
-    static let trackingPixelPatterns: [(pattern: String, label: String)] = [
-        ("width=\"1\".*height=\"1\"", "1x1 tracking pixel"),
-        ("width='1'.*height='1'", "1x1 tracking pixel"),
-        ("width:1px.*height:1px", "1x1 CSS tracking pixel"),
-        ("width:0.*height:0", "Zero-size tracking element"),
-        ("display:\\s*none.*<img", "Hidden image tracker"),
-        ("visibility:\\s*hidden.*<img", "Invisible image tracker"),
-        ("style=\"[^\"]*position:\\s*absolute[^\"]*left:\\s*-\\d+", "Off-screen positioned tracker"),
-    ]
+    // MARK: - Unified Pattern Rules
 
-    /// Script patterns indicating fingerprinting.
-    static let fingerprintingPatterns: [(pattern: String, label: String)] = [
-        ("canvas\\.toDataURL", "Canvas fingerprinting"),
-        ("getImageData", "Canvas data extraction"),
-        ("webgl.*getParameter", "WebGL fingerprinting"),
-        ("AudioContext.*createOscillator", "Audio fingerprinting"),
-        ("navigator\\.plugins", "Plugin enumeration"),
-        ("navigator\\.languages", "Language fingerprinting"),
-        ("screen\\.colorDepth", "Screen fingerprinting"),
-        ("navigator\\.hardwareConcurrency", "Hardware fingerprinting"),
-        ("navigator\\.deviceMemory", "Device memory detection"),
-        ("getBattery", "Battery API fingerprinting"),
-    ]
+    /// A single detection rule: regex pattern, human label, threat category, and severity.
+    struct DetectionRule {
+        let pattern: String
+        let label: String
+        let category: PrivacyThreatCategory
+        let severity: PrivacySeverity
+    }
 
-    /// Beacon/ping patterns.
-    static let beaconPatterns: [(pattern: String, label: String)] = [
-        ("navigator\\.sendBeacon", "Beacon API tracking"),
-        ("new\\s+Image\\(\\)\\.src\\s*=", "Image beacon"),
-        ("<img[^>]+src=[\"'][^\"']*\\?(utm_|_ga|fbclid|mc_)", "Tracking query parameter beacon"),
-        ("ping=\"", "Link ping attribute"),
-    ]
+    /// All regex-based detection rules, checked in a single pass by `scanArticle`.
+    static let detectionRules: [DetectionRule] = {
+        var rules = [DetectionRule]()
+
+        // Tracking pixel rules
+        let pixelPatterns: [(String, String)] = [
+            ("width=\"1\".*height=\"1\"", "1x1 tracking pixel"),
+            ("width='1'.*height='1'", "1x1 tracking pixel"),
+            ("width:1px.*height:1px", "1x1 CSS tracking pixel"),
+            ("width:0.*height:0", "Zero-size tracking element"),
+            ("display:\\s*none.*<img", "Hidden image tracker"),
+            ("visibility:\\s*hidden.*<img", "Invisible image tracker"),
+            ("style=\"[^\"]*position:\\s*absolute[^\"]*left:\\s*-\\d+", "Off-screen positioned tracker"),
+        ]
+        for (p, l) in pixelPatterns {
+            rules.append(DetectionRule(pattern: p, label: l, category: .trackingPixel, severity: .low))
+        }
+
+        // Fingerprinting rules
+        let fpPatterns: [(String, String)] = [
+            ("canvas\\.toDataURL", "Canvas fingerprinting"),
+            ("getImageData", "Canvas data extraction"),
+            ("webgl.*getParameter", "WebGL fingerprinting"),
+            ("AudioContext.*createOscillator", "Audio fingerprinting"),
+            ("navigator\\.plugins", "Plugin enumeration"),
+            ("navigator\\.languages", "Language fingerprinting"),
+            ("screen\\.colorDepth", "Screen fingerprinting"),
+            ("navigator\\.hardwareConcurrency", "Hardware fingerprinting"),
+            ("navigator\\.deviceMemory", "Device memory detection"),
+            ("getBattery", "Battery API fingerprinting"),
+        ]
+        for (p, l) in fpPatterns {
+            rules.append(DetectionRule(pattern: p, label: l, category: .fingerprinting, severity: .high))
+        }
+
+        // Beacon/ping rules
+        let beaconPatterns: [(String, String)] = [
+            ("navigator\\.sendBeacon", "Beacon API tracking"),
+            ("new\\s+Image\\(\\)\\.src\\s*=", "Image beacon"),
+            ("<img[^>]+src=[\"'][^\"']*\\?(utm_|_ga|fbclid|mc_)", "Tracking query parameter beacon"),
+            ("ping=\"", "Link ping attribute"),
+        ]
+        for (p, l) in beaconPatterns {
+            rules.append(DetectionRule(pattern: p, label: l, category: .externalBeacon, severity: .medium))
+        }
+
+        // Email tracking rules
+        let emailPatterns: [(String, String)] = [
+            ("open\\.gif\\?", "Email open tracking pattern"),
+            ("track\\.gif\\?", "Email open tracking pattern"),
+            ("pixel\\.gif\\?", "Email open tracking pattern"),
+            ("beacon\\.gif\\?", "Email open tracking pattern"),
+            ("t\\.gif\\?", "Email open tracking pattern"),
+            ("o\\.gif\\?", "Email open tracking pattern"),
+            ("/track/open", "Email open tracking pattern"),
+            ("/tracking/pixel", "Email open tracking pattern"),
+            ("/email/open", "Email open tracking pattern"),
+        ]
+        for (p, l) in emailPatterns {
+            rules.append(DetectionRule(pattern: p, label: l, category: .emailTracker, severity: .medium))
+        }
+
+        return rules
+    }()
 
     // MARK: - Properties
 
@@ -508,18 +550,25 @@ class FeedPrivacyGuard {
         var threats = [PrivacyThreat]()
         let lowered = body.lowercased()
 
-        // 1. Check for tracking pixels
-        for (pattern, label) in Self.trackingPixelPatterns {
-            if let range = lowered.range(of: pattern, options: .regularExpression) {
-                let evidence = String(lowered[range].prefix(80))
+        // 1. Run all regex-based detection rules in one pass
+        var matchedEmailTracker = false
+        for rule in Self.detectionRules {
+            // Email tracker: only report the first match (one is enough).
+            if rule.category == .emailTracker && matchedEmailTracker { continue }
+
+            if let range = lowered.range(of: rule.pattern, options: .regularExpression) {
+                let evidence = (rule.category == .trackingPixel)
+                    ? String(lowered[range].prefix(80))
+                    : rule.pattern
                 threats.append(PrivacyThreat(
                     id: UUID().uuidString,
-                    category: .trackingPixel,
-                    description: label,
+                    category: rule.category,
+                    description: rule.label,
                     evidence: evidence,
-                    severity: .low,
+                    severity: rule.severity,
                     location: nil
                 ))
+                if rule.category == .emailTracker { matchedEmailTracker = true }
             }
         }
 
@@ -543,35 +592,7 @@ class FeedPrivacyGuard {
             }
         }
 
-        // 3. Check for fingerprinting scripts
-        for (pattern, label) in Self.fingerprintingPatterns {
-            if lowered.range(of: pattern, options: .regularExpression) != nil {
-                threats.append(PrivacyThreat(
-                    id: UUID().uuidString,
-                    category: .fingerprinting,
-                    description: label,
-                    evidence: pattern,
-                    severity: .high,
-                    location: nil
-                ))
-            }
-        }
-
-        // 4. Check for beacons
-        for (pattern, label) in Self.beaconPatterns {
-            if lowered.range(of: pattern, options: .regularExpression) != nil {
-                threats.append(PrivacyThreat(
-                    id: UUID().uuidString,
-                    category: .externalBeacon,
-                    description: label,
-                    evidence: pattern,
-                    severity: .medium,
-                    location: nil
-                ))
-            }
-        }
-
-        // 5. Check for hidden forms
+        // 3. Check for hidden forms (requires structural match, not simple pattern)
         if lowered.contains("<input") && lowered.contains("type=\"hidden\"") {
             if lowered.range(of: "<form[^>]*>.*<input[^>]*type=\"hidden\"", options: .regularExpression) != nil {
                 threats.append(PrivacyThreat(
@@ -582,26 +603,6 @@ class FeedPrivacyGuard {
                     severity: .high,
                     location: nil
                 ))
-            }
-        }
-
-        // 6. Check for email tracking patterns
-        let emailPatterns = [
-            "open\\.gif\\?", "track\\.gif\\?", "pixel\\.gif\\?",
-            "beacon\\.gif\\?", "t\\.gif\\?", "o\\.gif\\?",
-            "/track/open", "/tracking/pixel", "/email/open",
-        ]
-        for pattern in emailPatterns {
-            if lowered.range(of: pattern, options: .regularExpression) != nil {
-                threats.append(PrivacyThreat(
-                    id: UUID().uuidString,
-                    category: .emailTracker,
-                    description: "Email open tracking pattern",
-                    evidence: pattern,
-                    severity: .medium,
-                    location: nil
-                ))
-                break  // One email tracker match is enough
             }
         }
 
@@ -654,6 +655,59 @@ class FeedPrivacyGuard {
         return Array(scanCache.values).sorted { $0.scannedAt > $1.scannedAt }
     }
 
+    // MARK: - Shared Aggregation
+
+    /// Aggregated threat and domain statistics from a set of scans.
+    private struct ScanAggregation {
+        let averageScore: Int
+        let cleanCount: Int
+        let threatCounts: [PrivacyThreatCategory: Int]
+        let domainCounts: [String: Int]
+
+        /// Top threat categories by frequency.
+        func topThreats(_ limit: Int = 5) -> [(category: PrivacyThreatCategory, count: Int)] {
+            threatCounts.sorted { $0.value > $1.value }
+                .prefix(limit).map { ($0.key, $0.value) }
+        }
+
+        /// Top external domains by frequency.
+        func topDomains(_ limit: Int = 10) -> [(domain: String, count: Int)] {
+            domainCounts.sorted { $0.value > $1.value }
+                .prefix(limit).map { ($0.key, $0.value) }
+        }
+
+        /// Number of unique external domains.
+        var uniqueDomainCount: Int { domainCounts.count }
+
+        /// Percentage of clean (no-threat) scans.
+        func cleanPercentage(of total: Int) -> Double {
+            guard total > 0 else { return 100.0 }
+            return Double(cleanCount) / Double(total) * 100.0
+        }
+    }
+
+    /// Aggregate threat counts, domain counts, average score, and clean count
+    /// from a collection of scans. Shared by `feedProfile` and `generateReport`.
+    private func aggregate(_ scans: [ArticlePrivacyScan]) -> ScanAggregation {
+        var threatCounts: [PrivacyThreatCategory: Int] = [:]
+        var domainCounts: [String: Int] = [:]
+        var totalScore = 0
+        var cleanCount = 0
+        for scan in scans {
+            totalScore += scan.privacyScore
+            if scan.isClean { cleanCount += 1 }
+            for threat in scan.threats {
+                threatCounts[threat.category, default: 0] += 1
+            }
+            for domain in scan.externalDomains {
+                domainCounts[domain, default: 0] += 1
+            }
+        }
+        let avg = scans.isEmpty ? 100 : totalScore / scans.count
+        return ScanAggregation(averageScore: avg, cleanCount: cleanCount,
+                               threatCounts: threatCounts, domainCounts: domainCounts)
+    }
+
     /// Generate a privacy profile for a specific feed.
     func feedProfile(feedName: String, feedURL: String,
                      now: Date = Date()) -> FeedPrivacyProfile {
@@ -670,39 +724,22 @@ class FeedPrivacyGuard {
             )
         }
 
-        let avgScore = feedScans.reduce(0) { $0 + $1.privacyScore } / feedScans.count
-        let cleanCount = feedScans.filter { $0.isClean }.count
+        let agg = aggregate(feedScans)
 
-        // Aggregate threats
-        var threatCounts: [PrivacyThreatCategory: Int] = [:]
-        var domainCounts: [String: Int] = [:]
-        for scan in feedScans {
-            for threat in scan.threats {
-                threatCounts[threat.category, default: 0] += 1
-            }
-            for domain in scan.externalDomains {
-                domainCounts[domain, default: 0] += 1
-            }
-        }
-
-        let topThreats = threatCounts.sorted { $0.value > $1.value }
-            .prefix(5).map { ($0.key, $0.value) }
-        let topDomains = domainCounts.sorted { $0.value > $1.value }
-            .prefix(10).map { ($0.key, $0.value) }
-
-        let grade = Self.scoreToGrade(avgScore)
-        let severity = PrivacySeverity.from(score: 1.0 - Double(avgScore) / 100.0)
+        let grade = Self.scoreToGrade(agg.averageScore)
+        let severity = PrivacySeverity.from(score: 1.0 - Double(agg.averageScore) / 100.0)
         let recommendation = generateRecommendation(
-            score: avgScore, threats: threatCounts, cleanRatio: Double(cleanCount) / Double(feedScans.count)
+            score: agg.averageScore, threats: agg.threatCounts,
+            cleanRatio: agg.cleanPercentage(of: feedScans.count) / 100.0
         )
 
         return FeedPrivacyProfile(
             feedName: feedName, feedURL: feedURL,
-            averageScore: avgScore, severity: severity, grade: grade,
-            articlesScanned: feedScans.count, cleanArticles: cleanCount,
-            topThreats: topThreats,
-            uniqueExternalDomains: Set(domainCounts.keys).count,
-            topExternalDomains: topDomains,
+            averageScore: agg.averageScore, severity: severity, grade: grade,
+            articlesScanned: feedScans.count, cleanArticles: agg.cleanCount,
+            topThreats: agg.topThreats(),
+            uniqueExternalDomains: agg.uniqueDomainCount,
+            topExternalDomains: agg.topDomains(),
             recommendation: recommendation,
             generatedAt: now
         )
@@ -723,7 +760,7 @@ class FeedPrivacyGuard {
             )
         }
 
-        // Per-feed scores
+        // Per-feed scores (reuses aggregate for consistency)
         var feedRankings: [(feedName: String, score: Int, grade: String)] = []
         for (feedName, scans) in feedGroups {
             let avg = scans.reduce(0) { $0 + $1.privacyScore } / scans.count
@@ -731,40 +768,31 @@ class FeedPrivacyGuard {
         }
         feedRankings.sort { $0.score < $1.score }  // Worst first
 
-        // Threat distribution
-        var threatDist: [PrivacyThreatCategory: Int] = [:]
-        for scan in allResults {
-            for threat in scan.threats {
-                threatDist[threat.category, default: 0] += 1
-            }
-        }
+        // Global aggregation via shared helper
+        let agg = aggregate(allResults)
 
-        // Domain analysis
+        // Domain→feed cross-reference (report-specific, not in aggregate)
         var domainToFeeds: [String: Set<String>] = [:]
-        var domainHits: [String: Int] = [:]
         for scan in allResults {
             for domain in scan.externalDomains {
                 domainToFeeds[domain, default: []].insert(scan.feedName)
-                domainHits[domain, default: 0] += 1
             }
         }
-        let worstDomains = domainHits.sorted { $0.value > $1.value }
+        let worstDomains = agg.domainCounts.sorted { $0.value > $1.value }
             .prefix(15)
             .map { (domain: $0.key, feedCount: domainToFeeds[$0.key]?.count ?? 0, totalHits: $0.value) }
 
-        let overallScore = allResults.reduce(0) { $0 + $1.privacyScore } / allResults.count
-        let cleanPct = Double(allResults.filter { $0.isClean }.count) / Double(allResults.count) * 100.0
-
-        let summary = generateSummary(score: overallScore, feedCount: feedGroups.count,
+        let cleanPct = agg.cleanPercentage(of: allResults.count)
+        let summary = generateSummary(score: agg.averageScore, feedCount: feedGroups.count,
                                        articleCount: allResults.count, cleanPct: cleanPct)
 
         return PrivacyReport(
             totalFeeds: feedGroups.count,
             totalArticles: allResults.count,
-            overallScore: overallScore,
-            overallSeverity: PrivacySeverity.from(score: 1.0 - Double(overallScore) / 100.0),
+            overallScore: agg.averageScore,
+            overallSeverity: PrivacySeverity.from(score: 1.0 - Double(agg.averageScore) / 100.0),
             feedRankings: feedRankings,
-            threatDistribution: threatDist,
+            threatDistribution: agg.threatCounts,
             worstDomains: worstDomains,
             cleanPercentage: cleanPct,
             summary: summary
