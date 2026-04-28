@@ -50,7 +50,7 @@ FeedReader has two layers: the iOS app and a standalone core library.
 
 ```
 FeedReader/
-├── FeedReader/                      # iOS app (150+ Swift files)
+├── FeedReader/                      # iOS app (162 Swift files)
 │   ├── AppDelegate.swift            # App lifecycle
 │   ├── RSSFeedParser.swift          # Original XML parser
 │   ├── Story.swift / Feed.swift     # App data models
@@ -60,10 +60,11 @@ FeedReader/
 │   ├── Reachability.swift           # Network connectivity
 │   ├── Article*.swift               # Article analysis, export, quiz, etc.
 │   ├── Feed*.swift                  # Feed health, autopilot, serendipity, etc.
+│   ├── Reading*.swift               # Reading stats, habits, gamification
 │   ├── *ViewController.swift        # UIKit view controllers
 │   └── Base.lproj/                  # Storyboards
 │
-├── Sources/FeedReaderCore/          # SPM library (platform-independent core)
+├── Sources/FeedReaderCore/          # SPM library (18 Swift files)
 │   ├── RSSParser.swift              # Standalone RSS parser
 │   ├── FeedItem.swift / RSSStory.swift  # Core models
 │   ├── FeedCacheManager.swift       # Feed caching
@@ -73,8 +74,8 @@ FeedReader/
 │   ├── OPMLManager.swift            # OPML import/export
 │   └── ArticleArchiveExporter.swift # Archive export
 │
-├── FeedReaderTests/                 # XCTest suite for the iOS app (107 test files)
-├── Tests/FeedReaderCoreTests/       # XCTest suite for the SPM library
+├── FeedReaderTests/                 # XCTest suite for the iOS app (122 test files)
+├── Tests/FeedReaderCoreTests/       # XCTest suite for the SPM library (8 test files)
 ├── docs/                            # Generated documentation
 ├── Package.swift                    # SPM manifest (swift-tools-version:5.9)
 ├── FeedReaderCore.podspec           # CocoaPods spec
@@ -82,6 +83,208 @@ FeedReader/
 ```
 
 **Key distinction:** `FeedReader/` is the full iOS app with UIKit. `Sources/FeedReaderCore/` is the headless core library distributed via SPM and CocoaPods — it has no UIKit dependency and can be used in any Swift project.
+
+### Module Catalog by Functional Area
+
+With 162 source files, knowing where things live is essential. Here's every module organized by what it does:
+
+#### Core Data Models & Parsing
+| Module | Purpose |
+|--------|---------|
+| `Story.swift` | Main article data model (NSCoding) |
+| `Feed.swift` | Feed source model |
+| `RSSFeedParser.swift` | App-layer XML feed parser (NSXMLParser delegate) |
+| `JSONCoding.swift` | JSON serialization helpers |
+| `DateFormatting.swift` | RSS date format parsing |
+| `HTMLEscaping.swift` | HTML entity decoding |
+| `SecureCodingStore.swift` | NSSecureCoding persistence wrapper |
+| `UserDefaultsCodableStore.swift` | Type-safe UserDefaults Codable store |
+| `VersionedCodableStore.swift` | Versioned Codable persistence with migration |
+
+#### Feed Management (37 modules)
+| Module | Purpose |
+|--------|---------|
+| `FeedManager.swift` | Multi-feed CRUD, subscription management |
+| `FeedCategoryManager.swift` | Feed categorization and folder organization |
+| `FeedDiscoveryManager.swift` | Auto-discover RSS feeds from URLs |
+| `FeedMergeManager.swift` | Merge duplicate or related feeds |
+| `FeedBundleManager.swift` | Curated feed bundles ("starter packs") |
+| `FeedMigrationAssistant.swift` | Import feeds from other apps |
+| `FeedBackupManager.swift` | Export/import feed subscriptions |
+| `FeedUpdateScheduler.swift` | Smart refresh scheduling per feed |
+| `FeedSnoozeManager.swift` | Temporarily pause feed updates |
+| `FeedPriorityRanker.swift` | Rank feeds by user engagement |
+| `FeedRatingManager.swift` | User-assigned feed quality ratings |
+| `FeedHealthManager.swift` | Track feed uptime and error rates |
+| `FeedAnomalyDetector.swift` | Detect unusual feed behavior |
+| `FeedPerformanceAnalyzer.swift` | Response time and reliability metrics |
+| `FeedDiffTracker.swift` | Track article additions/removals per refresh |
+| `FeedTimelineReconstructor.swift` | Rebuild chronological feed history |
+| `FeedComparisonManager.swift` | Compare two feeds side-by-side |
+| `FeedSourceDiversityAuditor.swift` | Audit political/topical diversity |
+| `FeedEngagementScoreboard.swift` | Gamified feed engagement tracking |
+| `FeedSubscriptionAnalyzer.swift` | Analyze subscription patterns |
+| `FeedAnnotationManager.swift` | Per-feed user annotations |
+| `FeedNotificationManager.swift` | Per-feed notification rules |
+| `FeedPrivacyGuard.swift` | Privacy-sensitive feed handling |
+| `SmartFeedManager.swift` | AI-powered feed recommendations |
+| `SmartFeedMixer.swift` | Cross-feed article blending |
+| `SmartFeedSearch.swift` | Full-text search across all feeds |
+| `SmartUnsubscriber.swift` | Suggest feeds to unsubscribe from |
+| `FeedAutopilot.swift` | Fully automated feed curation |
+| `FeedAutomationEngine.swift` | Rule-based feed automation |
+| `FeedPredictiveAlerts.swift` | Predict interesting upcoming articles |
+| `FeedSignalBooster.swift` | Amplify weak but relevant signals |
+| `FeedSerendipityEngine.swift` | Surface surprising content |
+| `FeedCuriosityEngine.swift` | Curiosity-driven exploration |
+| `FeedDebateArena.swift` | Multi-perspective debate view |
+| `FeedKnowledgeGraph.swift` | Build knowledge graph from feeds |
+| `FeedNarrativeTracker.swift` | Track evolving stories across feeds |
+| `FeedWeatherReporter.swift` | "Feed weather" health summary |
+
+#### Autonomous Intelligence (6 modules)
+| Module | Purpose |
+|--------|---------|
+| `FeedBurnoutDetector.swift` | Detect reading burnout patterns |
+| `FeedForgettingCurve.swift` | Spaced-repetition article resurfacing |
+| `FeedImpactTracker.swift` | Measure real-world article impact |
+| `FeedInboxZero.swift` | Inbox-zero workflow for feeds |
+| `FeedReadingCoach.swift` | Personalized reading guidance |
+| `FeedInterestEvolver.swift` | Autonomous interest evolution |
+
+#### Article Analysis & Processing (51 modules)
+| Module | Purpose |
+|--------|---------|
+| `ArticleSummarizer.swift` | Single-article summarization |
+| `ArticleSummaryGenerator.swift` | Batch summary generation |
+| `ArticleDigestComposer.swift` | Daily digest compilation |
+| `ArticleOutlineGenerator.swift` | Article structure extraction |
+| `ArticleReadabilityAnalyzer.swift` | Readability scoring (Flesch-Kincaid, etc.) |
+| `ArticleSentimentAnalyzer.swift` | Sentiment analysis per article |
+| `ArticleMoodTracker.swift` | Track emotional tone over time |
+| `ArticleFactChecker.swift` | Basic claim verification |
+| `ArticleLanguageDetector.swift` | Identify article language |
+| `ArticleLinkExtractor.swift` | Extract and classify embedded links |
+| `ArticleGeoTagger.swift` | Extract geographic references |
+| `ArticleTrendDetector.swift` | Identify trending topics |
+| `ArticleDeduplicator.swift` | Find and merge duplicate articles |
+| `ArticleSimilarityManager.swift` | Compute article similarity scores |
+| `ArticleCrossReferenceEngine.swift` | Cross-reference related articles |
+| `ArticleRelationshipMapper.swift` | Map article relationships |
+| `ArticleEngagementPredictor.swift` | Predict user engagement with articles |
+| `ArticlePaywallDetector.swift` | Detect paywalled content |
+| `ArticleEditTracker.swift` | Track article post-publication edits |
+| `ArticleVersionTracker.swift` | Version history for edited articles |
+| `ArticleFreshnessTracker.swift` | Track content freshness/staleness |
+| `ArticleExpiryManager.swift` | Auto-archive expired articles |
+| `ArticleWordCountTracker.swift` | Word count stats |
+| `TextAnalyzer.swift` | General-purpose text analysis |
+| `TopicClassifier.swift` | Topic/category classification |
+| `VocabularyFrequencyProfiler.swift` | Vocabulary frequency analysis |
+| `SentimentTrendsTracker.swift` | Long-term sentiment trends |
+| `SourceCredibilityScorer.swift` | Score source trustworthiness |
+| `ContentFilter.swift` | Content filtering rules |
+| `ContentFilterManager.swift` | Filter rule management |
+| `ContentCalendar.swift` | Calendar view of content |
+| `KeywordAlert.swift` | Keyword alert model |
+| `KeywordAlertManager.swift` | Manage keyword alerts |
+| `DigestGenerator.swift` | Generate reading digests |
+| `PersonalFeedPublisher.swift` | Publish personal curated feeds |
+| `ArticleHighlight.swift` | Highlight data model |
+| `ArticleHighlightsManager.swift` | Manage article highlights |
+| `ArticleNote.swift` | Note data model |
+| `ArticleNotesManager.swift` | Manage article notes |
+| `ArticleTagManager.swift` | Article tagging system |
+| `ArticleQuoteJournal.swift` | Save notable quotes |
+| `ArticleReactionManager.swift` | Emoji/reaction system for articles |
+| `AnnotationShareManager.swift` | Share annotations/highlights |
+| `ArticleClipboard.swift` | Article clipping and excerpts |
+| `ArticleArchiveExporter.swift` | Export article archives |
+| `ArticleReadingListSharer.swift` | Share reading lists |
+| `ArticleCitationGenerator.swift` | Generate citations (APA, MLA, etc.) |
+| `ArticleThreadComposer.swift` | Compose article discussion threads |
+| `ArticleThreadManager.swift` | Manage discussion threads |
+| `ArticleTimeCapsule.swift` | Schedule articles for future reading |
+| `ArticleTranslationMemory.swift` | Cache article translations |
+
+#### Reading Engagement & Gamification (25 modules)
+| Module | Purpose |
+|--------|---------|
+| `ReadingSessionTracker.swift` | Track individual reading sessions |
+| `ReadingSpeedTracker.swift` | WPM measurement and trends |
+| `ReadingPaceCalculator.swift` | Estimated time to finish |
+| `ReadingTimeEstimator.swift` | Article read-time predictions |
+| `ReadingTimeBudget.swift` | Daily reading time budgets |
+| `ReadingPositionManager.swift` | Remember scroll position per article |
+| `ReadingHistoryManager.swift` | Full reading history log |
+| `ReadStatusManager.swift` | Read/unread state management |
+| `ReadingStatsManager.swift` | Aggregated reading statistics |
+| `ReadingInsightsGenerator.swift` | Generate reading habit insights |
+| `ReadingHabitsProfiler.swift` | Profile reading patterns |
+| `ReadingActivityHeatmap.swift` | GitHub-style reading heatmap |
+| `ReadingReportCard.swift` | Periodic reading report cards |
+| `ReadingYearInReview.swift` | Annual reading summary |
+| `ReadingGoalsManager.swift` | Set and track reading goals |
+| `ReadingChallengeManager.swift` | Reading challenges (30-day, etc.) |
+| `ReadingBingoManager.swift` | Reading bingo card gamification |
+| `ReadingAchievementsManager.swift` | Unlock reading achievements |
+| `ReadingStreakTracker.swift` | Daily reading streak tracking |
+| `ReadingFocusTimer.swift` | Pomodoro-style reading timer |
+| `ReadingRitualManager.swift` | Custom reading ritual routines |
+| `ReadingPlaylistManager.swift` | Curated article playlists |
+| `ReadingQueueManager.swift` | Reading queue management |
+| `ReadingJournalManager.swift` | Reading journal entries |
+| `ReadingDataExporter.swift` | Export all reading data |
+
+#### Study & Learning (4 modules)
+| Module | Purpose |
+|--------|---------|
+| `ArticleQuizGenerator.swift` | Generate comprehension quizzes |
+| `ArticleFlashcardGenerator.swift` | Create flashcards from articles |
+| `ArticleSpacedReview.swift` | Spaced-repetition review scheduling |
+| `ArticleFlashback.swift` | "On this day" article flashbacks |
+
+#### Presentation & UI (10 modules)
+| Module | Purpose |
+|--------|---------|
+| `ArticleSpeedReadPresenter.swift` | RSVP speed-reading mode |
+| `ArticleDarkModeFormatter.swift` | Dark mode content formatting |
+| `ArticleTextToSpeech.swift` | Read articles aloud (AVSpeechSynthesizer) |
+| `ArticleComparisonView.swift` | Side-by-side article comparison UI |
+| `WordCloudGenerator.swift` | Generate word clouds from articles |
+| `FeedReaderLogger.swift` | Privacy-aware os_log logging |
+| `ImageCache.swift` | Async image loading + NSCache |
+| `Reachability.swift` | Network connectivity monitoring |
+| `URLValidator.swift` | URL validation and sanitization |
+| `OfflineCacheManager.swift` | Offline article caching |
+
+#### Bookmarks & Read Later (4 modules)
+| Module | Purpose |
+|--------|---------|
+| `BookmarkManager.swift` | Bookmark persistence (NSCoding) |
+| `BookmarkFolderManager.swift` | Bookmark folder organization |
+| `ReadLaterExporter.swift` | Export read-later lists |
+| `ArticleReadLaterReminder.swift` | Remind about saved articles |
+
+#### Sharing (2 modules)
+| Module | Purpose |
+|--------|---------|
+| `ShareManager.swift` | Multi-platform sharing |
+| `OPMLManager.swift` | OPML import/export |
+
+#### View Controllers (8 modules)
+| Module | Purpose |
+|--------|---------|
+| `FeedListViewController.swift` | Feed source list |
+| `StoryTableViewController.swift` | Article list (main screen) |
+| `StoryViewController.swift` | Article detail view |
+| `BookmarksViewController.swift` | Bookmarks screen |
+| `ReadingStatsViewController.swift` | Reading statistics dashboard |
+| `OfflineArticlesViewController.swift` | Offline articles browser |
+| `FeedHealthDashboardViewController.swift` | Feed health dashboard |
+| `VocabularyProfileViewController.swift` | Vocabulary insights |
+| `NoInternetFoundViewController.swift` | No connectivity screen |
+| `WordCloudViewController.swift` | Word cloud display |
 
 ## Development Setup
 
@@ -276,6 +479,58 @@ Before submitting a PR, verify:
 - Use the [Bug Report](https://github.com/sauravbhattacharya001/FeedReader/issues/new?template=bug_report.yml) template for bugs.
 - Use the [Feature Request](https://github.com/sauravbhattacharya001/FeedReader/issues/new?template=feature_request.yml) template for ideas.
 - For **security vulnerabilities**, follow [SECURITY.md](SECURITY.md) — do not open a public issue.
+
+## Test Coverage Gaps
+
+With 122 test files covering 162 source files, there are still **73 modules without dedicated tests**. These are excellent contribution targets — no deep app knowledge needed, just read the module and write XCTests.
+
+### High-Impact Untested Modules
+
+These modules have complex logic that would benefit most from testing:
+
+| Module | Why It Matters |
+|--------|----------------|
+| `BookmarkManager.swift` | Core persistence — data loss bugs are catastrophic |
+| `RSSFeedParser.swift` | XML parsing edge cases (malformed feeds, encoding) |
+| `SmartFeedManager.swift` | Recommendation logic affecting what users see |
+| `SmartFeedSearch.swift` | Search relevance and ranking |
+| `FeedHealthManager.swift` | Health tracking accuracy |
+| `ArticleSentimentAnalyzer.swift` | NLP accuracy on diverse content |
+| `ArticlePaywallDetector.swift` | Detection heuristics for different paywall types |
+| `ContentFilterManager.swift` | Filter rule application and precedence |
+| `SecureCodingStore.swift` | Security-critical persistence |
+| `URLValidator.swift` | Security-critical input validation |
+
+### Quick-Win Test Targets
+
+These modules are small/pure and easy to test in isolation:
+
+- `DateFormatting.swift` — Parse various RSS date formats
+- `HTMLEscaping.swift` — Entity decoding edge cases
+- `JSONCoding.swift` — Serialization round-trips
+- `ArticleCitationGenerator.swift` — Citation format correctness
+- `ReadingPaceCalculator.swift` — WPM calculations
+- `ReadingTimeEstimator.swift` — Time estimate accuracy
+- `ArticleWordCountTracker.swift` — Word counting with various content
+- `FeedForgettingCurve.swift` — Spaced-repetition interval math
+
+### Autonomous Intelligence Modules (All Untested)
+
+The entire autonomous intelligence suite lacks tests:
+
+- `FeedBurnoutDetector.swift` — Burnout pattern detection
+- `FeedCuriosityEngine.swift` — Curiosity-driven recommendations
+- `FeedDebateArena.swift` — Multi-perspective article pairing
+- `FeedImpactTracker.swift` — Article impact measurement
+- `FeedInboxZero.swift` — Inbox-zero workflow logic
+- `FeedKnowledgeGraph.swift` — Knowledge graph construction
+- `FeedNarrativeTracker.swift` — Evolving story tracking
+- `FeedPredictiveAlerts.swift` — Prediction algorithms
+- `FeedSerendipityEngine.swift` — Serendipity scoring
+- `FeedSignalBooster.swift` — Signal amplification logic
+- `FeedReadingCoach.swift` — Coaching recommendation logic
+
+Pick any of these and add a test file following the `FeedReaderTests/` naming pattern (e.g., `FeedBurnoutDetectorTests.swift`). Even 5–10 focused tests per module dramatically improves confidence.
 
 ## Debugging Common Issues
 
