@@ -12,10 +12,19 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   build-and-test:
     name: Build & Test
     runs-on: macos-latest
+    timeout-minutes: 30
 
     strategy:
       matrix:
@@ -43,6 +52,16 @@ jobs:
               if 'iPhone' in dev['name']:
                 print(f\"{dev['name']} — {runtime}\")
           " | head -20
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            .build
+          key: spm-${{ runner.os }}-xcode-${{ matrix.xcode }}-${{ hashFiles('**/Package.resolved', '**/Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode-${{ matrix.xcode }}-
 
       - name: Resolve dependencies
         run: |
@@ -339,6 +358,7 @@ jobs:
   spm-test:
     name: SPM Test (FeedReaderCore)
     runs-on: macos-latest
+    timeout-minutes: 20
 
     strategy:
       matrix:
@@ -352,6 +372,14 @@ jobs:
         run: |
           sudo xcode-select -s /Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer
           swift --version
+
+      - name: Cache SPM packages
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-xcode-${{ matrix.xcode }}-${{ hashFiles('Package.resolved', 'Package.swift') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode-${{ matrix.xcode }}-
 
       - name: Run SPM tests with coverage
         run: |
@@ -416,6 +444,7 @@ jobs:
   lint:
     name: SwiftLint
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
