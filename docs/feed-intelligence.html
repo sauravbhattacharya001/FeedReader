@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed Intelligence &amp; Hygiene — FeedReader Documentation</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="FeedReader's feed intelligence features: source diversity auditing, anomaly detection, forgetting curve memory retention, reading coaching, credibility scoring, and smart unsubscription.">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo"><a href="index.html">📖 FeedReader</a></div>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="guide.html">Getting Started</a></li>
+      <li><a href="api.html">API Reference</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="smart-features.html">Smart Features</a></li>
+      <li><a href="content-management.html">Content Management</a></li>
+      <li><a href="reading-analytics.html">Reading Analytics</a></li>
+      <li><a href="learning-study.html">Learning &amp; Study</a></li>
+      <li><a href="autonomous-intelligence.html">Autonomous Intelligence</a></li>
+      <li><a href="feed-intelligence.html" class="active">Feed Intelligence</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <h1>🧠 Feed Intelligence &amp; Hygiene</h1>
+    <p class="subtitle">
+      FeedReader's feed intelligence layer goes beyond basic RSS reading — it continuously audits your
+      subscriptions for diversity, detects anomalous feed behavior, models your memory retention,
+      coaches your reading habits, scores source credibility, and recommends smart unsubscriptions.
+      All analysis runs on-device with zero external API calls.
+    </p>
+
+    <div class="toc">
+      <h3>On This Page</h3>
+      <ul>
+        <li><a href="#diversity-auditor">Source Diversity Auditor</a></li>
+        <li><a href="#anomaly-detector">Feed Anomaly Detector</a></li>
+        <li><a href="#forgetting-curve">Forgetting Curve Memory</a></li>
+        <li><a href="#reading-coach">Personal Reading Coach</a></li>
+        <li><a href="#credibility-scorer">Source Credibility Scorer</a></li>
+        <li><a href="#smart-unsubscriber">Smart Unsubscriber</a></li>
+      </ul>
+    </div>
+
+    <!-- Source Diversity Auditor -->
+    <section id="diversity-auditor">
+      <h2>🌈 Source Diversity Auditor</h2>
+      <p>
+        <code>FeedSourceDiversityAuditor</code> detects echo chambers in your reading diet. It analyzes
+        your feed subscriptions and reading patterns across four dimensions to quantify how diverse
+        your information sources really are.
+      </p>
+
+      <h3>Analysis Dimensions</h3>
+      <table>
+        <thead>
+          <tr><th>Dimension</th><th>Method</th><th>What It Detects</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Source Concentration</strong></td>
+            <td>Herfindahl-Hirschman Index (HHI)</td>
+            <td>Over-reliance on a few sources — e.g., 80% of articles from one feed</td>
+          </tr>
+          <tr>
+            <td><strong>Topic Monoculture</strong></td>
+            <td>Cluster analysis</td>
+            <td>Narrow topic coverage — all feeds covering the same subjects</td>
+          </tr>
+          <tr>
+            <td><strong>Viewpoint Clustering</strong></td>
+            <td>Jaccard similarity</td>
+            <td>Sources with high content overlap, reducing perspective breadth</td>
+          </tr>
+          <tr>
+            <td><strong>Reading Bias</strong></td>
+            <td>Gini coefficient</td>
+            <td>Disproportionate attention to a subset of subscriptions</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Echo Chamber Risk Levels</h3>
+      <ul>
+        <li>🟢 <strong>Minimal</strong> — Diverse, well-balanced reading</li>
+        <li>🔵 <strong>Low</strong> — Mostly diverse, minor gaps</li>
+        <li>🟡 <strong>Moderate</strong> — Some concentration detected</li>
+        <li>🟠 <strong>High</strong> — Significant echo chamber indicators</li>
+        <li>🔴 <strong>Critical</strong> — Severe echo chamber — urgent diversification needed</li>
+      </ul>
+
+      <h3>API</h3>
+      <pre><code>let auditor = FeedSourceDiversityAuditor.shared
+
+// Configure thresholds
+auditor.config.evaluationWindowDays = 30
+auditor.config.sourceConcentrationThreshold = 0.25
+auditor.config.viewpointClusterThreshold = 0.5
+
+// Run a full audit
+let report = auditor.audit(
+    feeds: myFeeds,
+    readHistory: readingHistory
+)
+
+print("Diversity Index: \(report.overallDiversityIndex)")
+print("Echo Chamber Risk: \(report.echoChamberRisk)")
+for rec in report.recommendations {
+    print("→ \(rec)")
+}
+
+// Enable auto-monitoring (checks every 7 days)
+auditor.config.autoMonitorEnabled = true
+auditor.config.autoMonitorIntervalDays = 7</code></pre>
+
+      <p>The auditor produces a <code>DiversityReport</code> with per-dimension scores, an overall diversity
+        index, echo chamber risk level, and proactive balancing recommendations. Reports persist as JSON
+        in the Documents directory for trend tracking.</p>
+    </section>
+
+    <!-- Feed Anomaly Detector -->
+    <section id="anomaly-detector">
+      <h2>🔍 Feed Anomaly Detector</h2>
+      <p>
+        <code>FeedAnomalyDetector</code> monitors feed behavior over time and detects unusual patterns
+        that may indicate feed issues, content hijacking, or significant editorial changes.
+      </p>
+
+      <h3>Detection Channels</h3>
+      <ol>
+        <li><strong>Posting Frequency</strong> — Sudden bursts (possible spam) or droughts (feed may be dead)</li>
+        <li><strong>Content Length</strong> — Articles significantly shorter or longer than the feed's baseline</li>
+        <li><strong>Topic Drift</strong> — Feed suddenly covers different subjects than its established pattern</li>
+        <li><strong>Author Patterns</strong> — New or missing authors that break the expected contributor profile</li>
+        <li><strong>Link Domains</strong> — Articles linking to unusual or suspicious domains</li>
+        <li><strong>Title Patterns</strong> — Style or format changes in article titles</li>
+      </ol>
+
+      <h3>How It Works</h3>
+      <p>The detector builds a statistical baseline from historical feed data, then uses Z-score analysis
+        to flag deviations. Each anomaly is classified by severity:</p>
+      <ul>
+        <li><strong>Info</strong> — Notable but not concerning</li>
+        <li><strong>Warning</strong> — Unusual pattern worth investigating</li>
+        <li><strong>Critical</strong> — Strong indicator of feed compromise or failure</li>
+      </ul>
+
+      <h3>Feed Trust Scoring</h3>
+      <p>Each feed receives a dynamic trust score (0–100) that adjusts based on anomaly history. Feeds with
+        frequent critical anomalies see their trust score decay over time, providing a long-term reliability signal.</p>
+
+      <h3>API</h3>
+      <pre><code>let detector = FeedAnomalyDetector.shared
+
+// Analyze a feed against its baseline
+let anomalies = detector.analyze(feed: myFeed)
+for anomaly in anomalies {
+    print("[\(anomaly.severity)] \(anomaly.channel): \(anomaly.description)")
+}
+
+// Check trust score
+let trust = detector.trustScore(for: myFeed.id)
+print("Trust: \(trust)/100")
+
+// Enable continuous monitoring
+detector.startAutoMonitor()
+
+// Listen for anomalies
+NotificationCenter.default.addObserver(
+    forName: .feedAnomaliesDetected, ...
+)</code></pre>
+    </section>
+
+    <!-- Forgetting Curve Memory -->
+    <section id="forgetting-curve">
+      <h2>🧠 Forgetting Curve Memory</h2>
+      <p>
+        <code>FeedForgettingCurve</code> models each read article as a memory trace that decays over time
+        using the Ebbinghaus forgetting curve formula: <em>R = e<sup>−t/S</sup></em>. When retention drops
+        below a threshold, the system suggests timely refreshers so you retain key knowledge.
+      </p>
+
+      <h3>How Memory Decay Works</h3>
+      <p>Every article you read creates a memory trace with a computed initial strength <code>S</code>
+        (based on reading time, completion, and engagement). Retention <code>R</code> decays exponentially
+        over time <code>t</code>. Each time you review the article, the strength increases — exactly like
+        spaced repetition systems such as Anki.</p>
+
+      <h3>Refresher Urgency Levels</h3>
+      <table>
+        <thead>
+          <tr><th>Level</th><th>Retention</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🟢 Stable</td><td>&gt; 60%</td><td>No action needed</td></tr>
+          <tr><td>🟡 Weakening</td><td>40–60%</td><td>Consider reviewing soon</td></tr>
+          <tr><td>🟠 Fading</td><td>20–40%</td><td>Review recommended</td></tr>
+          <tr><td>🔴 Critical</td><td>&lt; 20%</td><td>Urgent — review now or lose it</td></tr>
+        </tbody>
+      </table>
+
+      <h3>API</h3>
+      <pre><code>let curve = FeedForgettingCurve.shared
+
+// Record reading an article
+curve.recordReading(articleId: "abc", strength: 0.8)
+
+// Get current retention for an article
+let retention = curve.retention(for: "abc")
+
+// Get all articles needing refreshers
+let refreshers = curve.articlesNeedingRefresh()
+for item in refreshers {
+    print("\(item.articleId): \(item.urgency) — \(Int(item.retention * 100))% retained")
+}
+
+// Record a review (boosts memory strength)
+curve.recordReview(articleId: "abc")
+
+// Listen for refresh notifications
+NotificationCenter.default.addObserver(
+    forName: .memoryRefresherNeeded, ...
+)</code></pre>
+    </section>
+
+    <!-- Personal Reading Coach -->
+    <section id="reading-coach">
+      <h2>🏋️ Personal Reading Coach</h2>
+      <p>
+        <code>FeedReadingCoach</code> is an autonomous personal reading coach that analyzes your reading
+        behavior and provides personalized insights, goals, and coaching recommendations.
+      </p>
+
+      <h3>What It Tracks</h3>
+      <ul>
+        <li><strong>Session patterns</strong> — When you read, for how long, and your completion rates</li>
+        <li><strong>Peak hours</strong> — Identifies your most productive reading times</li>
+        <li><strong>Speed trends</strong> — Tracks reading speed (WPM) over time</li>
+        <li><strong>Topic preferences</strong> — Maps your interest profile from actual reading behavior</li>
+        <li><strong>Focus scores</strong> — Per-session focus quality based on duration and completion</li>
+        <li><strong>Streak tracking</strong> — Consecutive-day reading habit building</li>
+      </ul>
+
+      <h3>Coaching Insights</h3>
+      <p>The coach generates actionable insights based on detected patterns:</p>
+      <ul>
+        <li>📊 "You read most effectively between 9–11 AM. Try scheduling important articles then."</li>
+        <li>⚡ "Your reading speed increased 15% this week — your comprehension practice is paying off."</li>
+        <li>🎯 "You've been reading only tech articles. Consider diversifying with science or culture."</li>
+        <li>📉 "Completion rates dropped this week. Try shorter articles to rebuild momentum."</li>
+      </ul>
+
+      <h3>Goal System</h3>
+      <p>Set reading goals and track progress:</p>
+      <ul>
+        <li>Articles per day/week</li>
+        <li>Minutes per day</li>
+        <li>Words per day</li>
+        <li>Topic diversity targets</li>
+      </ul>
+
+      <h3>API</h3>
+      <pre><code>let coach = FeedReadingCoach.shared
+
+// Record a reading session
+let session = ReadingSession(
+    articleId: "abc", feedTitle: "TechCrunch", topic: "tech",
+    startTime: Date(), durationSeconds: 240,
+    wordCount: 800, completionPercent: 0.95
+)
+coach.recordSession(session)
+
+// Get coaching insights
+let insights = coach.generateInsights()
+for insight in insights {
+    print("[\(insight.category)] \(insight.message)")
+}
+
+// Set a goal
+coach.setGoal(ReadingGoal(type: .articlesPerDay, target: 5))
+
+// Weekly coaching report
+let report = coach.weeklyReport()
+print(report.summary)</code></pre>
+    </section>
+
+    <!-- Source Credibility Scorer -->
+    <section id="credibility-scorer">
+      <h2>🛡️ Source Credibility Scorer</h2>
+      <p>
+        <code>SourceCredibilityScorer</code> evaluates article sources by analyzing domain reputation
+        signals, content quality indicators, and transparency patterns. It produces a composite
+        credibility score (0–100) — all with pure, stateless, on-device heuristics. No external API calls.
+      </p>
+
+      <h3>Scoring Dimensions</h3>
+      <table>
+        <thead>
+          <tr><th>Dimension</th><th>Weight</th><th>What It Evaluates</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Domain Reputation</td><td>30%</td><td>Curated allowlists/blocklists, TLD quality, domain age heuristics</td></tr>
+          <tr><td>Content Quality</td><td>25%</td><td>Article length, readability grade, citation presence, quote attribution</td></tr>
+          <tr><td>Transparency</td><td>20%</td><td>Author attribution, about page, contact info, correction policy</td></tr>
+          <tr><td>Editorial Standards</td><td>15%</td><td>Headline quality (clickbait detection), fact-opinion separation</td></tr>
+          <tr><td>Technical Trust</td><td>10%</td><td>HTTPS enforcement, ad density heuristics, redirect chains</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Credibility Tiers</h3>
+      <ul>
+        <li>🟢 <strong>High Credibility</strong> — Established, transparent, well-sourced</li>
+        <li>🔵 <strong>Moderate Credibility</strong> — Generally reliable with minor gaps</li>
+        <li>🟡 <strong>Mixed Credibility</strong> — Some concerns; verify important claims</li>
+        <li>🔴 <strong>Low Credibility</strong> — Significant trust issues; treat with caution</li>
+        <li>⚪ <strong>Unknown</strong> — Insufficient data to evaluate</li>
+      </ul>
+
+      <h3>API</h3>
+      <pre><code>let scorer = SourceCredibilityScorer()
+
+let report = scorer.evaluate(
+    domain: "arstechnica.com",
+    articleText: articleBody,
+    articleTitle: "New CPU Architecture..."
+)
+
+print("Score: \(report.overallScore)/100")
+print("Tier: \(report.tier.emoji) \(report.tier.rawValue)")
+for dim in report.dimensions {
+    print("  \(dim.name): \(dim.score)")
+}
+for flag in report.flags {
+    print("⚠️ \(flag.description)")
+}</code></pre>
+    </section>
+
+    <!-- Smart Unsubscriber -->
+    <section id="smart-unsubscriber">
+      <h2>🧹 Smart Unsubscriber</h2>
+      <p>
+        <code>SmartUnsubscriber</code> is an autonomous subscription hygiene manager. It analyzes your
+        engagement patterns to identify feeds you should consider unsubscribing from — keeping your
+        feed list lean and high-signal.
+      </p>
+
+      <h3>Detection Signals</h3>
+      <table>
+        <thead>
+          <tr><th>Signal</th><th>Threshold</th><th>What It Means</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Dormant Feeds</strong></td>
+            <td>30+ days without new articles</td>
+            <td>Feed may be abandoned or dead</td>
+          </tr>
+          <tr>
+            <td><strong>Ignored Feeds</strong></td>
+            <td>&lt; 5% read rate</td>
+            <td>You're subscribed but never reading it</td>
+          </tr>
+          <tr>
+            <td><strong>Declining Engagement</strong></td>
+            <td>EMA trend below 0.4</td>
+            <td>You used to read it, but interest is fading</td>
+          </tr>
+          <tr>
+            <td><strong>Noise Feeds</strong></td>
+            <td>High volume, near-zero engagement</td>
+            <td>Flooding your feed with unread articles</td>
+          </tr>
+          <tr>
+            <td><strong>Duplicate Coverage</strong></td>
+            <td>Jaccard keyword overlap</td>
+            <td>Multiple feeds covering the same topics</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>How It Works</h3>
+      <p>The unsubscriber produces an <code>UnsubscribeReport</code> with per-feed recommendations,
+        confidence scores, and an overall subscription health score. Feeds recommended for unsubscription
+        that remain ignored are automatically muted after a configurable grace period.</p>
+
+      <h3>API</h3>
+      <pre><code>let unsub = SmartUnsubscriber.shared
+
+// Generate unsubscribe report
+let report = unsub.analyze(
+    feeds: myFeeds,
+    readHistory: readingHistory
+)
+
+print("Subscription Health: \(report.healthScore)/100")
+for rec in report.recommendations {
+    print("\(rec.feedTitle): \(rec.reason) (confidence: \(rec.confidence))")
+}
+
+// Auto-mute ignored recommendations
+unsub.config.autoMuteEnabled = true
+
+// Listen for new reports
+NotificationCenter.default.addObserver(
+    forName: .unsubscribeReportDidUpdate, ...
+)</code></pre>
+    </section>
+
+    <!-- How They Work Together -->
+    <section id="combined">
+      <h2>🔗 How They Work Together</h2>
+      <p>These six systems form an integrated intelligence layer:</p>
+      <ol>
+        <li><strong>Anomaly Detector</strong> flags compromised or failing feeds → triggers trust score decay</li>
+        <li><strong>Credibility Scorer</strong> evaluates source quality → informs priority ranking</li>
+        <li><strong>Smart Unsubscriber</strong> identifies low-value subscriptions → suggests cleanup</li>
+        <li><strong>Diversity Auditor</strong> checks for echo chambers → recommends new perspectives</li>
+        <li><strong>Reading Coach</strong> optimizes your reading habits → suggests best times and topics</li>
+        <li><strong>Forgetting Curve</strong> tracks memory retention → surfaces timely refreshers</li>
+      </ol>
+      <p>Together they continuously refine your reading experience — keeping subscriptions healthy,
+        sources trustworthy, perspectives diverse, habits productive, and knowledge retained.</p>
+    </section>
+  </main>
+</body>
+</html>
