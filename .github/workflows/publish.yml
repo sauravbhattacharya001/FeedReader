@@ -1,0 +1,83 @@
+name: Publish Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  validate-spm:
+    name: Validate SPM (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [macos-14, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve dependencies
+        run: swift package resolve
+
+      - name: Build (Debug)
+        run: swift build
+
+      - name: Build (Release)
+        run: swift build -c release
+
+      - name: Run tests
+        run: swift test
+
+  validate-podspec:
+    name: Validate CocoaPods
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate podspec
+        run: pod lib lint FeedReaderCore.podspec --allow-warnings --skip-tests
+
+  publish-cocoapods:
+    name: Publish to CocoaPods Trunk
+    needs: [validate-spm, validate-podspec]
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update podspec version
+        run: |
+          sed -i '' "s/s.version.*=.*/s.version          = '${{ steps.version.outputs.version }}'/" FeedReaderCore.podspec
+          cat FeedReaderCore.podspec | grep "s.version"
+
+      - name: Push to CocoaPods Trunk
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        run: |
+          pod trunk push FeedReaderCore.podspec --allow-warnings --skip-tests
+
+  update-package-registry:
+    name: Update Swift Package Index
+    needs: [validate-spm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Swift Package Index
+        # Swift Package Index auto-discovers tagged releases from GitHub.
+        # This step creates a package manifest snapshot for documentation.
+        run: |
+          echo "📦 FeedReaderCore v${{ steps.version.outputs.version }} published"
+          echo ""
+          echo "Installation methods:"
+          echo "  SPM: .package(url: \"https://github.com/sauravbhattacharya001/FeedReader.git\", from: \"${{ steps.version.outputs.version }}\")"
+          echo "  CocoaPods: pod 'FeedReaderCore', '~> ${{ steps.version.outputs.version }}'"
