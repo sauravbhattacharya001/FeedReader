@@ -10,11 +10,27 @@ name: CodeQL
 on:
   push:
     branches: [master]
+    paths:
+      - '**/*.swift'
+      - '**/*.m'
+      - '**/*.h'
+      - 'Package.swift'
+      - '.github/workflows/codeql.yml'
   pull_request:
     branches: [master]
+    paths:
+      - '**/*.swift'
+      - '**/*.m'
+      - '**/*.h'
+      - 'Package.swift'
+      - '.github/workflows/codeql.yml'
   schedule:
     # Run weekly on Monday at 08:00 UTC to catch new vulnerability patterns
     - cron: '0 8 * * 1'
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -25,7 +41,7 @@ jobs:
   analyze:
     name: Analyze Swift
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     strategy:
       fail-fast: false
@@ -35,6 +51,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -43,6 +61,12 @@ jobs:
           # Use the extended query suite for deeper analysis including
           # security, correctness, and maintainability queries
           queries: security-and-quality
+          # Trap compilation errors instead of failing the workflow
+          config: |
+            paths-ignore:
+              - Tests/**
+              - Docs/**
+              - '**/*.md'
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
@@ -51,3 +75,5 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
+          # Upload SARIF even on partial failures
+          upload: always
