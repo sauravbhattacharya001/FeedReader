@@ -5,35 +5,28 @@
 <h1 align="center">FeedReader</h1>
 
 <p align="center">
-  <strong>A native iOS RSS feed reader with offline caching and image support</strong>
+  <strong>A feature-rich native iOS RSS reader with offline caching, AI-powered analytics, and 160+ Swift modules</strong>
 </p>
 
 <p align="center">
-  <!-- CI / Quality -->
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/ci.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml/badge.svg" alt="Pages"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
-  <img src="https://img.shields.io/badge/tests-1941-brightgreen?logo=swift" alt="Tests">
-  <img src="https://img.shields.io/badge/coverage-enabled-brightgreen?logo=swift" alt="Code Coverage">
   <a href="https://codecov.io/gh/sauravbhattacharya001/FeedReader"><img src="https://codecov.io/gh/sauravbhattacharya001/FeedReader/graph/badge.svg" alt="Codecov"></a>
+  <img src="https://img.shields.io/badge/tests-1941-brightgreen?logo=swift" alt="Tests">
   <br>
-  <!-- Platform / Language -->
   <img src="https://img.shields.io/badge/platform-iOS-blue?logo=apple" alt="Platform">
-  <img src="https://img.shields.io/badge/swift-3.0-orange?logo=swift" alt="Swift">
+  <img src="https://img.shields.io/badge/swift-3.0+-orange?logo=swift" alt="Swift">
   <img src="https://img.shields.io/badge/Xcode-8+-blue?logo=xcode" alt="Xcode">
+  <img src="https://img.shields.io/badge/SPM-compatible-brightgreen?logo=swift&logoColor=white" alt="Swift Package Manager">
   <br>
-  <!-- Repo metadata -->
   <a href="https://github.com/sauravbhattacharya001/FeedReader/releases/latest"><img src="https://img.shields.io/github/v/release/sauravbhattacharya001/FeedReader?include_prereleases&sort=semver" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/sauravbhattacharya001/FeedReader" alt="License"></a>
   <img src="https://img.shields.io/github/languages/code-size/sauravbhattacharya001/FeedReader" alt="Code Size">
   <img src="https://img.shields.io/github/last-commit/sauravbhattacharya001/FeedReader" alt="Last Commit">
-  <img src="https://img.shields.io/github/commit-activity/m/sauravbhattacharya001/FeedReader" alt="Commit Activity">
-  <br>
-  <!-- Community -->
-  <img src="https://img.shields.io/github/issues/sauravbhattacharya001/FeedReader" alt="Open Issues">
-  <img src="https://img.shields.io/github/issues-pr/sauravbhattacharya001/FeedReader" alt="Open PRs">
-  <img src="https://img.shields.io/github/stars/sauravbhattacharya001/FeedReader?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/contributors/sauravbhattacharya001/FeedReader" alt="Contributors">
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/network/dependabot"><img src="https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot" alt="Dependabot"></a>
 </p>
 
 ---
@@ -42,13 +35,20 @@
 
 - [Overview](#overview)
 - [Features](#features)
+  - [Core Reading](#core-reading)
+  - [Feed Management](#feed-management)
+  - [Reading Intelligence](#reading-intelligence)
+  - [Article Analysis](#article-analysis)
+  - [Autonomous Engines](#autonomous-engines)
+  - [Data & Export](#data--export)
+  - [Security](#security)
 - [Quick Start](#quick-start)
 - [Architecture](#architecture)
 - [Swift Package](#swift-package)
 - [Getting Started](#getting-started)
-- [Test Cases](#test-cases)
+- [Test Suite](#test-suite)
 - [Tech Stack](#tech-stack)
-- [Customizing Feed Sources](#customizing-feed-sources)
+- [Customizing Feeds](#customizing-feeds)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -57,35 +57,112 @@
 
 ## Overview
 
-FeedReader is a native iOS application that fetches and displays RSS news feeds with a clean table-view interface. It supports offline reading through persistent caching, handles network connectivity changes gracefully, and loads story thumbnails asynchronously with an in-memory cache for smooth scrolling.
+FeedReader is a native iOS RSS reader built with UIKit and Foundation's `XMLParser`. What started as a clean table-view feed reader has grown into a 162-module platform with AI-powered content analysis, autonomous recommendation engines, and comprehensive reading analytics.
 
-Currently configured to read **BBC World News** RSS feeds, but can be pointed at any standard RSS/XML feed.
+The app supports offline reading through persistent caching, handles connectivity changes gracefully, and loads thumbnails asynchronously with an in-memory cache. It ships with 10 built-in feed presets (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, Reuters, and more) and supports any standard RSS/Atom feed URL.
+
+**1,941 tests** across 48 suites verify everything from XML parsing edge cases to recommendation engine accuracy.
 
 ## Features
 
-- 📰 **RSS Feed Parsing** — Native `XMLParser`-based RSS feed reader
-- 💾 **Offline Caching** — Stories are persisted via `NSCoding` so they're available without internet
-- 🌐 **Network Detection** — Uses `SCNetworkReachability` to detect connectivity and show appropriate UI
-- 🖼️ **Async Image Loading** — Story thumbnails load asynchronously with `NSCache`-backed in-memory caching
-- 📱 **Detail View** — Tap any story to see full description with link to original article
-- 🔗 **External Links** — Open full articles in Safari from the detail view
-- ♻️ **Smart Refresh** — Avoids redundant network fetches on back-navigation
-- 🔖 **Bookmarks** — Save stories for later reading with persistent storage, swipe-to-bookmark, and a dedicated bookmarks screen
-- 📡 **Multi-Feed Support** — Add, remove, and toggle multiple RSS feed sources. 10 built-in presets (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, etc.) plus custom URL support
-- 🔍 **Search & Filter** — Real-time search across story titles and descriptions
-- 📤 **Share** — Share stories via the system share sheet
-- 👁️ **Read/Unread Tracking** — Stories are automatically marked as read when tapped, with blue dot indicators for unread stories, unread count in the title bar, segmented filter (All/Unread/Read), mark all read, and swipe-left to toggle read status
-- 📊 **Reading Statistics** — Analytics dashboard showing reading habits: total stories read, daily/weekly/monthly counts, daily average, reading streaks (current + longest) with motivational messages, hourly activity bar chart, per-feed breakdown with progress bars, bookmark count, and tracking history
-- 📝 **Article Notes** — Add, edit, and delete personal notes on any article. Notes persist across sessions and support timestamped annotations
-- 🎯 **Content Filters** — Create keyword-based content filters to highlight or hide stories. Supports import/export as JSON for backup and sharing
-- ❤️ **Feed Health Monitor** — Tracks feed reliability metrics: fetch success/failure history, response times, uptime percentage, and generates health reports with per-feed status
-- 📶 **Offline Article Cache** — Dedicated offline cache for saving full articles. Browse cached articles without internet, manage cache size, and receive notifications when cache changes
-- 📂 **OPML Import/Export** — Import and export feed subscriptions in standard OPML format for interoperability with other RSS readers
-- 📜 **Reading History** — Rich reading history with timestamped entries, source tracking, session duration, and history summaries with date-range filtering
-- 🧠 **Smart Feeds** — Create saved keyword-based filters that auto-match stories across all feeds. Supports AND/OR match modes and search across title, description, or both
-- 🔒 **Security Hardening** — RSS parser security: XXE prevention, URL validation (blocks javascript:/data:/file: schemes), HTML sanitization, and protocol enforcement
-- 📓 **Reading Journal** — Auto-generated daily reading journal combining articles read, highlights, and notes into rich entries. Features reflection prompts, mood tagging, journaling streaks, weekly/monthly digests, full-text search across entries, and Markdown/JSON export
-- 📚 **Vocabulary Builder** — Automatically extracts uncommon words from articles you read, building a personal vocabulary list. Features mastery levels (New → Learning → Familiar → Mastered) with spaced review scheduling, context sentences from source articles, filtering by feed/mastery/date, search, and JSON/CSV export/import
+### Core Reading
+
+| Feature | Description |
+|---------|-------------|
+| 📰 **RSS Feed Parsing** | Native `XMLParser`-based reader with concurrent multi-feed support and deduplication |
+| 📶 **Offline Caching** | Stories persisted via `NSCoding`; full-article offline cache with size management |
+| 🔍 **Search & Filter** | Real-time search across titles and descriptions; keyword content filters with highlight/hide |
+| 📖 **Read/Unread Tracking** | Blue dot indicators, unread count in title bar, segmented filter (All/Unread/Read), swipe-left toggle |
+| 🔖 **Bookmarks** | Swipe-to-bookmark, dedicated bookmarks screen, folder organization |
+| 📤 **Share** | System share sheet integration for all articles |
+| 🧠 **Smart Feeds** | Saved keyword filters with AND/OR match modes across title, description, or both |
+| 📝 **Article Notes** | Timestamped annotations that persist across sessions |
+
+### Feed Management
+
+| Feature | Description |
+|---------|-------------|
+| 📡 **Multi-Feed Support** | Add, remove, toggle, and reorder feeds. 10 built-in presets plus custom URLs |
+| 📂 **OPML Import/Export** | Standard OPML interoperability with other RSS readers |
+| 📦 **Feed Bundles** | Curated topic packs for one-tap bulk subscription |
+| 🏷️ **Feed Categories** | Organize feeds into custom groups |
+| 🔍 **Feed Discovery** | Auto-discover RSS feeds from any website URL |
+| ⚙️ **Feed Automation** | Rule-based engine for auto-bookmark, auto-tag, and other actions |
+| 📊 **Feed Health Monitor** | Uptime %, response times, failure history, and health reports per feed |
+| ⚡ **Performance Analyzer** | Parse times, payload sizes, and bottleneck detection |
+
+### Reading Intelligence
+
+| Feature | Description |
+|---------|-------------|
+| 📊 **Reading Statistics** | Total/daily/weekly/monthly counts, hourly activity chart, per-feed breakdown |
+| 🔥 **Streak Tracking** | Current + longest reading streaks with motivational messages |
+| 🎯 **Reading Goals** | Configurable daily/weekly targets with progress tracking |
+| 🏆 **Achievements** | Gamification milestones for reading habits |
+| 📓 **Reading Journal** | Auto-generated daily journal with reflection prompts, mood tagging, Markdown export |
+| 📚 **Vocabulary Builder** | Extracts uncommon words with mastery levels (New → Learning → Familiar → Mastered), spaced review |
+| ⏱️ **Reading Pace** | Speed tracking with per-article time estimates |
+| 📅 **Activity Heatmap** | Visual reading activity over time |
+| 🎲 **Reading Bingo** | Challenge cards for exploring diverse content |
+| 📖 **Year in Review** | Annual reading summary and statistics |
+
+### Article Analysis
+
+| Feature | Description |
+|---------|-------------|
+| 😊 **Sentiment Analysis** | Per-article and cross-feed sentiment scoring |
+| 📖 **Readability Scoring** | Flesch-Kincaid and other readability metrics |
+| 📝 **Auto-Summarization** | Generate concise article summaries |
+| 🏷️ **Topic Classification** | Automatic topic categorization across feeds |
+| 🔗 **Cross-Reference Engine** | Find connections between articles across feeds |
+| 📎 **Citation Generator** | Export citations in multiple academic formats |
+| ✅ **Fact Checker** | Automated claim verification |
+| 🌍 **Geo-Tagger** | Location extraction and mapping from article content |
+| 🗣️ **Language Detection** | Identify article language |
+| 🔄 **Version Tracking** | Detect content changes in articles over time |
+
+### Autonomous Engines
+
+These self-managing engines run continuously to provide intelligent, personalized experiences:
+
+| Engine | Description |
+|--------|-------------|
+| 🎯 **Recommendation Engine** | Personalized article suggestions based on reading history |
+| 🔮 **Predictive Alerts** | Anticipate topics of interest before they trend |
+| 💡 **Curiosity Engine** | Surface surprising and serendipitous content |
+| 🌊 **Serendipity Engine** | Introduce unexpected but relevant discoveries |
+| 📡 **Signal Booster** | Amplify underappreciated high-quality content |
+| 🗞️ **Narrative Tracker** | Follow developing stories across feeds and time |
+| 🧩 **Knowledge Graph** | Build connections between topics, entities, and feeds |
+| 📈 **Trend Detector** | Identify trending topics across all feeds |
+| 💤 **Burnout Detector** | Detect information overload and suggest breaks |
+| 🤖 **Autopilot** | Autonomous feed curation and priority management |
+| 📬 **Inbox Zero** | Intelligent triage and prioritization |
+| 📰 **Editorial Drift Compass** | Detect shifts in source editorial direction |
+| 🛡️ **Source Credibility Scorer** | Trust profiling for RSS feed sources |
+| 🔀 **Smart Feed Mixer** | Blend feeds for balanced, diverse reading |
+| 📉 **Anomaly Detector** | Flag unusual feed behavior patterns |
+
+### Data & Export
+
+| Feature | Description |
+|---------|-------------|
+| 📤 **Reading Data Export** | Export reading history and statistics |
+| 📋 **Digest Generator** | Periodic digest summaries of your feeds |
+| 🗂️ **Article Collections** | Organize articles into custom collections |
+| ⏰ **Read Later Reminders** | Scheduled reminders for saved articles |
+| 🗃️ **Article Archive** | Long-term article storage with export |
+| 💬 **Thread Composer** | Generate social media threads from articles |
+| 🎴 **Flashcard Generator** | Create study flashcards from article content |
+| ☁️ **Word Cloud** | Visual word frequency display with dedicated view controller |
+
+### Security
+
+- 🔒 **XXE Prevention** — XML parser hardened against external entity attacks
+- 🛡️ **URL Validation** — Blocks `javascript:`, `data:`, `file:` schemes
+- 🧹 **HTML Sanitization** — Strips potentially dangerous HTML from feed content
+- 📋 **Privacy Guard** — Feed-level privacy controls and data minimization
+- 📝 **Secure Coding** — `NSSecureCoding`-compliant persistent storage
 
 ## Quick Start
 
@@ -96,123 +173,106 @@ cd FeedReader
 open FeedReader.xcodeproj
 
 # Build and run (⌘R) on any iPhone simulator
-# Run tests (⌘U) — 1941 test cases across 48 suites
+# Run tests (⌘U) — 1,941 test cases across 48 suites
 ```
 
 > **Using the Swift Package only?** Add `https://github.com/sauravbhattacharya001/FeedReader.git` as a package dependency (from `2.0.0`) and `import FeedReaderCore`.
 
 ## Architecture
 
-```
-FeedReader/
-├── FeedReader/
-│   ├── AppDelegate.swift                # App lifecycle
-│   ├── Story.swift                      # Data model (NSCoding-conformant)
-│   ├── Feed.swift                       # RSS feed source model (name, URL, enabled)
-│   ├── ArticleNote.swift                # Article note data model
-│   ├── ContentFilter.swift              # Content filter data model (keyword, action)
-│   ├── FeedManager.swift                # Feed source management singleton (CRUD + persistence)
-│   ├── FeedListViewController.swift     # Feed manager UI (add/remove/toggle/reorder feeds)
-│   ├── FeedHealthManager.swift          # Feed reliability tracking (uptime, response times, reports)
-│   ├── FeedPerformanceAnalyzer.swift    # Feed performance profiling (parse times, sizes, bottlenecks)
-│   ├── FeedUpdateScheduler.swift        # Scheduled feed refresh management
-│   ├── FeedBundleManager.swift          # Bundled feed collections (curated topic packs)
-│   ├── FeedMergeManager.swift           # Multi-feed story merging and conflict resolution
-│   ├── FeedCategoryManager.swift        # Feed categorization and grouping
-│   ├── FeedDiscoveryManager.swift       # Auto-discover RSS feeds from website URLs
-│   ├── FeedAutomationEngine.swift       # Rule-based feed automation (auto-bookmark, auto-tag, etc.)
-│   ├── BookmarkManager.swift            # Bookmark persistence & management (singleton)
-│   ├── ReadStatusManager.swift          # Read/unread status tracking (UserDefaults, singleton)
-│   ├── ReadingStatsManager.swift        # Reading analytics engine (events, streaks, stats)
-│   ├── ReadingHistoryManager.swift      # Rich reading history with timestamps and sessions
-│   ├── ReadingSessionTracker.swift      # Per-session reading time tracking
-│   ├── ReadingStreakTracker.swift        # Reading streak calculation and persistence
-│   ├── ReadingGoalsManager.swift        # Configurable reading goals and progress tracking
-│   ├── ReadingAchievementsManager.swift # Gamification achievements for reading milestones
-│   ├── ReadingQueueManager.swift        # Read-later queue with priority ordering
-│   ├── ReadingJournalManager.swift      # Auto-generated daily reading journal with Markdown export
-│   ├── ReadingStatsViewController.swift # Reading stats dashboard UI
-│   ├── ArticleNotesManager.swift        # Article note CRUD and persistence
-│   ├── ArticleHighlight.swift           # Article highlight data model
-│   ├── ArticleHighlightsManager.swift   # Text highlighting and annotation
-│   ├── ArticleTagManager.swift          # Article tagging and organization
-│   ├── ArticleSummarizer.swift          # Auto-generate article summaries
-│   ├── ArticleSimilarityManager.swift   # Find similar articles across feeds
-│   ├── ArticleSentimentAnalyzer.swift   # Sentiment analysis for article content
-│   ├── ArticleReadabilityAnalyzer.swift # Readability scoring (Flesch-Kincaid, etc.)
-│   ├── ArticleTrendDetector.swift       # Detect trending topics across feeds
-│   ├── ArticleVersionTracker.swift      # Track article content changes over time
-│   ├── ArticleCitationGenerator.swift   # Generate citations in various formats
-│   ├── ArticleDeduplicator.swift        # Cross-feed duplicate article detection
-│   ├── ArticleRecommendationEngine.swift # Personalized article recommendations
-│   ├── ContentFilterManager.swift       # Content filter management with JSON import/export
-│   ├── SmartFeedManager.swift           # Keyword-based auto-matching smart feeds
-│   ├── KeywordAlert.swift               # Keyword alert data model
-│   ├── KeywordAlertManager.swift        # Alert notifications for keyword matches
-│   ├── DigestGenerator.swift            # Generate periodic digest summaries
-│   ├── TextAnalyzer.swift               # Text analysis utilities (word count, reading time)
-│   ├── URLValidator.swift               # URL validation and sanitization
-│   ├── ShareManager.swift               # Sharing utilities (system share sheet)
-│   ├── OPMLManager.swift                # OPML import/export for feed subscriptions
-│   ├── OfflineCacheManager.swift        # Full-article offline caching with size management
-│   ├── OfflineArticlesViewController.swift  # Offline cached articles browsing UI
-│   ├── ImageCache.swift                 # NSCache-based in-memory image cache
-│   ├── RSSFeedParser.swift              # Concurrent multi-feed RSS parser with deduplication
-│   ├── BookmarksViewController.swift    # Saved stories screen with swipe-to-delete
-│   ├── StoryTableViewController.swift   # Main feed list + XML parsing
-│   ├── StoryTableViewCell.swift         # Custom table view cell
-│   ├── StoryViewController.swift        # Story detail view + bookmark/share
-│   ├── NoInternetFoundViewController.swift  # Offline fallback UI
-│   ├── Reachability.swift               # Network connectivity checker
-│   ├── Assets.xcassets/                 # App icons and images
-│   └── Base.lproj/
-│       ├── Main.storyboard              # Main UI layout
-│       └── LaunchScreen.storyboard      # Launch screen
-├── FeedReader.xcodeproj/                # Xcode project
-├── Sources/FeedReaderCore/              # Swift Package for reusable RSS functionality
-│   ├── RSSParser.swift                  # Standalone RSS parser
-│   ├── RSSStory.swift                   # Story model with URL validation & HTML sanitization
-│   ├── FeedItem.swift                   # Feed source model with 10 built-in presets
-│   └── NetworkReachability.swift        # Network connectivity check
-├── Tests/FeedReaderCoreTests/           # Swift Package tests
-└── FeedReaderTests/                     # 1941 test cases across 48 test suites
-```
+FeedReader is organized into functional domains, each with dedicated managers, engines, and view controllers:
 
-## How It Works
-
-1. **Launch** — App checks network connectivity via `Reachability`
-2. **Online** — Fetches RSS feed asynchronously from BBC News, parses XML with `XMLParser`
-3. **Offline** — Loads previously cached stories from disk via `NSKeyedUnarchiver`
-4. **No Data** — Shows a friendly "no internet" screen with retry button
-5. **Browsing** — Stories displayed in a `UITableView` with title, description, and thumbnail
-6. **Detail** — Tapping a story shows full description with a link to the original article
+```
+FeedReader/                              162 Swift modules
+├── Core
+│   ├── AppDelegate.swift                App lifecycle
+│   ├── Story.swift                      Data model (NSCoding)
+│   ├── Feed.swift                       Feed source model
+│   ├── ImageCache.swift                 NSCache-based image caching
+│   ├── Reachability.swift               Network connectivity
+│   └── RSSFeedParser.swift              Multi-feed parser with deduplication
+│
+├── Feed Management (18 modules)
+│   ├── FeedManager.swift                Feed CRUD + persistence
+│   ├── FeedDiscoveryManager.swift       Auto-discover feeds from URLs
+│   ├── FeedCategoryManager.swift        Feed grouping and categories
+│   ├── FeedBundleManager.swift          Curated feed packs
+│   ├── FeedMergeManager.swift           Multi-feed deduplication
+│   ├── FeedAutomationEngine.swift       Rule-based feed automation
+│   ├── FeedHealthManager.swift          Reliability and uptime tracking
+│   ├── FeedPerformanceAnalyzer.swift    Parse/fetch profiling
+│   └── ...                              Scheduler, backup, migration, etc.
+│
+├── Reading Intelligence (20 modules)
+│   ├── ReadingStatsManager.swift        Analytics engine
+│   ├── ReadingStreakTracker.swift        Streak calculation
+│   ├── ReadingGoalsManager.swift        Configurable targets
+│   ├── ReadingAchievementsManager.swift Gamification
+│   ├── ReadingJournalManager.swift      Auto-generated journal
+│   ├── VocabularyFrequencyProfiler.swift Word extraction + mastery
+│   └── ...                              Pace, heatmap, bingo, year-in-review, etc.
+│
+├── Article Analysis (25 modules)
+│   ├── ArticleSentimentAnalyzer.swift   Sentiment scoring
+│   ├── ArticleReadabilityAnalyzer.swift Flesch-Kincaid metrics
+│   ├── ArticleSummarizer.swift          Auto-summarization
+│   ├── ArticleRecommendationEngine.swift Personalized suggestions
+│   ├── ArticleTrendDetector.swift       Trending topic detection
+│   ├── ArticleCrossReferenceEngine.swift Cross-article connections
+│   └── ...                              Geo-tagging, fact-check, citations, etc.
+│
+├── Autonomous Engines (15 modules)
+│   ├── FeedPredictiveAlerts.swift       Anticipate interesting content
+│   ├── FeedCuriosityEngine.swift        Surface surprising content
+│   ├── FeedSerendipityEngine.swift      Unexpected discoveries
+│   ├── FeedKnowledgeGraph.swift         Entity-topic graph
+│   ├── FeedNarrativeTracker.swift       Follow developing stories
+│   ├── FeedAutopilot.swift              Autonomous curation
+│   └── ...                              Burnout, signal boost, credibility, etc.
+│
+├── UI (8 view controllers)
+│   ├── StoryTableViewController.swift   Main feed list
+│   ├── StoryViewController.swift        Article detail
+│   ├── BookmarksViewController.swift    Saved stories
+│   ├── FeedListViewController.swift     Feed manager
+│   ├── ReadingStatsViewController.swift Analytics dashboard
+│   └── ...                              Offline, health, vocabulary, word cloud
+│
+├── Sources/FeedReaderCore/              Swift Package (reusable core)
+│   ├── RSSParser.swift                  Standalone RSS parser
+│   ├── RSSStory.swift                   Story model + URL validation
+│   ├── FeedItem.swift                   Feed presets
+│   └── NetworkReachability.swift        Connectivity check
+│
+└── Tests/                               1,941 tests across 48 suites
+```
 
 ## Swift Package
 
-FeedReader's core RSS parsing and feed management functionality is available as a Swift Package (`FeedReaderCore`). Use it in your own iOS apps to add RSS reading capabilities without the UI layer.
+FeedReader's core RSS parsing functionality is available as a Swift Package (`FeedReaderCore`).
 
-### Installation via Swift Package Manager
+### Installation
 
-Add FeedReader to your project's `Package.swift`:
+**Swift Package Manager:**
 
 ```swift
+// Package.swift
 dependencies: [
     .package(url: "https://github.com/sauravbhattacharya001/FeedReader.git", from: "2.0.0")
 ]
 ```
 
-Or in Xcode: **File → Add Package Dependencies → Enter the repository URL.**
+**Xcode:** File → Add Package Dependencies → paste the repository URL.
 
-### Package API
+### Usage
 
 ```swift
 import FeedReaderCore
 
 // Parse an RSS feed
 let parser = RSSParser()
-let stories = parser.parseData(xmlData)  // [RSSStory]
+let stories = parser.parseData(xmlData)
 
-// Check story properties
 for story in stories {
     print(story.title)      // Story title
     print(story.body)       // HTML-stripped description
@@ -220,27 +280,27 @@ for story in stories {
     print(story.imagePath)  // Optional thumbnail URL
 }
 
-// Use built-in feed presets
-let feeds = FeedItem.presets  // BBC, NPR, TechCrunch, etc.
+// Built-in feed presets
+let feeds = FeedItem.presets  // BBC, NPR, TechCrunch, Ars Technica, ...
 
-// Check network reachability
+// URL safety validation
+RSSStory.isSafeURL("https://example.com")    // true
+RSSStory.isSafeURL("javascript:alert(1)")    // false
+
+// Network reachability
 if NetworkReachability.isConnected() {
     // Fetch feeds
 }
-
-// Validate URLs safely
-RSSStory.isSafeURL("https://example.com")  // true
-RSSStory.isSafeURL("javascript:alert(1)")  // false
 ```
 
-### Package Components
+### Package API
 
 | Type | Description |
-|---|---|
-| `RSSParser` | XML-based RSS feed parser with concurrent multi-feed support and deduplication |
+|------|-------------|
+| `RSSParser` | XML-based RSS parser with concurrent multi-feed support and deduplication |
 | `RSSStory` | Parsed story model with URL validation and HTML sanitization |
 | `FeedItem` | Feed source model with 10 built-in presets |
-| `NetworkReachability` | Network connectivity check via SystemConfiguration |
+| `NetworkReachability` | Connectivity check via SystemConfiguration |
 
 ## Getting Started
 
@@ -253,124 +313,90 @@ RSSStory.isSafeURL("javascript:alert(1)")  // false
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/sauravbhattacharya001/FeedReader.git
-
-# Open in Xcode
 cd FeedReader
 open FeedReader.xcodeproj
 ```
 
-### Running the App
+### Running
 
-1. Open `FeedReader.xcodeproj` in Xcode
-2. Select an iPhone simulator (iPhone 5S or later)
-3. Press `⌘R` to build and run
+1. Select an iPhone simulator (iPhone 5S or later)
+2. Press **⌘R** to build and run
 
-### Running Tests
+### How It Works
 
-1. Open `FeedReader.xcodeproj` in Xcode
-2. Press `⌘U` to run all tests, or:
-3. Open the **Test Navigator** (⌘6) and run individual test suites
+1. **Launch** — Checks network connectivity via `Reachability`
+2. **Online** — Fetches RSS feeds asynchronously, parses XML, deduplicates across sources
+3. **Offline** — Loads cached stories from disk via `NSKeyedUnarchiver`
+4. **No Data** — Shows a friendly "no internet" screen with retry button
+5. **Browse** — Stories in a `UITableView` with title, description, and async thumbnail
+6. **Detail** — Full description with link to original article in Safari
 
-## Test Cases
+## Test Suite
 
-| Scenario | Expected Behavior |
-|---|---|
-| Launch with internet | Fetches and displays latest BBC World News feed |
-| Launch without internet (first run) | Shows "No Internet" screen with retry button |
-| Launch without internet (cached data) | Displays previously cached stories |
-| Lose connection while using app | Continues using cached data |
-| Tap a story | Shows detail view with title, description, and link |
-| Tap "Open Link" in detail view | Opens full article in Safari |
-| Retry button (connection restored) | Dismisses offline screen, loads feed |
-| Swipe right on a story | Adds/removes bookmark with orange indicator |
-| Tap bookmark icon in nav bar | Opens bookmarks screen with saved stories |
-| Tap ★ in story detail | Toggles bookmark with haptic feedback and toast |
-| Swipe to delete in bookmarks | Removes individual bookmark |
-| Clear All in bookmarks | Removes all bookmarks after confirmation |
-| Tap 📡 antenna icon in nav bar | Opens feed manager with your feeds and available presets |
-| Tap a feed in "Your Feeds" | Toggles feed on/off (green checkmark = active) |
-| Swipe to delete a feed | Removes feed from your list |
-| Tap a feed in "Available Feeds" | Adds preset feed to your list |
-| Tap + button in feed manager | Opens dialog to add custom RSS feed URL |
-| Tap Edit in feed manager | Enables drag-to-reorder for feed priority |
-| Enable multiple feeds | Stories from all active feeds are merged (duplicates removed) |
-| Tap a story in the list | Story is marked as read (blue dot disappears, text dims slightly) |
-| Swipe left on a story | Toggle read/unread status with envelope icon |
-| Tap ✓ checkmark icon in nav bar | Confirms and marks all stories as read |
-| Select "Unread" filter segment | Shows only unread stories |
-| Select "Read" filter segment | Shows only previously read stories |
-| Select "All" filter segment | Shows all stories regardless of read status |
-| Nav title shows unread count | Displays "(X unread)" when unread stories exist |
-| Tap 📊 chart icon in nav bar | Opens reading statistics dashboard |
-| Reading stats — overview | Shows total/today/week/month counts, daily average, bookmarks |
-| Reading stats — streak | Shows current streak, longest streak, motivational message |
-| Reading stats — hourly chart | Bar chart showing reading activity by hour (0-23) |
-| Reading stats — feed breakdown | Per-feed progress bars sorted by stories read |
-| Reading stats — clear all | Confirmation dialog, permanently deletes all history |
-| Reading stats — empty state | Friendly prompt when no reading data exists |
-| Add note on article | Note saved with timestamp, persists across sessions |
-| Edit/delete article note | Note updated or removed from persistent storage |
-| Create content filter | Keyword filter highlights or hides matching stories |
-| Import/export filters (JSON) | Filters round-trip through JSON import/export |
-| Feed health dashboard | Shows per-feed uptime %, response times, failure history |
-| Feed health report | Generates aggregate health summary across all feeds |
-| Save article offline | Full article cached for reading without internet |
-| Browse offline articles | Cached articles accessible from dedicated screen |
-| Clear offline cache | All cached articles removed after confirmation |
-| Import OPML file | Feed subscriptions imported from standard OPML format |
-| Export OPML file | Current feeds exported as valid OPML for other readers |
-| Create smart feed | Keyword filter auto-matches stories across all feeds |
-| Smart feed match modes | AND mode requires all keywords; OR matches any keyword |
-| Smart feed search scopes | Search title only, description only, or both |
+**1,941 test cases** across 48 suites covering:
+
+- RSS/XML parsing edge cases and malformed feeds
+- Offline caching roundtrips and data integrity
+- Feed management CRUD operations
+- Reading statistics accuracy
+- Recommendation engine relevance
+- Content filter matching logic
+- OPML import/export fidelity
+- Security: XXE prevention, URL validation, HTML sanitization
+- Smart feed keyword matching (AND/OR modes)
+- Autonomous engine behavior
+
+Run all tests: **⌘U** in Xcode, or use the Test Navigator (⌘6) for individual suites.
 
 ## Tech Stack
 
 | Component | Technology |
-|---|---|
-| **Language** | Swift 3 |
-| **UI Framework** | UIKit (Storyboard-based) |
+|-----------|------------|
+| **Language** | Swift 3+ |
+| **UI** | UIKit (Storyboard-based) |
 | **RSS Parsing** | Foundation `XMLParser` |
 | **Networking** | `URLSession` (async) |
-| **Persistence** | `NSCoding` + `NSKeyedArchiver` |
-| **Image Caching** | `NSCache` |
+| **Persistence** | `NSCoding` + `NSKeyedArchiver`, `NSSecureCoding` |
+| **Image Cache** | `NSCache` |
 | **Network Detection** | `SystemConfiguration` / `SCNetworkReachability` |
+| **Logging** | `os_log` via `FeedReaderLogger` |
+| **CI/CD** | GitHub Actions (build, test, CodeQL, Pages, Docker) |
 
-## Customizing Feed Sources
+## Customizing Feeds
 
 ### In-App (Recommended)
 
-Tap the 📡 antenna icon in the navigation bar to open the Feed Manager, where you can:
+Tap the 📡 antenna icon in the navigation bar to open the Feed Manager:
 
-- **Toggle** feeds on/off by tapping them
-- **Add presets** from 10 built-in feeds (BBC, NPR, TechCrunch, Ars Technica, Hacker News, The Verge, Reuters)
-- **Add custom feeds** by tapping + and entering any RSS/Atom feed URL
+- **Toggle** feeds on/off by tapping
+- **Add presets** from 10 built-in feeds
+- **Add custom feeds** by tapping + and entering any RSS/Atom URL
 - **Remove** feeds by swiping left
-- **Reorder** feeds by tapping Edit and dragging
+- **Reorder** by tapping Edit and dragging
 
 ### Programmatically
 
-To change the default first-launch feed, edit the presets in `Feed.swift`:
+Edit the presets in `Feed.swift`:
 
 ```swift
-// In Feed.swift, modify the presets array:
 static let presets: [Feed] = [
     Feed(name: "BBC World News", url: "https://feeds.bbci.co.uk/news/world/rss.xml", isEnabled: true),
-    Feed(name: "Your Custom Feed", url: "https://yoursite.com/rss.xml", isEnabled: false),
+    Feed(name: "Your Feed", url: "https://yoursite.com/rss.xml", isEnabled: false),
     // ...
 ]
 ```
 
 ## Documentation
 
-Full documentation is available at **[sauravbhattacharya001.github.io/FeedReader](https://sauravbhattacharya001.github.io/FeedReader/)**:
+Full docs at **[sauravbhattacharya001.github.io/FeedReader](https://sauravbhattacharya001.github.io/FeedReader/)**:
 
 - [User Guide](https://sauravbhattacharya001.github.io/FeedReader/guide.html) — Getting started and daily usage
 - [Architecture](https://sauravbhattacharya001.github.io/FeedReader/architecture.html) — Component design and data flow
-- [API Reference](https://sauravbhattacharya001.github.io/FeedReader/api.html) — Swift Package API docs
-- [Smart Features](https://sauravbhattacharya001.github.io/FeedReader/smart-features.html) — Smart feeds, recommendations, and automation
-- [Reading Analytics](https://sauravbhattacharya001.github.io/FeedReader/reading-analytics.html) — Stats, streaks, and journal
+- [API Reference](https://sauravbhattacharya001.github.io/FeedReader/api.html) — Swift Package API
+- [Smart Features](https://sauravbhattacharya001.github.io/FeedReader/smart-features.html) — Smart feeds, recommendations, automation
+- [Reading Analytics](https://sauravbhattacharya001.github.io/FeedReader/reading-analytics.html) — Stats, streaks, journal
+- [Autonomous Intelligence](https://sauravbhattacharya001.github.io/FeedReader/autonomous-intelligence.html) — Self-managing engines
 
 ## Contributing
 
@@ -379,6 +405,8 @@ Full documentation is available at **[sauravbhattacharya001.github.io/FeedReader
 3. Commit your changes (`git commit -am 'Add my feature'`)
 4. Push to the branch (`git push origin feature/my-feature`)
 5. Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
