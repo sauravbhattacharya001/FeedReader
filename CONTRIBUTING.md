@@ -532,6 +532,76 @@ The entire autonomous intelligence suite lacks tests:
 
 Pick any of these and add a test file following the `FeedReaderTests/` naming pattern (e.g., `FeedBurnoutDetectorTests.swift`). Even 5–10 focused tests per module dramatically improves confidence.
 
+## Performance Profiling
+
+FeedReader handles large feed lists, image caching, and XML parsing on mobile devices with constrained resources. If your change touches hot paths, profile it.
+
+### When to Profile
+
+- **Always profile** changes to: `RSSFeedParser`, `ImageCache`, `FeedManager.refreshAll()`, `SmartFeedManager`, `FeedKnowledgeGraph`, any batch-processing logic
+- **Consider profiling** changes that add: new timers/observers, collection iterations over feed items, CoreData/NSCoding operations
+
+### Instruments Quick Start
+
+```bash
+# 1. Build for profiling (Release config, optimizations enabled)
+xcodebuild build-for-testing \
+  -project FeedReader.xcodeproj \
+  -scheme FeedReader \
+  -configuration Release \
+  -destination 'platform=iOS Simulator,name=iPhone 15'
+
+# 2. Launch Instruments from command line
+open -a Instruments
+```
+
+**Recommended Instruments templates:**
+
+| Scenario | Template | What to Look For |
+|----------|----------|------------------|
+| Feed refresh feels slow | Time Profiler | Hot functions in `RSSFeedParser.parse()`, redundant `NSKeyedArchiver` calls |
+| Memory grows unbounded | Allocations | Leaked `Story` objects, unbounded `ImageCache` growth |
+| Scrolling stutters | Core Animation | Off-main-thread UIKit calls, excessive `layoutSubviews` |
+| Battery drain | Energy Log | Background fetch frequency, network keep-alive |
+| Disk I/O spikes | File Activity | Synchronous writes on main thread, excessive cache flushes |
+
+### Memory Budget Guidelines
+
+- **Image cache**: Should not exceed 50MB resident (configured via `NSCache.totalCostLimit`)
+- **Feed model objects**: ~2KB per `Story`, ~500 bytes per `Feed` — budget for 10K stories max in memory
+- **Knowledge graph**: Nodes should be lazily loaded; full graph materialization only during background processing
+- **Parsing buffers**: XML parser should stream, never load entire feed XML into a single `String`
+
+### SPM Benchmark Tests
+
+For algorithmic changes to the core library, add benchmark assertions:
+
+```swift
+import XCTest
+
+func testKeywordExtractionPerformance() {
+    let longArticle = String(repeating: "sample text with various keywords ", count: 1000)
+    measure {
+        _ = KeywordExtractor.extract(from: longArticle, maxKeywords: 10)
+    }
+}
+
+func testFeedParsingPerformance() throws {
+    let largeFeed = try loadFixture("large_feed_500_items.xml")
+    measure {
+        _ = RSSParser.parse(data: largeFeed)
+    }
+}
+```
+
+**Performance regression rule**: If your `measure {}` block is >20% slower than the baseline on the same hardware, investigate before submitting. Document any intentional trade-offs (e.g., "parsing is 15% slower but memory usage drops 40%").
+
+### Network Performance
+
+- Use `URLSession` metrics (`task.metrics`) to verify no redundant redirects or TLS renegotiations
+- Feed refresh should use conditional GET (`If-Modified-Since` / `ETag`) — verify with Charles Proxy or `nscurl`
+- Image downloads must respect `Cache-Control` headers; don't re-download cached images
+
 ## Debugging Common Issues
 
 ### Build Failures
