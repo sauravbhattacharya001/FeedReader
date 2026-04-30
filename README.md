@@ -14,6 +14,7 @@
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/pages.yml/badge.svg" alt="Pages"></a>
   <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/docker.yml/badge.svg" alt="Docker"></a>
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/stale.yml"><img src="https://github.com/sauravbhattacharya001/FeedReader/actions/workflows/stale.yml/badge.svg" alt="Stale Issues"></a>
   <img src="https://img.shields.io/badge/tests-1941-brightgreen?logo=swift" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-enabled-brightgreen?logo=swift" alt="Code Coverage">
   <a href="https://codecov.io/gh/sauravbhattacharya001/FeedReader"><img src="https://codecov.io/gh/sauravbhattacharya001/FeedReader/graph/badge.svg" alt="Codecov"></a>
@@ -22,6 +23,7 @@
   <img src="https://img.shields.io/badge/platform-iOS-blue?logo=apple" alt="Platform">
   <img src="https://img.shields.io/badge/swift-3.0-orange?logo=swift" alt="Swift">
   <img src="https://img.shields.io/badge/Xcode-8+-blue?logo=xcode" alt="Xcode">
+  <img src="https://img.shields.io/badge/SPM-compatible-brightgreen?logo=swift&logoColor=white" alt="Swift Package Manager">
   <br>
   <!-- Repo metadata -->
   <a href="https://github.com/sauravbhattacharya001/FeedReader/releases/latest"><img src="https://img.shields.io/github/v/release/sauravbhattacharya001/FeedReader?include_prereleases&sort=semver" alt="Release"></a>
@@ -34,6 +36,8 @@
   <img src="https://img.shields.io/github/issues/sauravbhattacharya001/FeedReader" alt="Open Issues">
   <img src="https://img.shields.io/github/issues-pr/sauravbhattacharya001/FeedReader" alt="Open PRs">
   <img src="https://img.shields.io/github/stars/sauravbhattacharya001/FeedReader?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/contributors/sauravbhattacharya001/FeedReader" alt="Contributors">
+  <a href="https://github.com/sauravbhattacharya001/FeedReader/network/dependabot"><img src="https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot" alt="Dependabot"></a>
 </p>
 
 ---
