@@ -28,3 +28,18 @@
 
 "security":
   - "(security|vulnerability|cve|injection|xss|unsafe)"
+
+"good first issue":
+  - "(good first issue|beginner|easy fix|trivial|simple|starter|low.hanging)"
+
+"priority/high":
+  - "(critical|urgent|blocker|crash|data.loss|security|breaking)"
+
+"priority/low":
+  - "(minor|cosmetic|nit|nice.to.have|low.priority|someday)"
+
+"dependencies":
+  - "(dependency|dependencies|upgrade|update|bump|version|outdated)"
+
+"testing":
+  - "(test|testing|coverage|unit test|integration test|xctest)"

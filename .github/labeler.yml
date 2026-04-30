@@ -66,3 +66,21 @@
       - any-glob-to-any-file:
           - "FeedReader.xcodeproj/**"
           - "FeedReader/Info.plist"
+
+# Autonomous intelligence modules
+"autonomous":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Sources/FeedReaderCore/Autonomous/**"
+          - "FeedReader/*Predictor*.swift"
+          - "FeedReader/*Engine*.swift"
+          - "FeedReader/*Detector*.swift"
+          - "FeedReader/*Tracker*.swift"
+
+# Dependencies
+"dependencies":
+  - changed-files:
+      - any-glob-to-any-file:
+          - "Package.resolved"
+          - "Podfile"
+          - "Podfile.lock"
