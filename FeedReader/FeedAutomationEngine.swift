@@ -646,6 +646,11 @@ class FeedAutomationEngine {
     /// Set `replace` to true to clear existing rules first.
     @discardableResult
     func importRules(from data: Data, replace: Bool = false) -> Int {
+        // Size guard: reject input larger than 10 MB to prevent OOM
+        // on adversarial or accidentally huge payloads (CWE-400).
+        // Mirrors the guard on the String overload.
+        guard data.count <= 10_485_760 else { return 0 }
+
         let decoder = JSONCoding.iso8601Decoder
         guard let imported = try? decoder.decode([AutomationRule].self, from: data) else {
             return 0

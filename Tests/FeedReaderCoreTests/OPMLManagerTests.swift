@@ -135,4 +135,134 @@ final class OPMLManagerTests: XCTestCase {
             XCTAssertEqual(orig.url, imp.url)
         }
     }
+
+    // MARK: - SSRF Protection (CWE-918)
+
+    func testImportRejectsFileScheme() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Evil" xmlUrl="file:///etc/passwd" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportRejectsJavascriptScheme() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="XSS" xmlUrl="javascript:alert(1)" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportRejectsLocalhostURL() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Local" xmlUrl="http://localhost:8080/feed" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportRejectsPrivateIPURL() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Internal" xmlUrl="http://192.168.1.1/feed" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportRejectsCloudMetadataURL() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Metadata" xmlUrl="http://169.254.169.254/latest/meta-data/" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportRejectsLinkLocalIPv6() {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="IPv6" xmlUrl="http://[::1]/feed" />
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard let opmlError = error as? OPMLError else { return XCTFail() }
+            if case .noFeedsFound = opmlError {} else { XCTFail("Expected noFeedsFound") }
+        }
+    }
+
+    func testImportFiltersMixedSafeAndUnsafeURLs() throws {
+        let opml = """
+        <?xml version="1.0"?>
+        <opml version="2.0">
+          <body>
+            <outline text="Good" xmlUrl="https://example.com/feed" />
+            <outline text="Evil" xmlUrl="http://10.0.0.1/internal" />
+            <outline text="Also Good" xmlUrl="https://news.ycombinator.com/rss" />
+          </body>
+        </opml>
+        """
+        let feeds = try OPMLManager.importOPML(from: opml)
+        XCTAssertEqual(feeds.count, 2)
+        XCTAssertEqual(feeds[0].name, "Good")
+        XCTAssertEqual(feeds[1].name, "Also Good")
+    }
+
+    func testIsSafeFeedURLAcceptsPublicHTTPS() {
+        XCTAssertTrue(OPMLManager.isSafeFeedURL("https://example.com/feed"))
+        XCTAssertTrue(OPMLManager.isSafeFeedURL("http://news.ycombinator.com/rss"))
+    }
+
+    func testIsSafeFeedURLRejectsUnsafeSchemes() {
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("ftp://example.com/feed"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("javascript:void(0)"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("data:text/xml,<rss/>"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("file:///etc/passwd"))
+    }
+
+    func testIsSafeFeedURLRejectsPrivateNetworks() {
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://127.0.0.1/feed"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://10.0.0.1/feed"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://172.16.0.1/feed"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://192.168.0.1/feed"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://169.254.169.254/meta"))
+        XCTAssertFalse(OPMLManager.isSafeFeedURL("http://localhost/feed"))
+    }
 }

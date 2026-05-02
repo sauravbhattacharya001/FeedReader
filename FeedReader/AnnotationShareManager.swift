@@ -165,9 +165,20 @@ class AnnotationShareManager {
 
     // MARK: - Decode (Preview)
 
+    /// Maximum share code size (1 MB of base64 ≈ 750 KB decoded). Prevents
+    /// memory exhaustion from oversized share codes — a crafted multi-MB
+    /// base64 string could allocate large intermediate buffers during
+    /// decoding and JSON parsing (CWE-400).
+    static let maxShareCodeSize = 1_048_576
+
     /// Decode a share code into a bundle without importing. Useful for preview.
     func decodeShareCode(_ code: String) throws -> AnnotationBundle {
         let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Guard: reject oversized share codes to prevent memory exhaustion
+        guard trimmed.utf8.count <= AnnotationShareManager.maxShareCodeSize else {
+            throw AnnotationShareError.invalidShareCode
+        }
 
         let payload: String
         if trimmed.hasPrefix(AnnotationBundle.magicPrefix) {

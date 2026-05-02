@@ -138,6 +138,80 @@ public final class OPMLManager {
         return try importOPML(from: data)
     }
 
+    // MARK: - URL Validation (SSRF Protection)
+
+    /// Allowed URL schemes for imported feeds.
+    private static let allowedSchemes: Set<String> = ["https", "http"]
+
+    /// Validate that an imported feed URL is safe for network access.
+    /// Checks scheme (http/https only), host presence, and rejects
+    /// private/reserved/loopback addresses to prevent SSRF (CWE-918).
+    ///
+    /// Mirrors URLValidator logic from the iOS target for use in the
+    /// platform-independent FeedReaderCore SPM library.
+    static func isSafeFeedURL(_ urlString: String) -> Bool {
+        guard let url = URL(string: urlString),
+              let scheme = url.scheme?.lowercased(),
+              allowedSchemes.contains(scheme),
+              let host = url.host, !host.isEmpty else {
+            return false
+        }
+        return !isPrivateOrReserved(host: host)
+    }
+
+    /// Check if a hostname is private, loopback, link-local, or reserved.
+    private static func isPrivateOrReserved(host: String) -> Bool {
+        let lower = host.lowercased()
+
+        // Special hostnames
+        if lower == "localhost"
+            || lower.hasSuffix(".localhost")
+            || lower.hasSuffix(".local")
+            || lower.hasSuffix(".internal")
+            || lower == "metadata.google.internal" {
+            return true
+        }
+
+        // Bracket-stripped IPv6
+        let cleaned: String
+        if lower.hasPrefix("[") && lower.hasSuffix("]") {
+            cleaned = String(lower.dropFirst().dropLast())
+        } else {
+            cleaned = lower
+        }
+
+        // IPv6 loopback
+        if cleaned == "::1" || cleaned == "0:0:0:0:0:0:0:1" { return true }
+        // fe80::/10 link-local
+        if cleaned.hasPrefix("fe8") || cleaned.hasPrefix("fe9")
+            || cleaned.hasPrefix("fea") || cleaned.hasPrefix("feb") { return true }
+        // fc00::/7 unique-local
+        if cleaned.hasPrefix("fd") || cleaned.hasPrefix("fc") { return true }
+        // IPv4-mapped IPv6
+        if cleaned.hasPrefix("::ffff:") {
+            return isPrivateIPv4(String(cleaned.dropFirst(7)))
+        }
+
+        return isPrivateIPv4(cleaned)
+    }
+
+    /// Parse and check an IPv4 address against private/reserved ranges.
+    private static func isPrivateIPv4(_ ip: String) -> Bool {
+        let parts = ip.split(separator: ".").compactMap { UInt8($0) }
+        guard parts.count == 4 else { return false }
+        let (a, b, _, _) = (parts[0], parts[1], parts[2], parts[3])
+
+        if a == 127 { return true }            // loopback
+        if a == 10 { return true }             // 10.0.0.0/8
+        if a == 172 && (b >= 16 && b <= 31) { return true } // 172.16.0.0/12
+        if a == 192 && b == 168 { return true } // 192.168.0.0/16
+        if a == 169 && b == 254 { return true } // link-local + cloud metadata
+        if a == 100 && (b >= 64 && b <= 127) { return true } // CGN
+        if a == 0 { return true }              // "this" network
+        if a == 255 { return true }            // broadcast
+        return false
+    }
+
     // MARK: - Helpers
 
     /// Delegates to `TextUtilities.escapeXML` for single-pass XML escaping.
@@ -169,6 +243,14 @@ private class OPMLParseDelegate: NSObject, XMLParserDelegate {
         }
 
         let trimmedURL = xmlUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Validate imported feed URLs to prevent SSRF via malicious OPML
+        // files containing file://, javascript://, or private-network URLs
+        // (e.g. 169.254.169.254, 10.x.x.x). Without this check, a crafted
+        // OPML could inject internal-network feeds that the app would then
+        // fetch, leaking data or hitting cloud metadata endpoints (CWE-918).
+        guard OPMLManager.isSafeFeedURL(trimmedURL) else { return }
+
         let key = trimmedURL.lowercased()
         guard !seenURLs.contains(key) else { return }
         seenURLs.insert(key)
