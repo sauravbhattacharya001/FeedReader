@@ -153,10 +153,8 @@ class FeedListViewController: UITableViewController, UIDocumentPickerDelegate {
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
         alert.addAction(UIAlertAction(title: "Import", style: .default) { [weak self] _ in
             guard let urlString = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  let url = URL(string: urlString),
-                  let scheme = url.scheme?.lowercased(),
-                  (scheme == "https" || scheme == "http") else {
-                self?.showError("Please enter a valid https:// or http:// URL.")
+                  let url = URLValidator.validateFeedURL(urlString) else {
+                self?.showError("Please enter a valid, publicly-routable https:// or http:// URL.")
                 return
             }
             
@@ -167,7 +165,13 @@ class FeedListViewController: UITableViewController, UIDocumentPickerDelegate {
     }
     
     /// Download an OPML file and import it.
+    /// Caller must pre-validate the URL with URLValidator; this method
+    /// performs a defense-in-depth check to guard against SSRF (CWE-918).
     private func downloadAndImportOPML(_ url: URL) {
+        guard URLValidator.isSafe(url.absoluteString) else {
+            showError("URL blocked: private or reserved network address.")
+            return
+        }
         let task = URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
             DispatchQueue.main.async {
                 if let error = error {
