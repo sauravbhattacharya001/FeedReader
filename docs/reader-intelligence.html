@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reader Intelligence &amp; Productivity — FeedReader Documentation</title>
+  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="FeedReader's advanced reader intelligence: attention allocation, blind spot detection, editorial drift monitoring, cross-reference fact-checking, narrative arc tracking, predictive interest forecasting, contextual primers, content calendars, sentiment radar, reading autopilot, subscription ROI, and trend forecasting.">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="logo"><a href="index.html">📖 FeedReader</a></div>
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="guide.html">Getting Started</a></li>
+      <li><a href="api.html">API Reference</a></li>
+      <li><a href="architecture.html">Architecture</a></li>
+      <li><a href="smart-features.html">Smart Features</a></li>
+      <li><a href="content-management.html">Content Management</a></li>
+      <li><a href="reading-analytics.html">Reading Analytics</a></li>
+      <li><a href="learning-study.html">Learning &amp; Study</a></li>
+      <li><a href="autonomous-intelligence.html">Autonomous Intelligence</a></li>
+      <li><a href="feed-intelligence.html">Feed Intelligence</a></li>
+      <li><a href="reader-intelligence.html" class="active">Reader Intelligence</a></li>
+      <li><a href="changelog.html">Changelog</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <h1>🧭 Reader Intelligence &amp; Productivity</h1>
+    <p class="subtitle">
+      FeedReader's reader intelligence layer transforms passive RSS consumption into an active,
+      optimized information workflow. These 12 autonomous engines monitor your attention, detect
+      blind spots, fact-check claims across sources, track evolving narratives, predict your future
+      interests, and curate optimal reading sessions — all on-device with zero external API calls.
+    </p>
+
+    <div class="toc">
+      <h3>On This Page</h3>
+      <ul>
+        <li><a href="#overview">Overview &amp; Architecture</a></li>
+        <li><a href="#attention-allocator">Attention Allocator</a> — <code>FeedAttentionAllocator</code></li>
+        <li><a href="#blind-spot-detector">Blind Spot Detector</a> — <code>FeedBlindSpotDetector</code></li>
+        <li><a href="#editorial-drift">Editorial Drift Compass</a> — <code>FeedEditorialDriftCompass</code></li>
+        <li><a href="#cross-reference">Cross-Reference Engine</a> — <code>FeedCrossReferenceEngine</code></li>
+        <li><a href="#narrative-arc">Narrative Arc Tracker</a> — <code>FeedNarrativeArcTracker</code></li>
+        <li><a href="#predictive-interest">Predictive Interest Engine</a> — <code>FeedPredictiveInterestEngine</code></li>
+        <li><a href="#contextual-primer">Contextual Primer</a> — <code>FeedContextualPrimer</code></li>
+        <li><a href="#content-calendar">Content Calendar</a> — <code>FeedContentCalendar</code></li>
+        <li><a href="#sentiment-radar">Sentiment Radar</a> — <code>FeedSentimentRadar</code></li>
+        <li><a href="#reading-autopilot">Reading Autopilot</a> — <code>FeedReadingAutopilot</code></li>
+        <li><a href="#subscription-roi">Subscription ROI</a> — <code>FeedSubscriptionROI</code></li>
+        <li><a href="#trend-forecaster">Trend Forecaster</a> — <code>FeedTrendForecaster</code></li>
+      </ul>
+    </div>
+
+    <!-- Overview -->
+    <section id="overview">
+      <h2>📊 Overview &amp; Architecture</h2>
+      <p>
+        These 12 engines form the <strong>Reader Intelligence</strong> tier of FeedReader's autonomous
+        system. While the <a href="feed-intelligence.html">Feed Intelligence</a> layer focuses on
+        feed-level hygiene (diversity auditing, anomaly detection, credibility), Reader Intelligence
+        operates at the <em>reader</em> level — understanding how <strong>you</strong> read, what
+        you're missing, and how to optimize your information diet.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Engine</th>
+            <th>Lines</th>
+            <th>Purpose</th>
+            <th>Key Output</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>FeedAttentionAllocator</code></td>
+            <td>658</td>
+            <td>Attention budget management &amp; sink detection</td>
+            <td>Diversity score, attention efficiency, reallocation suggestions</td>
+          </tr>
+          <tr>
+            <td><code>FeedBlindSpotDetector</code></td>
+            <td>747</td>
+            <td>Systematic reading gap identification</td>
+            <td>Portfolio health score, blind spots with severity, insights</td>
+          </tr>
+          <tr>
+            <td><code>FeedEditorialDriftCompass</code></td>
+            <td>841</td>
+            <td>Feed editorial identity change detection</td>
+            <td>Drift score, drift type classification, predictions</td>
+          </tr>
+          <tr>
+            <td><code>FeedCrossReferenceEngine</code></td>
+            <td>1,421</td>
+            <td>Cross-article fact corroboration &amp; contradiction</td>
+            <td>Claim provenance, corroboration level, fleet reliability score</td>
+          </tr>
+          <tr>
+            <td><code>FeedNarrativeArcTracker</code></td>
+            <td>742</td>
+            <td>Developing storyline detection &amp; phase tracking</td>
+            <td>Narrative phase, turning points, convergence alerts</td>
+          </tr>
+          <tr>
+            <td><code>FeedPredictiveInterestEngine</code></td>
+            <td>850</td>
+            <td>Future interest forecasting before explicit search</td>
+            <td>Interest trajectories, surfaced articles, prediction accuracy</td>
+          </tr>
+          <tr>
+            <td><code>FeedContextualPrimer</code></td>
+            <td>521</td>
+            <td>Pre-reading preparation &amp; knowledge scaffolding</td>
+            <td>Readiness score, familiarity map, optimal reading order</td>
+          </tr>
+          <tr>
+            <td><code>FeedContentCalendar</code></td>
+            <td>622</td>
+            <td>Publication schedule detection &amp; gap alerts</td>
+            <td>Schedule pattern, day profiles, late/missing content alerts</td>
+          </tr>
+          <tr>
+            <td><code>FeedSentimentRadar</code></td>
+            <td>620</td>
+            <td>Lexicon-based sentiment tracking &amp; mood shift alerts</td>
+            <td>Article sentiment scores, feed summaries, shift alerts</td>
+          </tr>
+          <tr>
+            <td><code>FeedReadingAutopilot</code></td>
+            <td>818</td>
+            <td>Optimal reading session curation with time budgets</td>
+            <td>Curated playlist, diversity score, cognitive load curve</td>
+          </tr>
+          <tr>
+            <td><code>FeedSubscriptionROI</code></td>
+            <td>784</td>
+            <td>Per-feed return-on-investment analysis</td>
+            <td>ROI tiers, anti-patterns, prune/promote recommendations</td>
+          </tr>
+          <tr>
+            <td><code>FeedTrendForecaster</code></td>
+            <td>465</td>
+            <td>Emerging trend detection &amp; breakout prediction</td>
+            <td>Trend signals, momentum, breakout probability, alerts</td>
+          </tr>
+        </tbody>
+      </table>
+      <p><strong>Total:</strong> 9,089 lines of autonomous reader intelligence code.</p>
+    </section>
+
+    <!-- Attention Allocator -->
+    <section id="attention-allocator">
+      <h2>🎯 Attention Allocator</h2>
+      <p class="module-meta"><code>FeedAttentionAllocator</code> — 658 lines</p>
+      <p>
+        Tracks how your reading attention is distributed across topics and sources, detects
+        "attention sinks" (patterns that waste your time), manages per-topic budgets, and
+        proactively reallocates attention to maximize information diversity and value.
+      </p>
+
+      <h3>Attention Sink Types</h3>
+      <table>
+        <thead>
+          <tr><th>Sink</th><th>Enum Value</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🐰 Rabbit Hole</td><td><code>.rabbitHole</code></td><td>Deep-diving into a single topic excessively, losing sight of other areas</td></tr>
+          <tr><td>📱 Doom Scroll</td><td><code>.doomScroll</code></td><td>Consuming content from one source for too long without switching</td></tr>
+          <tr><td>🔁 Echo Chamber</td><td><code>.echoChamber</code></td><td>Reading the same perspective repeatedly, missing diverse viewpoints</td></tr>
+          <tr><td>✨ Novelty Trap</td><td><code>.noveltyTrap</code></td><td>Shallow scanning across many topics without meaningful engagement</td></tr>
+          <tr><td>😑 Obligation Read</td><td><code>.obligationRead</code></td><td>Spending time on content that provides low engagement or value</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Severity Levels</h3>
+      <p>
+        Each detected sink is classified by severity: <code>.mild</code>, <code>.moderate</code>,
+        <code>.significant</code>, or <code>.severe</code> — enabling graduated response from
+        gentle nudges to urgent reallocation suggestions.
+      </p>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> allocator = <span class="type">FeedAttentionAllocator</span>()
+
+<span class="keyword">let</span> report = allocator.analyze(
+    records: attentionRecords,
+    customBudgets: myBudgets     <span class="comment">// optional per-topic budgets</span>
+)
+
+print(report?.diversityScore)      <span class="comment">// 0-100 Shannon entropy-based</span>
+print(report?.attentionEfficiency) <span class="comment">// 0-100 engagement-weighted</span>
+print(report?.sinks)               <span class="comment">// detected attention traps</span>
+print(report?.reallocations)       <span class="comment">// suggested attention shifts</span>
+print(report?.overallVerdict)      <span class="comment">// human-readable summary</span></code></pre>
+
+      <h3>Key Outputs</h3>
+      <ul>
+        <li><strong>Diversity Score (0-100):</strong> Shannon entropy-based measurement of attention spread across topics</li>
+        <li><strong>Attention Efficiency (0-100):</strong> How well your reading time correlates with engagement</li>
+        <li><strong>Sink Detection:</strong> Automatic identification of wasteful reading patterns</li>
+        <li><strong>Reallocation Suggestions:</strong> Concrete recommendations to shift attention from over-served to neglected areas</li>
+      </ul>
+    </section>
+
+    <!-- Blind Spot Detector -->
+    <section id="blind-spot-detector">
+      <h2>🔍 Blind Spot Detector</h2>
+      <p class="module-meta"><code>FeedBlindSpotDetector</code> — 747 lines</p>
+      <p>
+        Identifies systematic gaps in your reading habits — topics and domains adjacent to your
+        interests but consistently missing from your feeds. Uses keyword co-occurrence analysis,
+        Shannon entropy per topic, and temporal pattern detection.
+      </p>
+
+      <h3>Blind Spot Categories</h3>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Enum Value</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🔗 Adjacent Gap</td><td><code>.adjacent</code></td><td>Topics frequently co-occurring with your interests but absent from your feeds</td></tr>
+          <tr><td>🔁 Echo Chamber</td><td><code>.echoChamber</code></td><td>Topics covered only from a single perspective</td></tr>
+          <tr><td>⏳ Temporal Decay</td><td><code>.temporal</code></td><td>Topics you once read about but have abandoned</td></tr>
+          <tr><td>📊 Depth Imbalance</td><td><code>.depthImbalance</code></td><td>Related topics covered at dramatically different depths</td></tr>
+          <tr><td>🆕 Emerging Miss</td><td><code>.emerging</code></td><td>Newly trending topics in your interest space that you haven't noticed</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> detector = <span class="type">FeedBlindSpotDetector</span>()
+
+detector.ingest(<span class="type">BlindSpotArticle</span>(
+    id: <span class="string">"1"</span>, title: <span class="string">"Intro to ML"</span>,
+    topics: [<span class="string">"machine learning"</span>, <span class="string">"neural networks"</span>],
+    feedURL: <span class="string">"https://blog.example.com/feed"</span>,
+    feedName: <span class="string">"Tech Blog"</span>,
+    readDate: Date(),
+    sourcePerspective: <span class="string">"tech"</span>))
+
+<span class="keyword">let</span> report = detector.analyze()
+print(report.healthScore)       <span class="comment">// 0-100 portfolio health</span>
+print(report.blindSpots)        <span class="comment">// detected gaps with severity</span>
+print(report.insights)          <span class="comment">// autonomous observations</span></code></pre>
+
+      <h3>Scoring</h3>
+      <p>
+        Each blind spot receives a composite severity score (0-100) weighted by category base severity:
+        echo chambers score highest (0.9), followed by emerging misses (0.8), adjacent gaps (0.7),
+        depth imbalances (0.6), and temporal decay (0.5). The overall portfolio health score
+        translates to letter grades (A through F).
+      </p>
+    </section>
+
+    <!-- Editorial Drift Compass -->
+    <section id="editorial-drift">
+      <h2>🧭 Editorial Drift Compass</h2>
+      <p class="module-meta"><code>FeedEditorialDriftCompass</code> — 841 lines</p>
+      <p>
+        Monitors feed sources for silent topic shifts. Detects when a feed's content diverges from
+        its established editorial identity — for example, a tech blog starting to cover politics,
+        or a science feed drifting toward opinion pieces.
+      </p>
+
+      <h3>Drift Type Classification</h3>
+      <table>
+        <thead>
+          <tr><th>Drift Type</th><th>Enum Value</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🏴 Topic Invasion</td><td><code>.topicInvasion</code></td><td>New topics appearing that weren't part of the feed's identity</td></tr>
+          <tr><td>🌊 Identity Erosion</td><td><code>.identityErosion</code></td><td>Core topics that defined the feed are fading away</td></tr>
+          <tr><td>🔄 Pivot</td><td><code>.pivot</code></td><td>Feed is deliberately pivoting to a different focus area</td></tr>
+          <tr><td>💨 Dilution</td><td><code>.dilution</code></td><td>Feed losing focus by covering too many unrelated topics</td></tr>
+          <tr><td>✅ Stable</td><td><code>.stable</code></td><td>Feed maintains consistent editorial identity</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> compass = <span class="type">FeedEditorialDriftCompass</span>()
+
+compass.ingestArticle(
+    feedURL: <span class="string">"https://techblog.com/feed"</span>,
+    title: <span class="string">"New iPhone Review"</span>,
+    topics: [<span class="string">"technology"</span>, <span class="string">"mobile"</span>, <span class="string">"apple"</span>])
+
+<span class="keyword">let</span> report = compass.analyzeDrift(feedURL: <span class="string">"https://techblog.com/feed"</span>)
+print(report.driftScore)         <span class="comment">// 0-100 how much it has drifted</span>
+print(report.driftType)          <span class="comment">// .topicInvasion, .identityErosion, etc.</span>
+print(report.invadingTopics)     <span class="comment">// topics not part of original identity</span>
+print(report.erodingTopics)      <span class="comment">// original topics that are fading</span>
+print(report.prediction)         <span class="comment">// projected identity in 30 days</span></code></pre>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Editorial Identity Profiling:</strong> Builds baseline topic distribution from historical articles</li>
+        <li><strong>Sliding Window Analysis:</strong> Compares recent topic proportions against the baseline</li>
+        <li><strong>Drift Velocity &amp; Acceleration:</strong> Measures rate and acceleration of editorial change</li>
+        <li><strong>Predictive Forecasting:</strong> Projects future identity state if drift continues unchecked</li>
+        <li><strong>Subscriber Relevance Warnings:</strong> Alerts when drift affects topics you subscribed for</li>
+      </ul>
+    </section>
+
+    <!-- Cross-Reference Engine -->
+    <section id="cross-reference">
+      <h2>🔗 Cross-Reference Engine</h2>
+      <p class="module-meta"><code>FeedCrossReferenceEngine</code> — 1,421 lines</p>
+      <p>
+        The largest engine in FeedReader's intelligence suite. Extracts factual claims from articles
+        (numbers, dates, percentages, named entities, statistics, attributions, causal statements) and
+        cross-references them across sources to find corroborations, contradictions, and
+        uncorroborated assertions.
+      </p>
+
+      <h3>Claim Types</h3>
+      <table>
+        <thead>
+          <tr><th>Type</th><th>Enum Value</th><th>Example</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Numeric</td><td><code>.numeric</code></td><td>"500 million users"</td></tr>
+          <tr><td>Percentage</td><td><code>.percentage</code></td><td>"grew 35%"</td></tr>
+          <tr><td>Monetary</td><td><code>.monetary</code></td><td>"$2.5 billion acquisition"</td></tr>
+          <tr><td>Temporal</td><td><code>.temporal</code></td><td>"launched in March 2026"</td></tr>
+          <tr><td>Entity</td><td><code>.entity</code></td><td>"Apple", "Elon Musk", "EU"</td></tr>
+          <tr><td>Statistic</td><td><code>.statistic</code></td><td>"doubled year-over-year"</td></tr>
+          <tr><td>Attribution</td><td><code>.attribution</code></td><td>"CEO stated that…"</td></tr>
+          <tr><td>Causal</td><td><code>.causal</code></td><td>"tariffs caused price increases"</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Corroboration Levels</h3>
+      <table>
+        <thead>
+          <tr><th>Level</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.strongConsensus</code></td><td>3+ sources agree on the claim</td></tr>
+          <tr><td><code>.corroborated</code></td><td>2 sources agree</td></tr>
+          <tr><td><code>.uncorroborated</code></td><td>Single source only — treat with caution</td></tr>
+          <tr><td><code>.disputed</code></td><td>Sources disagree mildly</td></tr>
+          <tr><td><code>.contradicted</code></td><td>Sources directly conflict</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Autonomous Notifications</h3>
+      <p>The engine posts <code>NSNotification</code> alerts in real time:</p>
+      <ul>
+        <li><code>.crossRefContradictionDetected</code> — conflicting claims found across sources</li>
+        <li><code>.crossRefConsensusFormed</code> — multiple sources now agree on a claim</li>
+        <li><code>.crossRefLowConfidenceClaim</code> — claim has poor corroboration</li>
+      </ul>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Claim Extraction:</strong> Regex-based identification of factual assertions from article text</li>
+        <li><strong>Topic-Similarity Matching:</strong> Finds related claims via keyword overlap and entity co-occurrence</li>
+        <li><strong>Confidence Scoring:</strong> Composite reliability based on source count, agreement, and diversity</li>
+        <li><strong>Full Provenance Tracking:</strong> Audit trail of which articles support or contradict each claim</li>
+        <li><strong>Fleet Health Score:</strong> Overall information reliability score (0-100) across all ingested sources</li>
+      </ul>
+    </section>
+
+    <!-- Narrative Arc Tracker -->
+    <section id="narrative-arc">
+      <h2>📖 Narrative Arc Tracker</h2>
+      <p class="module-meta"><code>FeedNarrativeArcTracker</code> — 742 lines</p>
+      <p>
+        Detects developing storylines across articles over time. Identifies when stories are
+        emerging, building momentum, reaching climax, or resolving — and alerts users when stories
+        they follow reach key turning points.
+      </p>
+
+      <h3>Narrative Phases</h3>
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.emerging</code></td><td>Few initial articles — story just appearing</td></tr>
+          <tr><td><code>.rising</code></td><td>Growing coverage, building momentum</td></tr>
+          <tr><td><code>.climax</code></td><td>Peak coverage, highest intensity</td></tr>
+          <tr><td><code>.falling</code></td><td>Coverage declining, aftermath period</td></tr>
+          <tr><td><code>.resolution</code></td><td>Story concluded or settled</td></tr>
+          <tr><td><code>.dormant</code></td><td>No activity for extended period</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Turning Point Types</h3>
+      <p>The tracker detects 8 types of turning points: <code>.emergence</code>,
+        <code>.accelerating</code>, <code>.peakReached</code>, <code>.sentimentShift</code>,
+        <code>.newActor</code>, <code>.convergence</code>, <code>.reversal</code>, and
+        <code>.resolution</code>.</p>
+
+      <h3>Autonomous Notifications</h3>
+      <ul>
+        <li><code>.narrativeTurningPointDetected</code> — story hit an inflection point</li>
+        <li><code>.narrativePhaseChanged</code> — story transitioned to a new phase</li>
+        <li><code>.narrativeNewStoryEmerged</code> — entirely new storyline detected</li>
+      </ul>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Story Clustering:</strong> Groups related articles into coherent narrative threads</li>
+        <li><strong>Momentum Tracking:</strong> Measures publication velocity and sentiment shifts over time</li>
+        <li><strong>Story Following:</strong> Users mark narratives to follow; engine watches for updates</li>
+        <li><strong>Narrative Forecasting:</strong> Predicts likely next phase and estimated time-to-resolution</li>
+        <li><strong>Cross-Story Linking:</strong> Detects when separate narratives converge into one</li>
+        <li><strong>Health Score:</strong> Composite narrative awareness score (0-100)</li>
+      </ul>
+    </section>
+
+    <!-- Predictive Interest Engine -->
+    <section id="predictive-interest">
+      <h2>🔮 Predictive Interest Engine</h2>
+      <p class="module-meta"><code>FeedPredictiveInterestEngine</code> — 850 lines</p>
+      <p>
+        Forecasts your future reading interests before you explicitly search for them. Analyzes
+        interest trajectory vectors, detects emerging curiosity signals, and proactively surfaces
+        articles aligned with predicted interests.
+      </p>
+
+      <h3>Interaction Types &amp; Signal Weights</h3>
+      <table>
+        <thead>
+          <tr><th>Interaction</th><th>Weight</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.search</code></td><td>1.0</td><td>Actively searched for — strongest signal</td></tr>
+          <tr><td><code>.bookmark</code></td><td>0.9</td><td>Saved for later — high intent</td></tr>
+          <tr><td><code>.share</code></td><td>0.85</td><td>Shared externally — strong engagement</td></tr>
+          <tr><td><code>.highlight</code></td><td>0.8</td><td>Highlighted text — deep engagement</td></tr>
+          <tr><td><code>.read</code></td><td>0.7</td><td>Full article read</td></tr>
+          <tr><td><code>.skim</code></td><td>0.3</td><td>Quick scan (&lt;30s)</td></tr>
+          <tr><td><code>.click</code></td><td>0.2</td><td>Clicked but bounced</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Interest Lifecycle Phases</h3>
+      <p>
+        Each tracked interest moves through phases: <code>.latent</code> → <code>.emerging</code> →
+        <code>.growing</code> → <code>.peak</code> → <code>.stable</code> → <code>.waning</code> →
+        <code>.dormant</code>. The engine measures velocity (first derivative) and acceleration
+        (second derivative) of interest trajectories to detect emerging curiosity before it
+        becomes conscious.
+      </p>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> engine = <span class="type">FeedPredictiveInterestEngine</span>()
+
+engine.recordInteraction(
+    topic: <span class="string">"machine learning"</span>,
+    feedURL: <span class="string">"https://blog.ai/feed"</span>,
+    articleId: <span class="string">"a1"</span>,
+    interactionType: .read,
+    dwellSeconds: 180,
+    timestamp: Date())
+
+<span class="keyword">let</span> forecast = engine.forecast()
+print(forecast.predictions)       <span class="comment">// predicted future interests</span>
+print(forecast.surfacedArticles)  <span class="comment">// proactively recommended articles</span>
+print(forecast.healthScore)       <span class="comment">// 0-100 prediction quality</span>
+print(forecast.insights)          <span class="comment">// autonomous observations</span></code></pre>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Trajectory Vectors:</strong> Interest velocity and acceleration tracking per topic</li>
+        <li><strong>Curiosity Signal Detection:</strong> Identifies repeated tangential exposure and dwell patterns</li>
+        <li><strong>Adjacent Interest Prediction:</strong> Co-occurrence analysis discovers related emerging interests</li>
+        <li><strong>Proactive Article Surfacing:</strong> Recommends articles matching predicted (not yet expressed) interests</li>
+        <li><strong>Self-Calibrating:</strong> Tracks prediction accuracy and adapts the model over time</li>
+      </ul>
+    </section>
+
+    <!-- Contextual Primer -->
+    <section id="contextual-primer">
+      <h2>📚 Contextual Primer</h2>
+      <p class="module-meta"><code>FeedContextualPrimer</code> — 521 lines</p>
+      <p>
+        Prepares you before diving into an article by analyzing it against your reading history.
+        Produces a contextual primer with background refreshers, concept familiarity mapping,
+        knowledge readiness scoring, and optimal reading order suggestions.
+      </p>
+
+      <h3>Familiarity Levels</h3>
+      <table>
+        <thead>
+          <tr><th>Level</th><th>Exposure</th><th>Weight</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.unknown</code></td><td>Never seen</td><td>0.0</td></tr>
+          <tr><td><code>.glimpsed</code></td><td>Seen 1-2 times</td><td>0.3</td></tr>
+          <tr><td><code>.familiar</code></td><td>Seen 3-7 times</td><td>0.7</td></tr>
+          <tr><td><code>.wellKnown</code></td><td>Seen 8+ times</td><td>1.0</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> primer = <span class="type">FeedContextualPrimer</span>()
+
+<span class="comment">// Register reading history</span>
+primer.recordReading(story: someStory)
+
+<span class="comment">// Get a primer for a new article</span>
+<span class="keyword">let</span> brief = primer.preparePrimer(for: targetStory)
+print(brief.readinessScore)         <span class="comment">// 0-100 knowledge readiness</span>
+print(brief.backgroundRefreshers)   <span class="comment">// related past articles</span>
+print(brief.blindSpots)             <span class="comment">// concepts you haven't seen</span>
+print(brief.familiarityMap)         <span class="comment">// term → familiarity level</span>
+
+<span class="comment">// Optimal reading order for queued articles</span>
+<span class="keyword">let</span> order = primer.suggestReadingOrder(for: queuedStories)</code></pre>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Background Refresher:</strong> Surfaces related articles you've previously read, ranked by relevance</li>
+        <li><strong>Concept Familiarity Map:</strong> Scores every term in the article by your historical exposure</li>
+        <li><strong>Knowledge Readiness Score:</strong> 0-100 estimate of how prepared you are for the article</li>
+        <li><strong>Optimal Reading Order:</strong> For a queue of articles, suggests ordering that builds knowledge progressively (concept scaffolding)</li>
+        <li><strong>Blind Spot Identification:</strong> Flags important concepts in the article you've never encountered</li>
+      </ul>
+    </section>
+
+    <!-- Content Calendar -->
+    <section id="content-calendar">
+      <h2>📅 Content Calendar</h2>
+      <p class="module-meta"><code>FeedContentCalendar</code> — 622 lines</p>
+      <p>
+        Analyzes when feeds publish articles, detects regular schedules, predicts upcoming
+        publications, and alerts when expected content is late or missing.
+      </p>
+
+      <h3>Schedule Patterns</h3>
+      <table>
+        <thead>
+          <tr><th>Pattern</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.daily</code></td><td>Publishes daily</td></tr>
+          <tr><td><code>.weekdays</code></td><td>Publishes on weekdays</td></tr>
+          <tr><td><code>.weekly</code></td><td>Publishes weekly</td></tr>
+          <tr><td><code>.biweekly</code></td><td>Publishes every two weeks</td></tr>
+          <tr><td><code>.sporadic</code></td><td>Irregular schedule</td></tr>
+          <tr><td><code>.inactive</code></td><td>No recent activity</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Key Capabilities</h3>
+      <ul>
+        <li><strong>Day Profiles:</strong> Per-weekday statistics including total articles, averages, and peak publishing hours</li>
+        <li><strong>Schedule Detection:</strong> Automatically classifies each feed's publication rhythm</li>
+        <li><strong>Publication Forecasting:</strong> Predicts when the next article from a feed is expected</li>
+        <li><strong>Gap Alerts:</strong> Proactive notifications when expected content is late or a feed goes silent</li>
+      </ul>
+    </section>
+
+    <!-- Sentiment Radar -->
+    <section id="sentiment-radar">
+      <h2>📡 Sentiment Radar</h2>
+      <p class="module-meta"><code>FeedSentimentRadar</code> — 620 lines</p>
+      <p>
+        Lexicon-based sentiment tracking across RSS feeds. Analyzes article tone, detects mood
+        shifts over time, and generates proactive alerts when sentiment changes significantly.
+      </p>
+
+      <h3>Sentiment Polarity Scale</h3>
+      <table>
+        <thead>
+          <tr><th>Polarity</th><th>Numeric Value</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.veryNegative</code></td><td>-1.0</td></tr>
+          <tr><td><code>.negative</code></td><td>-0.5</td></tr>
+          <tr><td><code>.neutral</code></td><td>0.0</td></tr>
+          <tr><td><code>.positive</code></td><td>+0.5</td></tr>
+          <tr><td><code>.veryPositive</code></td><td>+1.0</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Key Outputs</h3>
+      <ul>
+        <li><strong>Article Sentiment:</strong> Per-article compound score with polarity classification, top positive/negative words, and confidence level</li>
+        <li><strong>Feed Summaries:</strong> Aggregated sentiment statistics per feed source</li>
+        <li><strong>Mood Shift Alerts:</strong> <code>SentimentAlert</code> with severity (info/warning/critical), previous vs. current scores, and delta magnitude</li>
+      </ul>
+    </section>
+
+    <!-- Reading Autopilot -->
+    <section id="reading-autopilot">
+      <h2>✈️ Reading Autopilot</h2>
+      <p class="module-meta"><code>FeedReadingAutopilot</code> — 818 lines</p>
+      <p>
+        Curates optimal article sequences given a time budget. Considers priority scoring,
+        reading time estimates, topic diversity, cognitive load balancing, and reading momentum
+        to produce sessions that start accessible, build complexity, and wind down gracefully.
+      </p>
+
+      <h3>Cognitive Load Levels</h3>
+      <table>
+        <thead>
+          <tr><th>Level</th><th>Weight</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>☁️ <code>.light</code></td><td>1.0</td><td>Quick, easy reads</td></tr>
+          <tr><td>⚖ <code>.moderate</code></td><td>2.0</td><td>Standard complexity</td></tr>
+          <tr><td>🏋️ <code>.heavy</code></td><td>3.0</td><td>Dense, technical content</td></tr>
+          <tr><td>🧠 <code>.dense</code></td><td>4.0</td><td>Maximum cognitive demand</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Session Moods</h3>
+      <p>
+        Choose a session mood: <code>.relaxed</code> (prefer light content),
+        <code>.balanced</code> (mix of everything), <code>.focused</code> (deep reads), or
+        <code>.exploratory</code> (maximize topic diversity).
+      </p>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> autopilot = <span class="type">FeedReadingAutopilot</span>()
+
+<span class="keyword">let</span> session = autopilot.planSession(
+    articles: allArticles,
+    timeBudgetMinutes: 20,
+    preferences: .default)
+
+print(session.playlist)          <span class="comment">// ordered article list</span>
+print(session.totalMinutes)      <span class="comment">// estimated total time</span>
+print(session.diversityScore)    <span class="comment">// topic variety 0-100</span>
+print(session.cognitiveProfile)  <span class="comment">// load curve description</span>
+print(session.sessionBrief)      <span class="comment">// human-readable summary</span></code></pre>
+    </section>
+
+    <!-- Subscription ROI -->
+    <section id="subscription-roi">
+      <h2>💰 Subscription ROI</h2>
+      <p class="module-meta"><code>FeedSubscriptionROI</code> — 784 lines</p>
+      <p>
+        Measures the value each feed delivers relative to the attention it demands. Computes
+        per-feed ROI scores based on engagement metrics (read rate, dwell time, save/share
+        actions), content volume, and quality signals.
+      </p>
+
+      <h3>ROI Tiers</h3>
+      <table>
+        <thead>
+          <tr><th>Tier</th><th>Score Range</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🏆 Platinum</td><td>85-100</td><td>Exceptional value — your best subscriptions</td></tr>
+          <tr><td>🥇 Gold</td><td>70-84</td><td>High value — consistently worthwhile</td></tr>
+          <tr><td>🥈 Silver</td><td>50-69</td><td>Moderate value — decent but room for improvement</td></tr>
+          <tr><td>🥉 Bronze</td><td>30-49</td><td>Low value — consider adjusting consumption</td></tr>
+          <tr><td>📉 Deficit</td><td>0-29</td><td>Negative ROI — candidate for unsubscription</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Anti-Pattern Detection</h3>
+      <p>
+        The engine detects 6 subscription anti-patterns: <strong>zombie feed</strong> (publishes but you never read),
+        <strong>firehose</strong> (overwhelms with volume), <strong>guilt sub</strong> (read out of obligation, not interest),
+        <strong>echo redundant</strong> (duplicate of another feed), <strong>stale premium</strong> (declining quality over time),
+        and <strong>vanity sub</strong> (subscribed for image, not engagement).
+      </p>
+
+      <h3>Key Outputs</h3>
+      <ul>
+        <li><strong>Portfolio Health Score:</strong> 0-100 overall subscription health</li>
+        <li><strong>Per-Feed ROI Reports:</strong> Individual score, tier, trend, and engagement metrics</li>
+        <li><strong>Anti-Patterns:</strong> Detected problematic subscription behaviors</li>
+        <li><strong>Autonomous Recommendations:</strong> Prune, promote, or adjust suggestions</li>
+        <li><strong>Optimal Count Estimation:</strong> Recommended total number of subscriptions</li>
+      </ul>
+    </section>
+
+    <!-- Trend Forecaster -->
+    <section id="trend-forecaster">
+      <h2>📈 Trend Forecaster</h2>
+      <p class="module-meta"><code>FeedTrendForecaster</code> — 465 lines</p>
+      <p>
+        Detects emerging trends before they peak by analyzing keyword momentum across time windows,
+        computing breakout probabilities, and generating proactive alerts for topics about to go viral.
+      </p>
+
+      <h3>Trend Phases</h3>
+      <table>
+        <thead>
+          <tr><th>Phase</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🌱 <code>.emerging</code></td><td>Topic just appearing in feeds</td></tr>
+          <tr><td>🚀 <code>.accelerating</code></td><td>Rapidly gaining momentum across sources</td></tr>
+          <tr><td>🔥 <code>.peaking</code></td><td>Maximum coverage intensity</td></tr>
+          <tr><td>📉 <code>.declining</code></td><td>Coverage winding down</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Trend Signal</h3>
+      <p>Each detected trend produces a <code>TrendSignal</code> containing:</p>
+      <ul>
+        <li><strong>Topic:</strong> The trending keyword</li>
+        <li><strong>Momentum:</strong> 0.0 (stagnant) to 1.0 (explosive growth)</li>
+        <li><strong>Breakout Probability:</strong> 0.0-1.0 likelihood of becoming viral</li>
+        <li><strong>Feed Sources:</strong> Which of your feeds mention this topic</li>
+        <li><strong>Phase:</strong> Current lifecycle position</li>
+      </ul>
+
+      <h3>Forecast Report</h3>
+      <p>
+        <code>TrendForecast</code> aggregates all signals with <code>.topBreakouts</code> (top 5 most
+        likely to break out) and <code>.proactiveInsights</code> — autonomous recommendations about
+        what's worth watching.
+      </p>
+    </section>
+
+    <!-- Intelligence Brief -->
+    <section id="intelligence-brief">
+      <h2>📋 Intelligence Brief Generator</h2>
+      <p class="module-meta"><code>FeedIntelligenceBrief</code> — 603 lines</p>
+      <p>
+        Generates structured daily intelligence briefings by correlating articles across feeds.
+        Detects narrative threads, assesses signal-to-noise ratios, identifies emerging signals,
+        and produces actionable insights.
+      </p>
+
+      <h3>Intelligence Priority Levels</h3>
+      <table>
+        <thead>
+          <tr><th>Priority</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>🔴 <code>.critical</code></td><td>Immediate attention required</td></tr>
+          <tr><td>🟠 <code>.high</code></td><td>High priority — review soon</td></tr>
+          <tr><td>🟡 <code>.medium</code></td><td>Normal priority</td></tr>
+          <tr><td>🔵 <code>.low</code></td><td>Low priority — catch up when available</td></tr>
+          <tr><td>⚪ <code>.noise</code></td><td>Background noise — safe to skip</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Brief Components</h3>
+      <ul>
+        <li><strong>Executive Summary:</strong> Concise overview of the most important developments</li>
+        <li><strong>Narrative Threads:</strong> Clustered articles forming coherent storylines, each with headline, keywords, priority, and article list</li>
+        <li><strong>Signal-to-Noise Assessment:</strong> Ratio of clustered (signal) to standalone (noise) articles</li>
+        <li><strong>Emerging Signals:</strong> New keywords not seen in the previous period</li>
+        <li><strong>Cross-Feed Correlations:</strong> Topics spanning multiple sources — higher corroboration</li>
+        <li><strong>Blind Spots:</strong> News categories with no coverage in your feeds</li>
+        <li><strong>Actionable Insights:</strong> Specific recommendations based on the analysis</li>
+      </ul>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> briefer = <span class="type">FeedIntelligenceBrief</span>()
+
+<span class="keyword">let</span> brief = briefer.generateBrief(
+    articles: stories,
+    feedMap: feedMap,
+    previousKeywords: lastPeriodKeywords)
+
+print(brief?.executiveSummary)
+print(brief?.narrativeThreads)
+print(brief?.actionableInsights)</code></pre>
+    </section>
+
+    <!-- Digest Composer -->
+    <section id="digest-composer">
+      <h2>📰 Digest Composer</h2>
+      <p class="module-meta"><code>ArticleDigestComposer</code> — 62 lines (core)</p>
+      <p>
+        Newsletter-style digest generator that composes formatted Markdown digests from article
+        collections. Groups articles by feed source, includes reading time estimates, and supports
+        configurable digest periods.
+      </p>
+
+      <h3>Digest Periods</h3>
+      <table>
+        <thead>
+          <tr><th>Period</th><th>Window</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>.daily</code></td><td>1 day</td></tr>
+          <tr><td><code>.weekly</code></td><td>7 days</td></tr>
+          <tr><td><code>.monthly</code></td><td>30 days</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Usage</h3>
+<pre><code><span class="keyword">let</span> entries = [
+    <span class="type">DigestEntry</span>(title: <span class="string">"Article One"</span>,
+                feedName: <span class="string">"Tech Blog"</span>,
+                url: <span class="string">"https://example.com/1"</span>,
+                snippet: <span class="string">"An overview of..."</span>,
+                readingMinutes: 5)
+]
+
+<span class="keyword">let</span> markdown = composeDigestMarkdown(
+    title: <span class="string">"Weekly Reading Digest"</span>,
+    entries: entries,
+    period: .weekly)</code></pre>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>&copy; 2024–2026 FeedReader &middot; <a href="https://github.com/sauravbhattacharya001/FeedReader">GitHub</a></p>
+  </footer>
+</body>
+</html>
