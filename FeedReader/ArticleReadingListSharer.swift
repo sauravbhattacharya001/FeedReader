@@ -492,10 +492,14 @@ class ArticleReadingListSharer {
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
     
     private func escapeXML(_ string: String) -> String {
-        return string.htmlEscaped.replacingOccurrences(of: "'", with: "&apos;")
+        // Single quotes are now handled by htmlEscaped (&#39;);
+        // replace with &apos; for XML attribute contexts.
+        return string.htmlEscaped.replacingOccurrences(of: "&#39;", with: "&apos;")
+    }
     }
     
     // MARK: - Persistence

@@ -12,13 +12,16 @@
 import Foundation
 
 extension String {
-    /// Escape the four HTML-significant characters to their entity equivalents.
+    /// Escape the five HTML-significant characters to their entity equivalents.
     ///
     /// The ampersand replacement comes first to avoid double-escaping.
+    /// Single quotes use the numeric entity `&#39;` (universally supported)
+    /// rather than `&apos;` (XML-only, not in HTML4 spec).
     var htmlEscaped: String {
         self.replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 }
