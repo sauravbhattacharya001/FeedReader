@@ -411,4 +411,128 @@ final class RSSParserTests: XCTestCase {
         XCTAssertEqual(stories.count, 1)
         XCTAssertEqual(stories[0].link, "https://example.com/fallback-guid")
     }
+
+    // MARK: - Atom Feed Tests
+    //
+    // Regression tests for the Atom <link rel="alternate" href="..."> path.
+    // Prior to the fix, the parser referenced an undeclared `storyLink`
+    // identifier inside `didStartElement`, which (a) would have failed to
+    // compile and (b) meant Atom entry URLs were silently dropped, leaving
+    // Atom-only sources with empty `link` values that broke deduplication
+    // and tap-to-open. The fix routes Atom hrefs through `linkFragments`
+    // so the existing `didEndElement` join/fallback logic applies uniformly.
+
+    func testAtomEntryUsesAlternateLinkHref() {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <title>Sample Atom Feed</title>
+          <entry>
+            <title>Atom Story One</title>
+            <summary>First atom entry summary</summary>
+            <link rel="alternate" href="https://example.com/atom-1"/>
+            <id>tag:example.com,2026:atom-1</id>
+          </entry>
+          <entry>
+            <title>Atom Story Two</title>
+            <summary>Second atom entry summary</summary>
+            <link rel="alternate" href="https://example.com/atom-2"/>
+            <id>tag:example.com,2026:atom-2</id>
+          </entry>
+        </feed>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 2)
+        XCTAssertEqual(stories[0].title, "Atom Story One")
+        XCTAssertEqual(stories[0].link, "https://example.com/atom-1")
+        XCTAssertEqual(stories[1].link, "https://example.com/atom-2")
+    }
+
+    func testAtomEntryWithoutRelDefaultsToAlternate() {
+        // Per RFC 4287 §4.2.7.2, omitted @rel is equivalent to rel="alternate".
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>No Rel Attr</title>
+            <summary>Default rel should be alternate</summary>
+            <link href="https://example.com/no-rel"/>
+            <id>tag:example.com,2026:no-rel</id>
+          </entry>
+        </feed>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/no-rel")
+    }
+
+    func testAtomEntryIgnoresNonAlternateLinks() {
+        // Atom entries commonly carry rel="self", "enclosure", "related",
+        // etc. We must pick the `alternate` href, not the first one we see.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>Multi-link Entry</title>
+            <summary>Has self and alternate</summary>
+            <link rel="self" href="https://example.com/api/entry/42"/>
+            <link rel="alternate" href="https://example.com/article/42"/>
+            <link rel="enclosure" href="https://cdn.example.com/audio/42.mp3"/>
+            <id>tag:example.com,2026:42</id>
+          </entry>
+        </feed>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/article/42")
+    }
+
+    func testAtomEntryFallsBackToIdWhenNoAlternateLink() {
+        // If only a non-alternate link is present, treat as "no link" and
+        // fall back to the <id>, matching the RSS <guid> fallback behavior.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>Self-only Entry</title>
+            <summary>No alternate link</summary>
+            <link rel="self" href="https://example.com/api/entry/99"/>
+            <id>https://example.com/entry/99</id>
+          </entry>
+        </feed>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/entry/99")
+    }
+
+    func testAtomFirstAlternateWinsWhenDuplicated() {
+        // Some malformed feeds emit multiple alternate links per entry.
+        // We capture only the first to keep dedup stable across refreshes.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom">
+          <entry>
+            <title>Duplicate Alternates</title>
+            <summary>First alternate should win</summary>
+            <link rel="alternate" href="https://example.com/first"/>
+            <link rel="alternate" href="https://example.com/second"/>
+            <id>tag:example.com,2026:dup</id>
+          </entry>
+        </feed>
+        """.data(using: .utf8)!
+
+        let parser = RSSParser()
+        let stories = parser.parseData(xml)
+        XCTAssertEqual(stories.count, 1)
+        XCTAssertEqual(stories[0].link, "https://example.com/first")
+    }
 }

@@ -111,11 +111,22 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
             imagePath = ""
         }
 
-        // Atom <link rel="alternate" href="..."> carries URL as attribute
+        // Atom <link rel="alternate" href="..."> carries URL as attribute.
+        // We store it in `linkFragments` so the same `didEndElement` join logic
+        // works for both RSS (text content) and Atom (attribute). An empty
+        // `linkFragments` at item end is treated as a fallback to <id>/<guid>.
+        //
+        // Note: a single <entry> may contain multiple <link> elements with
+        // different `rel` values (alternate, self, enclosure, related, ...).
+        // We only capture the FIRST `alternate` (or rel-less) link, matching
+        // the Atom convention that `alternate` is the human-readable URL.
         if isAtomFeed && insideItem && elementName == "link" {
             let rel = attributeDict["rel"] ?? "alternate"
-            if rel == "alternate", let href = attributeDict["href"], !href.isEmpty {
-                storyLink = href
+            if rel == "alternate",
+               let href = attributeDict["href"],
+               !href.isEmpty,
+               linkFragments.isEmpty {
+                linkFragments.append(href)
             }
         }
 
