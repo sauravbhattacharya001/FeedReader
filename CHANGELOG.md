@@ -2,6 +2,311 @@
 
 All notable changes to FeedReader are documented in this file.
 
+This file is now backfilled to track every published GitHub release. For the
+canonical, signed release notes (with asset checksums and `Full Changelog`
+links), see https://github.com/sauravbhattacharya001/FeedReader/releases.
+
+The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [v1.12.0] — 2026-04-27
+
+### Tests
+
+- **SourceCredibilityScorer test suite** — 35 tests covering domain extraction,
+  tier scoring, clickbait / capitalization / punctuation heuristics, author
+  attribution, correction notices, disclosure detection, sourcing & hedging
+  analysis, `.gov` / `.edu` scoring bonus, suspicious-domain patterns, score
+  clamping, `Codable` round-trip, moderate-domain handling, and edge cases.
+
+## [v1.11.0] — 2026-04-27 — Autonomous Intelligence Suite
+
+### Added (12 new autonomous modules)
+
+- **FeedPredictiveAlerts** — proactive content-monitoring alert engine
+- **FeedTimelineReconstructor** — chronological event timeline reconstruction
+- **FeedSerendipityEngine** — serendipitous article discovery beyond habits
+- **FeedCuriosityEngine** — curiosity-driven exploration of unexpected topics
+- **FeedForgettingCurve** — spaced-repetition memory retention tracker
+- **FeedImpactTracker** — article impact tracking & measurement over time
+- **FeedDebateArena** — argument extraction & debate visualization
+- **FeedAnomalyDetector** — anomaly detection for unusual feed behaviour
+- **FeedReadingCoach** — personal reading coach with adaptive recommendations
+- **FeedInboxZero** — autonomous inbox-zero strategy for feed triage
+- **FeedContentCalendar** — publication-pattern detection & scheduling insights
+- **FeedSourceDiversityAuditor** — echo-chamber detection & diversity auditing
+
+### Performance
+
+- O(E) pre-bucketed event counts in `computeConsistency` — eliminates
+  per-query linear scans.
+- O(1) indexed duplicate-group lookups + length-based early reject in
+  `ArticleDeduplicator.scan()`.
+- Single-pass tokenizer in `SentimentRadar` — eliminates redundant title
+  re-tokenization.
+- Cached `normalizedURL` and deduplicated `uniqued()` in `ArticleDeduplicator`.
+- Eliminated array allocations in `FeedTrendForecaster` momentum computation.
+
+### Security
+
+- **Path traversal fix in `FeedBackupManager` (CWE-22)** — user-supplied
+  paths are now validated against the backup root.
+
+### Refactoring
+
+- Unified pattern-detection rules and extracted shared scan aggregation in
+  `FeedPrivacyGuard`.
+- Replaced inline `JSONEncoder` / `JSONDecoder` with a shared `JSONCoding`
+  instance and `UserDefaultsCodableStore`.
+- Deduplicated `escapeHTML` into a shared `String.htmlEscaped` extension.
+
+### Code Quality
+
+- Replaced 22 raw `print()` calls across 14 files with privacy-aware
+  `os_log` via `FeedReaderLogger` (CWE-532 prevention).
+
+### Documentation
+
+- Added `CODE_OF_CONDUCT.md` and expanded `CONTRIBUTING.md` with a
+  first-time contributor section.
+- New Autonomous Intelligence documentation page covering 11 features.
+- Added a changelog page to the GitHub Pages site.
+
+### Tests
+
+- 25 new tests for `ArticleEngagementPredictor` (cold start, scoring, FIFO
+  trimming, model retraining, analytics, classification).
+
+## [v1.10.0] — 2026-04-21
+
+### Added
+
+- **FeedSignalBooster** — autonomous cross-feed trending-topic detector that
+  surfaces emerging themes across all subscribed feeds.
+- **SmartUnsubscriber** — autonomous feed-subscription hygiene that flags
+  stale or low-engagement feeds and suggests cleanup actions.
+
+## [v1.9.0] — 2026-04-20
+
+### Added
+
+- **FeedSerendipityEngine** — autonomous serendipity discovery that surfaces
+  unexpected but relevant content across feeds.
+- **FeedAutopilot** — autonomous reading-queue curator that learns reading
+  preferences and adapts to your habits.
+- **FeedNarrativeTracker** — cross-feed story narrative tracking with
+  evolution detection for developing stories.
+- **Feed Health Dashboard** — interactive feed-monitoring UI for real-time
+  feed status and diagnostics.
+- **ArticleDigestComposer** — newsletter-style digest generator for curated
+  article summaries.
+- **ArticleFlashcardGenerator** — SM-2 spaced-repetition flashcard system.
+
+### Performance
+
+- Replaced O(n²) string concatenation with fragment buffering in the RSS
+  parser.
+- Debounced `FeedCacheManager` disk writes during bulk refresh.
+
+### Security
+
+- Sanitized `customCSS` in `ArticleArchiveExporter` to prevent XSS
+  injection.
+- Added `Content-Type` validation before XML parsing to reject non-XML
+  responses (e.g., redirected HTML error/login pages) early.
+
+### Refactoring & Cleanup
+
+- Extracted shared `TextUtilities` to centralize word frequency, stop
+  words, and escape functions.
+- Added O(1) rule lookup index to `FeedAutomationEngine`.
+- Migrated `FeedBackupManager` to CryptoKit; consolidated stop-words.
+
+### CI / CD
+
+- Added SPM build & test steps to `copilot-setup-steps.yml`.
+- Added dependency grouping to the Dependabot config.
+- Fixed duplicate coverage threshold and added a job summary.
+
+## [v1.8.0] — 2026-04-09
+
+### Added
+
+- **Feed Health Dashboard** — interactive feed-monitoring UI for at-a-glance
+  feed status.
+- **ArticleDigestComposer** — newsletter-style digest generator.
+- **ArticleFlashcardGenerator** — SM-2 spaced-repetition flashcards for
+  learning from articles.
+
+### Security
+
+- Sanitized `customCSS` in `ArticleArchiveExporter` to prevent XSS
+  injection.
+
+### Fixed
+
+- Added `Content-Type` validation before XML parsing to reject non-XML
+  responses early.
+- Removed a duplicate coverage threshold in CI; added a CI job summary.
+
+### Refactoring
+
+- Added O(1) rule lookup index to `FeedAutomationEngine` for faster
+  automation matching.
+- Centralized word-frequency computation in `TextUtilities`.
+- Extracted shared `TextUtilities` to eliminate duplicated stop words,
+  escape functions, and word counting.
+
+## [v1.7.0] — 2026-04-03
+
+### Added
+
+- **ArticleFlashcardGenerator** — SM-2 spaced-repetition flashcard system
+  for active recall from articles.
+- **ArticleFactChecker** — heuristic claim extraction and verifiability
+  analysis.
+- **ArticleQuizGenerator** — comprehension quiz engine for active reading.
+- **ArticleReadingListSharer** — curate and share reading lists as HTML,
+  Markdown, JSON, or OPML.
+- **ArticleTimeCapsule** — bury articles for future resurfacing with
+  preset durations, reflections, tags, stats, and export.
+- **Reading Bingo** — gamified 5×5 bingo card with reading challenges.
+- **ReadingPaceCalculator** — queue completion forecasting and pace
+  analysis.
+- **ArticleSummarizer** & **ArticleSummaryGenerator** — TF-IDF extractive
+  text summarization.
+- **RSVP Speed Reading** — rapid serial visual presentation mode
+  (`ArticleSpeedReadPresenter`).
+
+### Performance
+
+- HTTP conditional GET caching (ETag / Last-Modified) for RSS feeds —
+  reduces bandwidth on unchanged feeds.
+- Enum dispatch replaces string comparisons in the RSS parser for faster
+  feed parsing.
+
+### Refactoring
+
+- Extracted shared `TextUtilities` to eliminate duplicated stop words,
+  escape functions, and word counting across modules.
+- Centralized word-frequency computation in `TextUtilities`.
+- Fixed triple-declared `storyStore` property and typo in
+  `StoryTableViewController`.
+- Reduced code duplication in `ReadingDataExporter` import methods.
+
+### Tests
+
+- Comprehensive test suite for `KeywordExtractor`.
+
+## [v1.6.0] — 2026-03-31
+
+### Added
+
+- **FeedWeatherReporter 🌦️** — weather-metaphor analytics for feed
+  activity. Analyzes feed-update patterns and presents activity levels
+  using intuitive weather analogies (sunny = active, stormy = very
+  active, calm = quiet), useful for quickly gauging feed health and
+  engagement at a glance.
+
+## [v1.5.0] — 2026-03-30
+
+### Added
+
+- **Smart Feed Mixer** — blend articles from multiple feeds with
+  customizable ratios.
+- **Article Word Count Tracker** — reading-volume analytics across feeds.
+- **Bookmark Folder Manager** — organize bookmarks into named folders.
+- **Feed Burnout Detector** — detect information overload and reading
+  burnout patterns.
+- **Feed Rating Manager** — rate feeds on a 1–5 star scale.
+- **Article Paywall Detector** — identify paywalled articles before
+  opening.
+- **Feed Engagement Scoreboard** — track and rank feed-engagement
+  metrics.
+- **Article Quiz Generator** — auto-generate quizzes from article
+  content.
+
+### Performance
+
+- Optimized Levenshtein distance with two-row DP and early termination.
+
+### Security
+
+- Sanitized `font-family` CSS to prevent injection (CWE-79).
+
+### Refactoring
+
+- Single-pass XML escaping in `OPMLManager`.
+
+### Fixed
+
+- Offline-cache oversized-article drain.
+- Recommendation read-count calculation.
+- SSRF TEST-NET range validation.
+- Double sanitization in `Story.init`.
+- Duplicate `FeedHealthStatus` enum.
+- Added `FeedComparisonManager` tests.
+
+## [v1.4.0] — 2026-03-29
+
+### Added
+
+- **Feed Engagement Scoreboard** — track and visualize engagement across
+  feeds.
+- **Article Quiz Generator** — auto-generate quizzes from article content.
+- **Vocabulary Frequency Profiler** — analyze word-frequency patterns.
+- **Word Cloud Generator** — visual word clouds from articles.
+- **Article Dark Mode Formatter** — proper dark-mode rendering for
+  articles.
+- **Article Flashback (On This Day)** — resurface articles from past
+  dates.
+- **Article Comparison View** — side-by-side article analysis.
+
+### Security
+
+- Sanitized export filenames to prevent path traversal (CWE-22).
+- Replaced `print()` with `os_log` and removed force casts.
+- Allowlisted UserDefaults keys in backup restore.
+- Validated feed URLs against the SSRF filter at fetch time.
+- Replaced raw `NSKeyedArchiver` with `SecureCodingStore`.
+
+### Fixed
+
+- ISO week numbering in `DateFormatting.yearWeek`.
+- Prevented negative cache size and debounced history persistence.
+- Fixed `estimatedTimeToEmpty` for queues with short articles.
+- Removed duplicate `FeedHealthStatus` enum in
+  `FeedPerformanceAnalyzer`.
+- Prevented double HTML sanitization in the `Story` `NSCoding` path.
+- Narrowed TEST-NET SSRF checks to the correct /24 ranges.
+- Used actual article count in recommendation reason.
+- Rejected oversized articles in `OfflineCacheManager`.
+- Applied IQR outlier filtering to speed trends.
+- Clamped negative article counts in the scheduler.
+
+### Performance
+
+- Single-pass snapshot aggregation in `ArticleTrendDetector`.
+
+### Refactoring
+
+- Consolidated duplicate stop-word lists into `TextAnalyzer`.
+- Removed duplicate `ArticleSummaryGenerator`.
+- Used `SecureCodingStore` for story persistence.
+- Extracted toast helper to an extension.
+
+### Tests & CI
+
+- Comprehensive tests for `FeedComparisonManager` and
+  `ArticleLinkExtractor`.
+- Enforced code-coverage thresholds in CI and Codecov.
+
+### Docs
+
+- Added Swift docstrings to `ContentFilter` and
+  `BookmarksViewController`.
+- Added a table of contents and quick-start section to the README.
+
 ## [v1.3.0] — 2026-02-19
 
 ### Read/Unread Tracking
@@ -75,4 +380,16 @@ A native iOS RSS feed reader with offline caching, async image loading, and netw
 - Safe decoding in `Story.init(coder:)` to prevent crashes on corrupted archives
 - Removed dead code and tracked user data
 
+[v1.12.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.12.0
+[v1.11.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.11.0
+[v1.10.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.10.0
+[v1.9.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.9.0
+[v1.8.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.8.0
+[v1.7.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.7.0
+[v1.6.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.6.0
+[v1.5.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.5.0
+[v1.4.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.4.0
+[v1.3.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.3.0
+[v1.2.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.2.0
+[v1.1.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/sauravbhattacharya001/FeedReader/releases/tag/v1.0.0
