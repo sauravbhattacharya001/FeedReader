@@ -283,6 +283,12 @@ final class ArticleFactChecker {
         "obviously", "clearly", "of course", "needless to say"
     ])
 
+    /// Compiled once and reused: matches "suspiciously round numbers" like
+    /// `100,000`, `2,000,000`, or `100000000`. Previously rebuilt on each call
+    /// to `redFlags(for:)`, which is invoked per-claim.
+    private static let roundNumberRegex: NSRegularExpression? =
+        try? NSRegularExpression(pattern: "\\b(\\d+)(?:,000)+\\b|\\b\\d+0{3,}\\b", options: [])
+
     // MARK: - Public API
 
     /// Analyze article text and return a full fact-check report.
@@ -545,7 +551,7 @@ final class ArticleFactChecker {
         }
 
         // Suspiciously round numbers
-        if let regex = try? NSRegularExpression(pattern: "\\b(\\d+)(?:,000)+\\b|\\b\\d+0{3,}\\b", options: []) {
+        if let regex = ArticleFactChecker.roundNumberRegex {
             let nsRange = NSRange(lower.startIndex..., in: lower)
             if regex.firstMatch(in: lower, range: nsRange) != nil {
                 flags.append(.roundNumber)

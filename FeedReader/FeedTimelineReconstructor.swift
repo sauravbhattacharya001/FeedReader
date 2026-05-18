@@ -259,6 +259,29 @@ final class FeedTimelineReconstructor {
         "oct": 10, "nov": 11, "dec": 12
     ]
 
+    // MARK: - Compiled Regex Cache
+    //
+    // These regexes are compiled once at class load time and reused for every
+    // article ingest. Previously each call to `extractDates(from:relativeTo:)`
+    // recompiled 4 NSRegularExpressions, which is expensive (NSRegularExpression
+    // parses + compiles the ICU pattern on each `init`). Hoisting to static lets
+    // is a no-allocation, no-behavior-change optimization that materially
+    // reduces CPU work and allocations when ingesting batches of articles.
+    private static let isoDateRegex: NSRegularExpression? =
+        try? NSRegularExpression(pattern: "\\b(\\d{4}-\\d{2}-\\d{2})\\b")
+    private static let writtenDateRegex: NSRegularExpression? =
+        try? NSRegularExpression(
+            pattern: "\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{1,2}),?\\s+(\\d{4})\\b",
+            options: .caseInsensitive)
+    private static let shortDateRegex: NSRegularExpression? =
+        try? NSRegularExpression(
+            pattern: "\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\.?\\s+(\\d{1,2}),?\\s+(\\d{4})\\b",
+            options: .caseInsensitive)
+    private static let relativeDateRegex: NSRegularExpression? =
+        try? NSRegularExpression(
+            pattern: "\\b(yesterday|today|last week|last month)\\b",
+            options: .caseInsensitive)
+
     // MARK: - Keyword Extraction
 
     /// Extract meaningful keywords from text.
@@ -313,7 +336,7 @@ final class FeedTimelineReconstructor {
         isoFormatter.dateFormat = "yyyy-MM-dd"
 
         // ISO dates
-        if let regex = try? NSRegularExpression(pattern: "\\b(\\d{4}-\\d{2}-\\d{2})\\b") {
+        if let regex = FeedTimelineReconstructor.isoDateRegex {
             let nsText = text as NSString
             let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
             for match in matches {
@@ -328,8 +351,7 @@ final class FeedTimelineReconstructor {
         }
 
         // Written dates: "January 15, 2024"
-        let writtenPattern = "\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(\\d{1,2}),?\\s+(\\d{4})\\b"
-        if let regex = try? NSRegularExpression(pattern: writtenPattern, options: .caseInsensitive) {
+        if let regex = FeedTimelineReconstructor.writtenDateRegex {
             let nsText = text as NSString
             let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
             for match in matches {
@@ -351,8 +373,7 @@ final class FeedTimelineReconstructor {
         }
 
         // Short month: "Jan 15, 2024"
-        let shortPattern = "\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\.?\\s+(\\d{1,2}),?\\s+(\\d{4})\\b"
-        if let regex = try? NSRegularExpression(pattern: shortPattern, options: .caseInsensitive) {
+        if let regex = FeedTimelineReconstructor.shortDateRegex {
             let nsText = text as NSString
             let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
             for match in matches {
@@ -374,8 +395,7 @@ final class FeedTimelineReconstructor {
         }
 
         // Relative dates
-        let relativePattern = "\\b(yesterday|today|last week|last month)\\b"
-        if let regex = try? NSRegularExpression(pattern: relativePattern, options: .caseInsensitive) {
+        if let regex = FeedTimelineReconstructor.relativeDateRegex {
             let nsText = text as NSString
             let matches = regex.matches(in: text, range: NSRange(location: 0, length: nsText.length))
             for match in matches {

@@ -435,11 +435,16 @@ public class ClaimExtractor {
         }
     }
 
+    /// Compiled once and reused — this method is called per extracted numeric
+    /// claim, so recompiling the pattern on every invocation was wasted work.
+    private static let numericValueRegex: NSRegularExpression =
+        try! NSRegularExpression(pattern: "(\\d+\\.?\\d*)", options: [])
+
     /// Extracts a numeric value from matched text.
     private func extractNumericValue(from text: String) -> Double? {
         let cleaned = text.replacingOccurrences(of: ",", with: "")
         let nsText = cleaned as NSString
-        let numPattern = try! NSRegularExpression(pattern: "(\\d+\\.?\\d*)", options: [])
+        let numPattern = FeedCrossReferenceEngine.numericValueRegex
         let range = NSRange(location: 0, length: nsText.length)
         guard let match = numPattern.firstMatch(in: cleaned, options: [], range: range) else {
             return nil
