@@ -90,6 +90,7 @@ public enum InterestPhase: String, CaseIterable, Comparable, Sendable {
         }
     }
 
+    /// Ordered comparison.
     public static func < (lhs: InterestPhase, rhs: InterestPhase) -> Bool {
         lhs.ordinal < rhs.ordinal
     }
@@ -126,6 +127,7 @@ public enum PredictionConfidence: String, CaseIterable, Comparable, Sendable {
         }
     }
 
+    /// Ordered comparison.
     public static func < (lhs: PredictionConfidence, rhs: PredictionConfidence) -> Bool {
         lhs.ordinal < rhs.ordinal
     }
@@ -145,14 +147,22 @@ public enum PredictionConfidence: String, CaseIterable, Comparable, Sendable {
 
 /// A recorded interaction representing an interest signal.
 public struct InterestSignal: Sendable {
+    /// Topic.
     public let topic: String
+    /// Feed url.
     public let feedURL: String
+    /// Article id.
     public let articleId: String
+    /// Interaction type.
     public let interactionType: InteractionType
+    /// Dwell seconds.
     public let dwellSeconds: Double
+    /// Timestamp.
     public let timestamp: Date
+    /// Related topics.
     public let relatedTopics: [String]
 
+    /// Public API.
     public init(topic: String, feedURL: String, articleId: String,
                 interactionType: InteractionType, dwellSeconds: Double = 0,
                 timestamp: Date = Date(), relatedTopics: [String] = []) {
@@ -170,16 +180,27 @@ public struct InterestSignal: Sendable {
 
 /// Trajectory vector for a tracked interest.
 public struct InterestTrajectory: Sendable {
+    /// Topic.
     public let topic: String
+    /// Phase.
     public let phase: InterestPhase
-    public let currentStrength: Double      // 0-1 weighted signal strength
-    public let velocity: Double             // Change rate (per day)
-    public let acceleration: Double         // Rate of velocity change
+    /// 0-1 weighted signal strength
+    public let currentStrength: Double
+    /// Change rate (per day)
+    public let velocity: Double
+    /// Rate of velocity change
+    public let acceleration: Double
+    /// Days since last signal.
     public let daysSinceLastSignal: Int
+    /// Total signals.
     public let totalSignals: Int
-    public let feedSpread: Int              // Number of distinct feeds
-    public let dwellAverage: Double         // Average dwell time
+    /// Number of distinct feeds
+    public let feedSpread: Int
+    /// Average dwell time
+    public let dwellAverage: Double
+    /// First seen.
     public let firstSeen: Date
+    /// Last seen.
     public let lastSeen: Date
 
     /// Predicted strength N days from now using trajectory.
@@ -194,25 +215,39 @@ public struct InterestTrajectory: Sendable {
 
 /// A predicted future interest with confidence and evidence.
 public struct InterestPrediction: Sendable {
+    /// Topic.
     public let topic: String
+    /// Confidence.
     public let confidence: PredictionConfidence
-    public let confidenceScore: Double      // 0-1 numeric
-    public let reason: String               // Why predicted
+    /// 0-1 numeric
+    public let confidenceScore: Double
+    /// Why predicted
+    public let reason: String
+    /// Predicted phase in7 days.
     public let predictedPhaseIn7Days: InterestPhase
+    /// Predicted strength in7 days.
     public let predictedStrengthIn7Days: Double
-    public let evidenceSignals: Int         // Supporting signals
-    public let adjacentTopics: [String]     // Related known interests
-    public let suggestedAction: String      // What to do about it
+    /// Supporting signals
+    public let evidenceSignals: Int
+    /// Related known interests
+    public let adjacentTopics: [String]
+    /// What to do about it
+    public let suggestedAction: String
 }
 
 // MARK: - Surfaced Article
 
 /// An article proactively surfaced based on predicted interests.
 public struct SurfacedArticle: Sendable {
+    /// Article id.
     public let articleId: String
+    /// Feed url.
     public let feedURL: String
-    public let matchedPrediction: String    // Which prediction it matches
-    public let relevanceScore: Double       // 0-1
+    /// Which prediction it matches
+    public let matchedPrediction: String
+    /// 0-1
+    public let relevanceScore: Double
+    /// Reason.
     public let reason: String
 }
 
@@ -220,24 +255,37 @@ public struct SurfacedArticle: Sendable {
 
 /// Tracks prediction outcomes for self-improvement.
 public struct PredictionOutcome: Sendable {
+    /// Predicted topic.
     public let predictedTopic: String
+    /// Prediction date.
     public let predictionDate: Date
+    /// Confidence.
     public let confidence: PredictionConfidence
-    public let wasAccurate: Bool            // Did user actually engage?
-    public let actualStrength: Double       // Actual engagement level
+    /// Did user actually engage?
+    public let wasAccurate: Bool
+    /// Actual engagement level
+    public let actualStrength: Double
 }
 
 // MARK: - Forecast Result
 
 /// Complete forecast output from the engine.
 public struct InterestForecast: Sendable {
+    /// Predictions.
     public let predictions: [InterestPrediction]
+    /// Trajectories.
     public let trajectories: [InterestTrajectory]
+    /// Surfaced articles.
     public let surfacedArticles: [SurfacedArticle]
-    public let healthScore: Int             // 0-100
-    public let healthGrade: String          // A-F
-    public let predictionAccuracy: Double   // Historical accuracy 0-1
+    /// 0-100
+    public let healthScore: Int
+    /// A-F
+    public let healthGrade: String
+    /// Historical accuracy 0-1
+    public let predictionAccuracy: Double
+    /// Insights.
     public let insights: [String]
+    /// Generated at.
     public let generatedAt: Date
 }
 
@@ -245,11 +293,16 @@ public struct InterestForecast: Sendable {
 
 /// An article available for proactive surfacing.
 public struct CandidateArticle: Sendable {
+    /// Article id.
     public let articleId: String
+    /// Feed url.
     public let feedURL: String
+    /// Topics.
     public let topics: [String]
+    /// Published at.
     public let publishedAt: Date
 
+    /// Public API.
     public init(articleId: String, feedURL: String, topics: [String], publishedAt: Date = Date()) {
         self.articleId = articleId
         self.feedURL = feedURL
@@ -292,6 +345,7 @@ public final class FeedPredictiveInterestEngine: @unchecked Sendable {
 
     // MARK: - Init
 
+    /// Public API.
     public init() {}
 
     // MARK: - Recording
