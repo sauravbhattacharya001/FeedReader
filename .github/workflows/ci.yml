@@ -44,14 +44,15 @@ jobs:
           xcodebuild -version
 
       - name: List available simulators
-        run: xcrun simctl list devices available --json | python3 -c "
-          import json,sys
-          d=json.load(sys.stdin)
-          for runtime,devs in d['devices'].items():
-            for dev in devs:
-              if 'iPhone' in dev['name']:
-                print(f\"{dev['name']} — {runtime}\")
-          " | head -20
+        run: |
+          xcrun simctl list devices available --json | python3 - <<'PYEOF' | head -20
+          import json, sys
+          d = json.load(sys.stdin)
+          for runtime, devs in d['devices'].items():
+              for dev in devs:
+                  if 'iPhone' in dev['name']:
+                      print(f"{dev['name']} - {runtime}")
+          PYEOF
 
       - name: Cache SPM packages
         uses: actions/cache@v4
@@ -177,7 +178,7 @@ jobs:
             fi
             echo "✅ Coverage gate passed"
           else
-            echo "::warning::No coverage data found — skipping enforcement"
+            echo "::warning::No coverage data found - skipping enforcement"
           fi
 
       - name: Detect per-file coverage regressions
@@ -428,7 +429,7 @@ jobs:
               echo "✅ SPM coverage gate passed"
             fi
           else
-            echo "::warning::No SPM coverage data — skipping enforcement"
+            echo "::warning::No SPM coverage data - skipping enforcement"
           fi
 
       - name: Upload SPM coverage to Codecov
