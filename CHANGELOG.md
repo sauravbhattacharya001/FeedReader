@@ -9,6 +9,100 @@ links), see https://github.com/sauravbhattacharya001/FeedReader/releases.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.13.0] — 2026-05-17 — Cross-Reference, Predictive & Hygiene Wave
+
+Fifty-one commits since v1.12.0. This release adds 13 new autonomous reading
+intelligence engines, fixes a long-standing Atom feed bug, hardens HTML and
+OPML attack surface, removes wasted regex recompilations from hot paths, and
+lands several new test suites.
+
+### Added — Autonomous Intelligence Engines
+
+- **FeedRelevanceDecayEngine** — tracks how article relevance fades over time
+  and surfaces stale-but-still-saved items.
+- **FeedPredictiveInterestEngine** — predicts future topic interest from
+  reading trajectory.
+- **FeedBlindSpotDetector** — flags knowledge gaps the user is consistently
+  not reading.
+- **FeedTopicRadar** — autonomous emerging-topic detection across active feeds.
+- **FeedSubscriptionROI** — value analysis per subscribed feed (read-through,
+  save rate, time-spent vs cost).
+- **FeedCrossReferenceEngine** — cross-article fact corroboration and
+  contradiction detection across sources.
+- **FeedTemporalOptimizer** — publishing-pattern analysis and best read-time
+  recommendations.
+- **FeedNarrativeArcTracker** — multi-article storyline arc detection.
+- **Feed Knowledge Graph** — personal knowledge graph builder linking
+  entities, topics, and read articles.
+- **Feed Source Credibility Engine** — autonomous trust profiling for RSS
+  sources, complementing the static SourceCredibilityScorer.
+- **Feed Editorial Drift Compass** — detects editorial-tone shifts within a
+  single source over time.
+- **FeedAttentionAllocator** — daily attention-budget manager across feeds.
+- **PR size labeler** workflow + expanded auto-labeling coverage.
+
+### Fixed
+
+- **RSSParser** — repaired broken Atom `<link rel="alternate">` extraction
+  that was dropping the canonical article URL for many Atom feeds.
+- **ArticleReactionManager** — fixed a data race by moving to a concurrent
+  queue for thread-safe reaction state.
+
+### Security
+
+- **XSS (CWE-79)** — added single-quote escaping to `htmlEscaped` across 7
+  files that render user / feed content into HTML.
+- **SSRF (CWE-918)** — hardened OPML URL-based import with destination
+  validation, plus added size guards on automation and annotation import
+  paths to bound memory.
+- **Path traversal (CWE-22)** — fixed `FeedBackupManager` so backup file
+  paths cannot escape the backup directory.
+
+### Performance
+
+- **Hoisted regex compilation** — six `NSRegularExpression` instances in
+  `FeedTimelineReconstructor`, `FeedCrossReferenceEngine`, and
+  `ArticleFactChecker` are now compiled once as `static let` instead of
+  being rebuilt on every call. NSRegularExpression is thread-safe for
+  matching, so this is a pure win in CPU and Foundation allocations under
+  batch article ingest.
+- **ArticleDeduplicator** — O(1) indexed duplicate-group lookups plus a
+  length-based early-reject in the dedup scan.
+- **FeedSourceDiversityAuditor** — O(E) pre-bucketed event counts in
+  `computeConsistency`.
+
+### Refactored
+
+- **FeedPrivacyGuard** — unified pattern detection rules and extracted a
+  shared scan-aggregation helper.
+
+### Tests
+
+- **FeedReaderCore TextUtilities & ArticleDigestComposer** — comprehensive
+  unit coverage for the shared text utilities and the digest composer.
+- **FeedDebateArena + ArticleDigestComposer** — 57 tests.
+- **FeedAnomalyDetector** — 44 tests covering anomaly detection, trust
+  scoring, and persistence.
+- **FeedContentCalendar + FeedCacheManager** — 65 SPM tests.
+- **ArticleEngagementPredictor** — 25 tests.
+
+### Docs & CI
+
+- **CHANGELOG backfill** — every release from v1.4.0 through v1.12.0 is now
+  documented in this file.
+- **Reader Intelligence**, **Feed Intelligence & Hygiene**, and
+  **Autonomous Intelligence** documentation pages added.
+- **copilot-instructions.md** rewritten for the full 163-file codebase.
+- **CONTRIBUTING.md** — expanded with module catalog, test coverage gaps,
+  and a new Performance Profiling section.
+- **CODE_OF_CONDUCT.md** added.
+- **CI** — automated package publishing workflow (SPM + CocoaPods),
+  CodeQL path filters with concurrency and `upload: always` SARIF, stale
+  issue/PR bot, SPM caching, job timeouts, and permissions hardening.
+- **Badges** — stale issues, SPM compatible, contributors, dependabot.
+
+Full diff: https://github.com/sauravbhattacharya001/FeedReader/compare/v1.12.0...v1.13.0
+
 ## [v1.12.0] — 2026-04-27
 
 ### Tests
