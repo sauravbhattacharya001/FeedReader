@@ -1,0 +1,109 @@
+name: 📡 Feed Compatibility Issue
+description: Report a specific RSS/Atom/JSON Feed that parses incorrectly or doesn't load
+title: "[Feed]: "
+labels: ["feed-compatibility", "parser"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a feed that doesn't work right! FeedReader supports RSS 2.0, Atom 1.0,
+        and JSON Feed 1.1. The more detail you provide about the specific feed, the faster we can fix it.
+
+        **Privacy note:** If the feed is private, please redact authenticated URLs and paste a minimal
+        sample of the offending XML/JSON instead.
+
+  - type: input
+    id: feed_url
+    attributes:
+      label: Feed URL
+      description: Direct link to the feed (not the site homepage).
+      placeholder: "https://example.com/feed.xml"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feed_format
+    attributes:
+      label: Feed Format
+      options:
+        - RSS 2.0
+        - RSS 1.0 (RDF)
+        - Atom 1.0
+        - JSON Feed 1.x
+        - Unknown / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: problem
+    attributes:
+      label: Problem Category
+      options:
+        - Feed fails to load at all
+        - Some articles missing
+        - Article titles wrong/empty
+        - Article body/content wrong or truncated
+        - Article links wrong (e.g., points to feed, not article)
+        - Publish dates wrong or missing
+        - Authors wrong or missing
+        - Images/enclosures missing
+        - Encoding/character issues (mojibake)
+        - Duplicate articles
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should FeedReader display for this feed?
+      placeholder: "Each <entry> should appear as a separate article with title, author, and full content."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What does FeedReader currently do?
+      placeholder: "Only the first 3 of 20 entries appear; titles show as 'Untitled'."
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: Minimal Feed Sample
+      description: |
+        Paste a small representative sample of the feed's XML/JSON (one or two items),
+        especially any element that looks unusual. Redact private content.
+      render: xml
+
+  - type: input
+    id: app_version
+    attributes:
+      label: FeedReader Version
+      placeholder: "1.13.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS Version
+      placeholder: "iOS 18.2 / macOS 15.2"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: validator
+    attributes:
+      label: Pre-flight Checks
+      options:
+        - label: I verified the feed loads in another reader (NetNewsWire, Feedly, etc.) so the issue isn't a dead feed.
+        - label: I validated the feed at https://validator.w3.org/feed/ (optional but helpful).
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: I agree to follow the project's Code of Conduct.
+          required: true

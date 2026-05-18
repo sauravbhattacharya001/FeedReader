@@ -1,8 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: 📖 Documentation
+  - name: 📚 Documentation
     url: https://github.com/sauravbhattacharya001/FeedReader/tree/master/docs
     about: Check the project documentation before opening an issue.
   - name: 🔒 Security Vulnerability
     url: https://github.com/sauravbhattacharya001/FeedReader/blob/master/SECURITY.md
-    about: Report security vulnerabilities privately via SECURITY.md.
+    about: Report security vulnerabilities privately via SECURITY.md (not in public issues).
+  - name: 💬 Discussions
+    url: https://github.com/sauravbhattacharya001/FeedReader/discussions
+    about: Ask questions, share feed setups, and chat with the community.

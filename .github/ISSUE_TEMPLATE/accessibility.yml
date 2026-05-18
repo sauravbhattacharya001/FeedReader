@@ -1,0 +1,124 @@
+name: ♿ Accessibility Report
+description: Report accessibility barriers (VoiceOver, Dynamic Type, contrast, Switch Control, etc.)
+title: "[A11y]: "
+labels: ["accessibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make FeedReader usable for everyone. Please include the assistive technology
+        you were using and the screen/flow affected so we can reproduce and prioritize the fix.
+
+  - type: textarea
+    id: barrier
+    attributes:
+      label: Accessibility Barrier
+      description: What couldn't you do, or what was confusing/inaccessible?
+      placeholder: "VoiceOver doesn't announce article unread state on the feed list..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: assistive_tech
+    attributes:
+      label: Assistive Technology
+      description: Which feature(s) were you using? (Select all that apply by submitting multiple if needed.)
+      options:
+        - VoiceOver
+        - Voice Control
+        - Switch Control
+        - Dynamic Type / Larger Text
+        - Increase Contrast
+        - Reduce Motion
+        - Reduce Transparency
+        - Bold Text
+        - Smart Invert / Dark Mode
+        - Keyboard navigation (external keyboard)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: location
+    attributes:
+      label: Screen or Flow Affected
+      description: Where in the app does this happen?
+      placeholder: |
+        - Screen: Article detail view
+        - Flow: Opening an article from the feed list
+        - Element: "Mark as read" toolbar button
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should the assistive tech do or announce?
+      placeholder: "VoiceOver should announce 'Mark as read, button' and announce the new state after activation."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      placeholder: "VoiceOver only announces 'Button' with no label and no state change feedback."
+    validations:
+      required: true
+
+  - type: input
+    id: ios_version
+    attributes:
+      label: iOS/iPadOS/macOS Version
+      placeholder: "iOS 18.2"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      placeholder: "iPhone 15 Pro / iPad Air M2 / MacBook Pro M3"
+
+  - type: input
+    id: app_version
+    attributes:
+      label: FeedReader Version
+      placeholder: "1.13.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "Blocker — feature completely unusable with this assistive tech"
+        - "Major — significant friction, workaround required"
+        - "Minor — usable but degraded experience"
+    validations:
+      required: true
+
+  - type: textarea
+    id: wcag
+    attributes:
+      label: Related WCAG Criterion (optional)
+      description: If you know the relevant WCAG 2.2 success criterion, share it.
+      placeholder: "1.3.1 Info and Relationships, 4.1.2 Name, Role, Value"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context, Screenshots, or Recordings
+      description: VoiceOver recordings, screen recordings with captions, or screenshots help a lot.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and didn't find a duplicate.
+          required: true
+        - label: I agree to follow the project's Code of Conduct.
+          required: true

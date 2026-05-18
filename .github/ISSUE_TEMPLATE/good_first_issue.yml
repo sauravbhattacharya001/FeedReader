@@ -1,0 +1,93 @@
+name: 🌱 Good First Issue Proposal
+description: Propose a small, well-scoped issue suitable for first-time contributors
+title: "[Good First Issue]: "
+labels: ["good first issue", "help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to *propose* (or, as a maintainer, to *file*) a tightly-scoped task that's
+        a good entry point for new contributors. Bugs/features that need triage should use the regular
+        templates instead.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences describing the task.
+      placeholder: "Add a unit test for `TextUtilities.stripHTML` covering nested <pre><code> blocks."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context / Background
+      description: Why does this matter? What part of the codebase does it touch?
+      placeholder: "We recently added pre/code preservation. Tests cover the happy path but not nesting."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: A clear checklist of what "done" means.
+      placeholder: |
+        - [ ] Add `testStripHTMLPreservesNestedPreCode` to `TextUtilitiesTests`.
+        - [ ] All existing tests still pass: `swift test`.
+        - [ ] CI green.
+      value: |
+        - [ ] 
+        - [ ] All existing tests still pass: `swift test`.
+        - [ ] CI green.
+    validations:
+      required: true
+
+  - type: textarea
+    id: pointers
+    attributes:
+      label: Pointers / Hints
+      description: Files, functions, or docs the contributor should start with.
+      placeholder: |
+        - `Sources/FeedReaderCore/TextUtilities.swift`
+        - `Tests/FeedReaderCoreTests/TextUtilitiesTests.swift`
+        - See `CONTRIBUTING.md` for the dev loop.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Estimated Scope
+      options:
+        - "S — under an hour"
+        - "M — a couple of hours"
+        - "L — half a day"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Parser / FeedReaderCore
+        - UI / iOS
+        - UI / macOS
+        - Tests
+        - Documentation
+        - Tooling / CI
+        - Accessibility
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: This task is small, well-defined, and unlikely to require deep architectural knowledge.
+          required: true
+        - label: I'm willing to mentor a first-time contributor through this issue if needed.
+        - label: I agree to follow the project's Code of Conduct.
+          required: true
