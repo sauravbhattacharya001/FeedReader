@@ -151,3 +151,19 @@ xcodebuild test \
 ```
 
 The coverage report will be in the derived data directory under `Logs/Test/`.
+
+To reproduce the CI summary locally from an `*.xccovarchive`:
+
+```bash
+xcrun xccov view --report --json path/to/Test.xccovarchive > coverage.json
+python3 scripts/coverage_report.py \
+  --input coverage.json \
+  --min-coverage 40 \
+  --emit-lcov coverage.lcov
+```
+
+`scripts/coverage_report.py` prints the per-file table, writes
+`coverage-percent.txt`, flags files below 10% coverage, and (when run under
+GitHub Actions) appends a markdown summary to `$GITHUB_STEP_SUMMARY`. It is
+the single source of truth for both the CI workflow and local checks; see
+the script's docstring for the full set of flags.

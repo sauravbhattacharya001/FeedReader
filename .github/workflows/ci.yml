@@ -110,53 +110,9 @@ jobs:
           if [ -n "$ARCHIVE" ]; then
             echo "--- Per-file coverage ---"
             xcrun xccov view --report --json "$ARCHIVE" > coverage.json 2>/dev/null || true
-
-            if [ -f coverage.json ]; then
-              # Generate human-readable summary
-              python3 << 'PYEOF'
-          import json, sys
-
-          try:
-              with open("coverage.json") as f:
-                  data = json.load(f)
-
-              targets = data.get("targets", [])
-              total_covered = 0
-              total_executable = 0
-
-              print(f"{'File':<50} {'Lines':>8} {'Covered':>8} {'Coverage':>10}")
-              print("-" * 80)
-
-              for target in targets:
-                  tname = target.get("name", "Unknown")
-                  # Skip test targets
-                  if "Test" in tname:
-                      continue
-                  for src_file in target.get("files", []):
-                      fname = src_file.get("name", "?")
-                      cov = src_file.get("lineCoverage", 0)
-                      executable = src_file.get("executableLines", 0)
-                      covered = src_file.get("coveredLines", 0)
-                      total_covered += covered
-                      total_executable += executable
-                      pct = f"{cov * 100:.1f}%"
-                      print(f"{fname:<50} {executable:>8} {covered:>8} {pct:>10}")
-
-              if total_executable > 0:
-                  overall = total_covered / total_executable * 100
-                  print("-" * 80)
-                  print(f"{'TOTAL':<50} {total_executable:>8} {total_covered:>8} {overall:>9.1f}%")
-                  print(f"\n✅ Overall code coverage: {overall:.1f}%")
-
-                  # Write coverage percentage to file for badge generation
-                  with open("coverage-percent.txt", "w") as pf:
-                      pf.write(f"{overall:.1f}")
-              else:
-                  print("No executable lines found in coverage data.")
-          except Exception as e:
-              print(f"Warning: Could not parse coverage JSON: {e}", file=sys.stderr)
-          PYEOF
-            fi
+            # Per-file table + coverage-percent.txt + regression report + step summary
+            # are all produced by scripts/coverage_report.py (see that file for details).
+            python3 scripts/coverage_report.py --input coverage.json || true
           elif [ -n "$REPORT" ]; then
             echo "Found xccovreport but no archive. Listing report:"
             xcrun xccov view --report "$REPORT" 2>/dev/null || echo "(could not read report)"
@@ -168,56 +124,13 @@ jobs:
 
       - name: Enforce coverage threshold
         run: |
-          MIN_COVERAGE=40
-          if [ -f coverage-percent.txt ]; then
-            PCT=$(cat coverage-percent.txt)
-            echo "Coverage: ${PCT}%  (minimum: ${MIN_COVERAGE}%)"
-            if (( $(echo "$PCT < $MIN_COVERAGE" | bc -l) )); then
-              echo "::error::Code coverage ${PCT}% is below the minimum threshold of ${MIN_COVERAGE}%"
-              exit 1
-            fi
-            echo "✅ Coverage gate passed"
+          if [ -f coverage.json ]; then
+            python3 scripts/coverage_report.py \
+              --input coverage.json \
+              --min-coverage 40
           else
             echo "::warning::No coverage data found - skipping enforcement"
           fi
-
-      - name: Detect per-file coverage regressions
-        if: always()
-        run: |
-          if [ ! -f coverage.json ]; then
-            echo "No coverage data to analyze."
-            exit 0
-          fi
-          python3 << 'PYEOF'
-          import json, sys
-
-          UNCOVERED_THRESHOLD = 0.10  # Flag files with < 10% coverage
-
-          try:
-              with open("coverage.json") as f:
-                  data = json.load(f)
-
-              low_coverage_files = []
-              for target in data.get("targets", []):
-                  if "Test" in target.get("name", ""):
-                      continue
-                  for src_file in target.get("files", []):
-                      fname = src_file.get("name", "?")
-                      cov = src_file.get("lineCoverage", 0)
-                      executable = src_file.get("executableLines", 0)
-                      if executable >= 10 and cov < UNCOVERED_THRESHOLD:
-                          low_coverage_files.append((fname, cov * 100, executable))
-
-              if low_coverage_files:
-                  print(f"⚠️  {len(low_coverage_files)} file(s) with <10% coverage (≥10 executable lines):")
-                  for fname, pct, lines in sorted(low_coverage_files, key=lambda x: x[1]):
-                      print(f"  {fname}: {pct:.1f}% ({lines} lines)")
-                  print("\nConsider adding tests for these files.")
-              else:
-                  print("✅ No critically uncovered files detected.")
-          except Exception as e:
-              print(f"Warning: {e}", file=sys.stderr)
-          PYEOF
 
       - name: Generate coverage badge
         if: always()
@@ -241,56 +154,6 @@ jobs:
             echo "No coverage data available for badge."
           fi
 
-      - name: Coverage job summary
-        if: always()
-        run: |
-          if [ -f coverage.json ]; then
-            python3 << 'PYEOF'
-          import json, os
-
-          try:
-              with open("coverage.json") as f:
-                  data = json.load(f)
-
-              summary = "## 📊 Code Coverage Report\n\n"
-              summary += "| File | Lines | Covered | Coverage |\n"
-              summary += "|------|------:|--------:|---------:|\n"
-
-              total_exec = 0
-              total_cov = 0
-              rows = []
-
-              for target in data.get("targets", []):
-                  if "Test" in target.get("name", ""):
-                      continue
-                  for src in target.get("files", []):
-                      name = src.get("name", "?")
-                      exe = src.get("executableLines", 0)
-                      cov = src.get("coveredLines", 0)
-                      pct = (cov / exe * 100) if exe > 0 else 0
-                      total_exec += exe
-                      total_cov += cov
-                      if exe >= 5:
-                          icon = "🟢" if pct >= 60 else "🟡" if pct >= 30 else "🔴"
-                          rows.append((name, exe, cov, pct, icon))
-
-              for name, exe, cov, pct, icon in sorted(rows, key=lambda r: r[3]):
-                  summary += f"| {icon} {name} | {exe} | {cov} | {pct:.1f}% |\n"
-
-              overall = (total_cov / total_exec * 100) if total_exec > 0 else 0
-              summary += f"\n**Overall: {overall:.1f}%** ({total_cov}/{total_exec} lines)\n"
-
-              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
-                  f.write(summary)
-
-              print(f"Coverage summary written ({overall:.1f}%)")
-          except Exception as e:
-              print(f"Warning: {e}")
-          PYEOF
-          else
-            echo "No coverage data for summary."
-          fi
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -312,38 +175,10 @@ jobs:
       - name: Convert coverage to Codecov format
         if: always()
         run: |
-          ARCHIVE=$(find TestResults -name '*.xccovarchive' 2>/dev/null | head -1)
-          if [ -n "$ARCHIVE" ]; then
-            # Generate lcov-compatible coverage from xccovarchive
-            python3 << 'PYEOF'
-          import json, os
-
-          try:
-              with open("coverage.json") as f:
-                  data = json.load(f)
-
-              with open("coverage.lcov", "w") as lcov:
-                  for target in data.get("targets", []):
-                      if "Test" in target.get("name", ""):
-                          continue
-                      for src_file in target.get("files", []):
-                          path = src_file.get("path", src_file.get("name", "unknown"))
-                          lcov.write(f"SF:{path}\n")
-                          for func in src_file.get("functions", []):
-                              name = func.get("name", "?")
-                              line = func.get("lineNumber", 0)
-                              covered = func.get("coveredLines", 0)
-                              lcov.write(f"FN:{line},{name}\n")
-                              lcov.write(f"FNDA:{covered},{name}\n")
-                          executable = src_file.get("executableLines", 0)
-                          covered = src_file.get("coveredLines", 0)
-                          lcov.write(f"LF:{executable}\n")
-                          lcov.write(f"LH:{covered}\n")
-                          lcov.write("end_of_record\n")
-              print("Generated coverage.lcov")
-          except Exception as e:
-              print(f"Warning: Could not generate lcov: {e}")
-          PYEOF
+          if [ -f coverage.json ]; then
+            python3 scripts/coverage_report.py \
+              --input coverage.json \
+              --emit-lcov coverage.lcov
           fi
 
       - name: Upload coverage to Codecov
