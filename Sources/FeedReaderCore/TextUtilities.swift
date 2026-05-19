@@ -142,11 +142,24 @@ public enum TextUtilities {
     ///   - text: The input text to analyze.
     ///   - minimumLength: Minimum word length to include (default 3).
     /// - Returns: Dictionary mapping lowercase significant words to their occurrence counts.
+    ///
+    /// - Note: This walks the input directly (via `enumerateSubstrings(... .byWords)`)
+    ///   and increments the frequency dictionary in place. Previously it called
+    ///   `extractSignificantWords` to materialize an intermediate `[String]` and
+    ///   then re-iterated to count - on a typical article body that allocated and
+    ///   destroyed hundreds of `String` boxes per call for no reason. The fused
+    ///   version visits every word exactly once with no intermediate array.
     public static func computeWordFrequencies(from text: String, minimumLength: Int = 3) -> [String: Int] {
-        let words = extractSignificantWords(from: text, minimumLength: minimumLength)
+        let lowered = text.lowercased()
         var frequencies: [String: Int] = [:]
-        frequencies.reserveCapacity(words.count / 2)
-        for word in words {
+        // Heuristic: ~1 significant word per ~8 characters of prose. Avoids
+        // rehashing as the dictionary grows for typical article-sized inputs.
+        frequencies.reserveCapacity(max(16, lowered.count / 8))
+        lowered.enumerateSubstrings(in: lowered.startIndex..., options: .byWords) { word, _, _, _ in
+            guard let word = word,
+                  word.count >= minimumLength,
+                  !stopWords.contains(word),
+                  !word.allSatisfy({ $0.isNumber }) else { return }
             frequencies[word, default: 0] += 1
         }
         return frequencies
