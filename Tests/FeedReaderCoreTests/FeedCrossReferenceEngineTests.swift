@@ -584,4 +584,269 @@ final class FeedCrossReferenceEngineTests: XCTestCase {
         XCTAssertGreaterThan(report.totalClaims, 0)
         XCTAssertFalse(report.insights.isEmpty)
     }
+
+    // MARK: - CrossReferenceMatcher Perf-Path Regressions
+    //
+    // The Jaccard / negation precomputation refactor in CrossReferenceMatcher
+    // changed how the O(N²) inner loop is executed but must preserve the
+    // observable outputs. These tests pin the behavior so future perf work
+    // does not silently drift.
+
+    /// Two cross-source claims of the same type with overlapping keywords
+    /// should produce exactly one CrossReference, regardless of which order
+    /// they are passed in. Empty keyword lists must never reach the matcher's
+    /// similarity check (and so must not produce a reference).
+    func testMatcherProducesSinglePairForOverlappingKeywords() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "art-A", articleTitle: "A", sourceId: "src-A",
+            claimType: .numeric, claimText: "Revenue was high",
+            keywords: ["revenue", "growth", "quarter"]
+        )
+        let b = ExtractedClaim(
+            articleId: "art-B", articleTitle: "B", sourceId: "src-B",
+            claimType: .numeric, claimText: "Quarterly revenue rose",
+            keywords: ["revenue", "growth", "earnings"]
+        )
+        let refs = matcher.findCrossReferences(claims: [a, b])
+        XCTAssertEqual(refs.count, 1, "Two overlapping cross-source claims should yield exactly one ref")
+        XCTAssertGreaterThan(refs[0].similarity, 0, "Jaccard similarity must be positive when keywords overlap")
+        XCTAssertLessThanOrEqual(refs[0].similarity, 1.0)
+    }
+
+    /// Same source must never match itself, even with identical keywords.
+    func testMatcherSkipsSameSourceClaims() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "art-1", articleTitle: "A", sourceId: "sameSrc",
+            claimType: .numeric, claimText: "x", keywords: ["k1", "k2"]
+        )
+        let b = ExtractedClaim(
+            articleId: "art-2", articleTitle: "B", sourceId: "sameSrc",
+            claimType: .numeric, claimText: "y", keywords: ["k1", "k2"]
+        )
+        XCTAssertTrue(matcher.findCrossReferences(claims: [a, b]).isEmpty)
+    }
+
+    /// Empty keyword sets cannot produce any positive Jaccard similarity, so
+    /// they must be filtered out even when other fields would otherwise match.
+    /// The previous implementation would still build the Sets and run the
+    /// comparison; the optimized one short-circuits. Behavior must remain:
+    /// no references emitted.
+    func testMatcherIgnoresEmptyKeywordClaims() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "art-1", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x", keywords: []
+        )
+        let b = ExtractedClaim(
+            articleId: "art-2", articleTitle: "B", sourceId: "srcB",
+            claimType: .numeric, claimText: "y", keywords: ["k1", "k2"]
+        )
+        XCTAssertTrue(matcher.findCrossReferences(claims: [a, b]).isEmpty)
+        XCTAssertTrue(matcher.findCrossReferences(claims: [b, a]).isEmpty)
+        XCTAssertTrue(matcher.findCrossReferences(claims: [a, a]).isEmpty)
+    }
+
+    /// Two numeric claims with values within 5% must be flagged as `.agrees`.
+    /// This guards the numeric-value short-circuit in `assessAgreement`.
+    func testMatcherAgreesWhenNumericValuesAreClose() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a1", articleTitle: "A", sourceId: "srcA",
+            claimType: .monetary, claimText: "$100 million",
+            keywords: ["revenue", "q3"], numericValue: 100.0
+        )
+        let b = ExtractedClaim(
+            articleId: "a2", articleTitle: "B", sourceId: "srcB",
+            claimType: .monetary, claimText: "$102 million",
+            keywords: ["revenue", "q3"], numericValue: 102.0
+        )
+        let refs = matcher.findCrossReferences(claims: [a, b])
+        XCTAssertEqual(refs.count, 1)
+        XCTAssertEqual(refs[0].agreement, .agrees)
+        if let dev = refs[0].numericDeviation {
+            XCTAssertLessThanOrEqual(dev, 0.05)
+        } else {
+            XCTFail("Numeric deviation should be reported when both values are numeric")
+        }
+    }
+
+    /// One claim negated, one not → `.partiallyDisagrees` when no numeric value.
+    /// Guards the precomputed-negation path in `findCrossReferences`.
+    func testMatcherDetectsAsymmetricNegationAsPartialDisagreement() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a1", articleTitle: "A", sourceId: "srcA",
+            claimType: .attribution,
+            claimText: "Spokesperson confirmed the deal closed.",
+            keywords: ["deal", "spokesperson", "closed"]
+        )
+        let b = ExtractedClaim(
+            articleId: "a2", articleTitle: "B", sourceId: "srcB",
+            claimType: .attribution,
+            claimText: "Spokesperson denied the deal closed.",
+            keywords: ["deal", "spokesperson", "closed"]
+        )
+        let refs = matcher.findCrossReferences(claims: [a, b])
+        XCTAssertEqual(refs.count, 1)
+        XCTAssertEqual(refs[0].agreement, .partiallyDisagrees,
+                       "Asymmetric negation between non-numeric claims should report partial disagreement")
+    }
+
+    /// Both negated or both not negated → `.neutral` when no numeric values.
+    func testMatcherSymmetricNegationIsNeutral() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a1", articleTitle: "A", sourceId: "srcA",
+            claimType: .attribution,
+            claimText: "The CEO denied any wrongdoing.",
+            keywords: ["ceo", "wrongdoing"]
+        )
+        let b = ExtractedClaim(
+            articleId: "a2", articleTitle: "B", sourceId: "srcB",
+            claimType: .attribution,
+            claimText: "The chair denied any misconduct allegations.",
+            keywords: ["ceo", "wrongdoing"]
+        )
+        let refs = matcher.findCrossReferences(claims: [a, b])
+        XCTAssertEqual(refs.count, 1)
+        XCTAssertEqual(refs[0].agreement, .neutral,
+                       "Both-negated claims should not be flagged as disagreement")
+    }
+
+    /// Symmetry: the Jaccard score must be order-independent.
+    func testMatcherJaccardSymmetry() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a1", articleTitle: "A", sourceId: "srcA",
+            claimType: .statistic, claimText: "x",
+            keywords: ["alpha", "beta", "gamma", "delta"]
+        )
+        let b = ExtractedClaim(
+            articleId: "a2", articleTitle: "B", sourceId: "srcB",
+            claimType: .statistic, claimText: "y",
+            keywords: ["gamma", "delta", "epsilon"]
+        )
+        let ab = matcher.findCrossReferences(claims: [a, b])
+        let ba = matcher.findCrossReferences(claims: [b, a])
+        XCTAssertEqual(ab.count, 1)
+        XCTAssertEqual(ba.count, 1)
+        XCTAssertEqual(ab[0].similarity, ba[0].similarity, accuracy: 1e-9,
+                       "Jaccard similarity must be symmetric regardless of input order")
+    }
+
+    /// `similarityThreshold` must actually gate emission: raising it past the
+    /// computed similarity drops the ref entirely.
+    func testMatcherSimilarityThresholdGatesEmission() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a1", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x",
+            keywords: ["k1", "k2", "k3", "k4"]
+        )
+        let b = ExtractedClaim(
+            articleId: "a2", articleTitle: "B", sourceId: "srcB",
+            claimType: .numeric, claimText: "y",
+            keywords: ["k4", "k5", "k6", "k7"]
+        )
+        // Jaccard = 1/7 ≈ 0.143 — below the default 0.15 threshold but above 0.10.
+        matcher.similarityThreshold = 0.10
+        XCTAssertEqual(matcher.findCrossReferences(claims: [a, b]).count, 1)
+        matcher.similarityThreshold = 0.90
+        XCTAssertTrue(matcher.findCrossReferences(claims: [a, b]).isEmpty)
+    }
+
+    /// Singleton input must short-circuit cleanly (no pair to compare).
+    func testMatcherSingleClaimReturnsEmpty() {
+        let matcher = CrossReferenceMatcher()
+        let a = ExtractedClaim(
+            articleId: "a", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x", keywords: ["k1"]
+        )
+        XCTAssertTrue(matcher.findCrossReferences(claims: [a]).isEmpty)
+        XCTAssertTrue(matcher.findCrossReferences(claims: []).isEmpty)
+    }
+
+    // MARK: - ClaimClusterer Perf-Path Regressions
+
+    /// Two cross-article claims with high keyword overlap should land in the
+    /// same cluster even without explicit CrossReferences. This exercises the
+    /// optimized inner loop in `ClaimClusterer.clusterClaims` that now
+    /// precomputes keyword Sets once per claim.
+    func testClustererGroupsHighOverlapClaimsAcrossArticles() {
+        let clusterer = ClaimClusterer()
+        let a = ExtractedClaim(
+            articleId: "art-1", articleTitle: "A", sourceId: "srcA",
+            claimType: .statistic, claimText: "x",
+            keywords: ["climate", "emissions", "policy", "2030"]
+        )
+        let b = ExtractedClaim(
+            articleId: "art-2", articleTitle: "B", sourceId: "srcB",
+            claimType: .statistic, claimText: "y",
+            keywords: ["climate", "emissions", "policy", "2050"]
+        )
+        let clusters = clusterer.clusterClaims(claims: [a, b], crossReferences: [])
+        XCTAssertEqual(clusters.count, 1, "High-overlap cross-article claims should merge into one cluster")
+        XCTAssertEqual(clusters[0].claims.count, 2)
+    }
+
+    /// Same-article claims must not be merged purely on keyword overlap; the
+    /// clusterer only fuses across different articles.
+    func testClustererDoesNotMergeSameArticleClaimsOnOverlap() {
+        let clusterer = ClaimClusterer()
+        let a = ExtractedClaim(
+            articleId: "shared", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x", keywords: ["k1", "k2", "k3"]
+        )
+        let b = ExtractedClaim(
+            articleId: "shared", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "y", keywords: ["k1", "k2", "k3"]
+        )
+        let clusters = clusterer.clusterClaims(claims: [a, b], crossReferences: [])
+        // No CrossReferences provided and same articleId → each claim is its own
+        // singleton cluster.
+        XCTAssertEqual(clusters.count, 2)
+    }
+
+    /// Empty keyword arrays must be skipped by the cluster overlap heuristic
+    /// (they could never reach a positive Jaccard score). Behavior pinned
+    /// after the keyword-set precomputation refactor.
+    func testClustererSkipsEmptyKeywordClaims() {
+        let clusterer = ClaimClusterer()
+        let empty = ExtractedClaim(
+            articleId: "art-1", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x", keywords: []
+        )
+        let other = ExtractedClaim(
+            articleId: "art-2", articleTitle: "B", sourceId: "srcB",
+            claimType: .numeric, claimText: "y", keywords: ["k1", "k2"]
+        )
+        let clusters = clusterer.clusterClaims(claims: [empty, other], crossReferences: [])
+        XCTAssertEqual(clusters.count, 2, "Empty-keyword claim must remain its own singleton cluster")
+    }
+
+    /// Existing CrossReferences must still seed the cluster adjacency even when
+    /// keyword overlap is below the threshold. Guards the `adjacency` build at
+    /// the top of `clusterClaims`.
+    func testClustererHonorsExplicitCrossReferenceAdjacency() {
+        let clusterer = ClaimClusterer()
+        let a = ExtractedClaim(
+            id: "id-a",
+            articleId: "art-1", articleTitle: "A", sourceId: "srcA",
+            claimType: .numeric, claimText: "x", keywords: ["only-a"]
+        )
+        let b = ExtractedClaim(
+            id: "id-b",
+            articleId: "art-2", articleTitle: "B", sourceId: "srcB",
+            claimType: .numeric, claimText: "y", keywords: ["only-b"]
+        )
+        let ref = CrossReference(
+            primaryClaimId: "id-a", relatedClaimId: "id-b",
+            similarity: 0.0, agreement: .neutral
+        )
+        let clusters = clusterer.clusterClaims(claims: [a, b], crossReferences: [ref])
+        XCTAssertEqual(clusters.count, 1, "Explicit CrossReference must merge claims even without keyword overlap")
+        XCTAssertEqual(clusters[0].claims.count, 2)
+    }
 }

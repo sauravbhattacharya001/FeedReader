@@ -473,26 +473,68 @@ public class CrossReferenceMatcher {
     /// Maximum numeric deviation (as fraction) to consider claims agreeing.
     public var numericAgreementThreshold: Double = 0.10
 
+    /// Negation indicators reused across all agreement assessments.
+    /// Hoisted to a static let so the O(N²) pair scan in `findCrossReferences`
+    /// does not rebuild this Set on every call to `assessAgreement`.
+    fileprivate static let negationWords: Set<String> = [
+        "not", "no", "never", "denied", "false", "incorrect",
+        "wrong", "untrue", "rejected", "disputed", "contrary"
+    ]
+
     public init() {}
 
     /// Finds cross-references between claims from different sources.
+    ///
+    /// Performance: the pairwise loop is O(N²). To keep the per-pair work tight
+    /// we precompute each claim's keyword Set (and lowercased-word Set used by
+    /// the negation check) exactly once instead of rebuilding them on every
+    /// comparison. For N claims with average K keywords this drops the Set
+    /// allocation cost from O(N² K) to O(N K).
     public func findCrossReferences(claims: [ExtractedClaim]) -> [CrossReference] {
         var refs: [CrossReference] = []
+        guard claims.count > 1 else { return refs }
 
-        for i in 0..<claims.count {
-            for j in (i + 1)..<claims.count {
-                let a = claims[i]
+        // Precompute per-claim derived sets used inside the inner loop.
+        let count = claims.count
+        var keywordSets: [Set<String>] = []
+        keywordSets.reserveCapacity(count)
+        var hasNegation: [Bool] = []
+        hasNegation.reserveCapacity(count)
+        let negSet = CrossReferenceMatcher.negationWords
+        for c in claims {
+            keywordSets.append(Set(c.keywords))
+            let words = c.claimText.lowercased()
+                .components(separatedBy: .whitespacesAndNewlines)
+            // Detect negation by single pass instead of building a full Set
+            // and then intersecting. Short-circuits on first hit.
+            var neg = false
+            for w in words where negSet.contains(w) { neg = true; break }
+            hasNegation.append(neg)
+        }
+
+        for i in 0..<count {
+            let a = claims[i]
+            let setA = keywordSets[i]
+            // Early-exit: empty keyword set can never reach threshold (>0).
+            if setA.isEmpty { continue }
+            for j in (i + 1)..<count {
                 let b = claims[j]
 
                 // Only cross-reference across different sources
-                guard a.sourceId != b.sourceId else { continue }
+                if a.sourceId == b.sourceId { continue }
                 // Same claim type preferred
-                guard a.claimType == b.claimType else { continue }
+                if a.claimType != b.claimType { continue }
 
-                let similarity = jaccardSimilarity(a.keywords, b.keywords)
-                guard similarity >= similarityThreshold else { continue }
+                let setB = keywordSets[j]
+                if setB.isEmpty { continue }
+                let similarity = jaccardSimilarity(setA, setB)
+                if similarity < similarityThreshold { continue }
 
-                let (agreement, deviation) = assessAgreement(a, b)
+                let (agreement, deviation) = assessAgreement(
+                    a, b,
+                    negA: hasNegation[i],
+                    negB: hasNegation[j]
+                )
 
                 refs.append(CrossReference(
                     primaryClaimId: a.id,
@@ -507,18 +549,35 @@ public class CrossReferenceMatcher {
         return refs
     }
 
-    /// Jaccard similarity between two keyword sets.
+    /// Jaccard similarity between two keyword arrays (kept for API stability).
+    /// New call sites should prefer the Set-based overload which avoids
+    /// rebuilding the input Sets.
     private func jaccardSimilarity(_ a: [String], _ b: [String]) -> Double {
-        let setA = Set(a)
-        let setB = Set(b)
-        let intersection = setA.intersection(setB).count
-        let union = setA.union(setB).count
-        guard union > 0 else { return 0 }
-        return Double(intersection) / Double(union)
+        return jaccardSimilarity(Set(a), Set(b))
     }
 
-    /// Assesses agreement between two claims.
-    private func assessAgreement(_ a: ExtractedClaim, _ b: ExtractedClaim) -> (AgreementType, Double?) {
+    /// Jaccard similarity between two precomputed keyword sets.
+    @inline(__always)
+    private func jaccardSimilarity(_ setA: Set<String>, _ setB: Set<String>) -> Double {
+        if setA.isEmpty && setB.isEmpty { return 0 }
+        // Iterate the smaller set for intersection to minimize hashing cost.
+        let (small, large) = setA.count <= setB.count ? (setA, setB) : (setB, setA)
+        var inter = 0
+        for x in small where large.contains(x) { inter += 1 }
+        let union = setA.count + setB.count - inter
+        guard union > 0 else { return 0 }
+        return Double(inter) / Double(union)
+    }
+
+    /// Assesses agreement between two claims. The `negA`/`negB` overload lets
+    /// `findCrossReferences` reuse precomputed negation flags so the O(N²)
+    /// inner loop does not re-tokenize claim text on every pair.
+    private func assessAgreement(
+        _ a: ExtractedClaim,
+        _ b: ExtractedClaim,
+        negA: Bool,
+        negB: Bool
+    ) -> (AgreementType, Double?) {
         // If both have numeric values, compare them
         if let numA = a.numericValue, let numB = b.numericValue, numA > 0 {
             let deviation = abs(numA - numB) / numA
@@ -533,21 +592,27 @@ public class CrossReferenceMatcher {
             }
         }
 
-        // Text-based agreement: check for negation indicators
-        let negationWords: Set<String> = ["not", "no", "never", "denied", "false", "incorrect",
-                                           "wrong", "untrue", "rejected", "disputed", "contrary"]
-
-        let wordsA = Set(a.claimText.lowercased().components(separatedBy: .whitespacesAndNewlines))
-        let wordsB = Set(b.claimText.lowercased().components(separatedBy: .whitespacesAndNewlines))
-
-        let negA = !wordsA.intersection(negationWords).isEmpty
-        let negB = !wordsB.intersection(negationWords).isEmpty
-
         if negA != negB {
             return (.partiallyDisagrees, nil)
         }
 
         return (.neutral, nil)
+    }
+
+    /// Legacy overload preserved for any external callers / tests that pass
+    /// only the two claims. Computes negation flags on demand.
+    private func assessAgreement(_ a: ExtractedClaim, _ b: ExtractedClaim) -> (AgreementType, Double?) {
+        if a.numericValue != nil && b.numericValue != nil {
+            return assessAgreement(a, b, negA: false, negB: false)
+        }
+        let negSet = CrossReferenceMatcher.negationWords
+        let wordsA = a.claimText.lowercased().components(separatedBy: .whitespacesAndNewlines)
+        let wordsB = b.claimText.lowercased().components(separatedBy: .whitespacesAndNewlines)
+        var negA = false
+        for w in wordsA where negSet.contains(w) { negA = true; break }
+        var negB = false
+        for w in wordsB where negSet.contains(w) { negB = true; break }
+        return assessAgreement(a, b, negA: negA, negB: negB)
     }
 }
 
@@ -575,17 +640,30 @@ public class ClaimClusterer {
             adjacency[ref.relatedClaimId, default: []].insert(ref.primaryClaimId)
         }
 
-        // Also cluster claims from different articles with high keyword overlap
-        for i in 0..<claims.count {
-            for j in (i + 1)..<claims.count {
-                let a = claims[i]
+        // Also cluster claims from different articles with high keyword overlap.
+        // Precompute keyword Sets once to avoid the O(N² K) re-allocation that
+        // the original nested loop incurred. Empty keyword sets can never reach
+        // a positive threshold so we skip them up front.
+        let n = claims.count
+        var keywordSets: [Set<String>] = []
+        keywordSets.reserveCapacity(n)
+        for c in claims { keywordSets.append(Set(c.keywords)) }
+
+        for i in 0..<n {
+            let setA = keywordSets[i]
+            if setA.isEmpty { continue }
+            let a = claims[i]
+            for j in (i + 1)..<n {
                 let b = claims[j]
-                guard a.articleId != b.articleId else { continue }
-                let setA = Set(a.keywords)
-                let setB = Set(b.keywords)
-                let inter = setA.intersection(setB).count
-                let uni = setA.union(setB).count
-                guard uni > 0 else { continue }
+                if a.articleId == b.articleId { continue }
+                let setB = keywordSets[j]
+                if setB.isEmpty { continue }
+                // Iterate the smaller set for the intersection count.
+                let (small, large) = setA.count <= setB.count ? (setA, setB) : (setB, setA)
+                var inter = 0
+                for x in small where large.contains(x) { inter += 1 }
+                let uni = setA.count + setB.count - inter
+                if uni == 0 { continue }
                 let sim = Double(inter) / Double(uni)
                 if sim >= clusterThreshold {
                     adjacency[a.id, default: []].insert(b.id)
@@ -617,9 +695,9 @@ public class ClaimClusterer {
             }
 
             let clusterClaims = component.compactMap { claimById[$0] }
+            let componentIds = Set(component)
             let clusterRefs = crossReferences.filter { ref in
-                let ids = Set(component)
-                return ids.contains(ref.primaryClaimId) || ids.contains(ref.relatedClaimId)
+                componentIds.contains(ref.primaryClaimId) || componentIds.contains(ref.relatedClaimId)
             }
 
             // Determine topic from most common keywords
