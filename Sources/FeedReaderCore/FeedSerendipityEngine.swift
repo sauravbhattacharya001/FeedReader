@@ -55,22 +55,36 @@ public struct SerendipityArticle: Sendable {
         self.domain = SerendipityArticle.inferDomain(from: feedName, title: title)
     }
 
+    /// Stop words excluded from serendipity keyword extraction.
+    ///
+    /// Declared as a static constant so it is constructed exactly once for
+    /// the lifetime of the process. Previously this was a function-local
+    /// `Set<String>` literal, which the Swift runtime rebuilds on every call
+    /// - meaning every `SerendipityArticle(...)` allocated a fresh 48-element
+    /// hash set just to throw it away. Hoisting it out is free and matters
+    /// at the volumes the discovery engine runs at (hundreds of articles).
+    private static let extractionStopWords: Set<String> = [
+        "that", "this", "with", "from", "have", "been", "were", "they",
+        "their", "about", "would", "could", "should", "which", "there",
+        "when", "what", "more", "some", "than", "them", "will", "into",
+        "just", "also", "said", "says", "like", "been", "other", "over",
+        "after", "most", "such", "only", "very", "year", "even", "back",
+        "make", "made", "still", "each", "much", "many", "well", "does"
+    ]
+
     private static func extractKeywords(from text: String) -> [String] {
-        let words = text.lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { $0.count > 3 }
-
-        let stopWords: Set<String> = [
-            "that", "this", "with", "from", "have", "been", "were", "they",
-            "their", "about", "would", "could", "should", "which", "there",
-            "when", "what", "more", "some", "than", "them", "will", "into",
-            "just", "also", "said", "says", "like", "been", "other", "over",
-            "after", "most", "such", "only", "very", "year", "even", "back",
-            "make", "made", "still", "each", "much", "many", "well", "does"
-        ]
-
+        // Fuse the length filter and stop-word filter into the frequency
+        // counting pass. The previous implementation materialized a fully
+        // filtered `[String]` (one allocation per surviving token) and then
+        // iterated it again to count. The new version walks the token list
+        // exactly once and only allocates frequency-table entries.
+        let tokens = text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted)
+        let stopWords = extractionStopWords
         var freq: [String: Int] = [:]
-        for w in words where !stopWords.contains(w) {
+        freq.reserveCapacity(min(tokens.count, 256))
+        for w in tokens {
+            if w.count <= 3 { continue }
+            if stopWords.contains(w) { continue }
             freq[w, default: 0] += 1
         }
 
@@ -184,22 +198,56 @@ public final class FeedSerendipityEngine: @unchecked Sendable {
 
         var connections: [SerendipityConnection] = []
 
+        // Pre-compute per-article derived data ONCE before the O(N^2) loop.
+        //
+        // The previous implementation called `Set(a.keywords)` and
+        // `Set(b.keywords)` inside the inner loop, so each article's keyword
+        // list was hashed into a Set roughly (N-1) times. It also re-tokenized
+        // each article body (lowercased + whitespace split + Set construction)
+        // every time `classifyConnection` was reached - again, O(N) per article.
+        // For 200 articles that's ~20,000 redundant Set constructions and ~200
+        // redundant body tokenizations per article. Hoisting both yields a
+        // measurable speedup on real feed loads.
+        let keywordSets: [Set<String>] = articles.map { Set($0.keywords) }
+
+        // Body word sets are only needed by `classifyConnection`. We compute
+        // them lazily because `contrastingView` is a rare branch - we don't
+        // want to pay for every article's body tokenization up front when
+        // most calls won't need it. The cache survives the entire pair loop.
+        var bodyWordCache: [Int: Set<String>] = [:]
+        bodyWordCache.reserveCapacity(articles.count)
+        func bodyWords(forIndex idx: Int) -> Set<String> {
+            if let cached = bodyWordCache[idx] { return cached }
+            let s = Set(articles[idx].body.lowercased().components(separatedBy: .whitespaces))
+            bodyWordCache[idx] = s
+            return s
+        }
+
         // Compare all cross-feed pairs
         for i in 0..<articles.count {
+            let a = articles[i]
+            let aSet = keywordSets[i]
             for j in (i + 1)..<articles.count {
-                let a = articles[i]
                 let b = articles[j]
 
                 // Skip same-feed pairs (less serendipitous)
                 if a.feedName == b.feedName { continue }
 
-                let shared = Set(a.keywords).intersection(Set(b.keywords))
+                let shared = aSet.intersection(keywordSets[j])
                 if shared.count < config.minSharedKeywords { continue }
 
-                let score = computeSerendipityScore(a: a, b: b, sharedKeywords: shared)
+                let score = computeSerendipityScore(
+                    a: a, b: b,
+                    aKeywordSet: aSet, bKeywordSet: keywordSets[j],
+                    sharedKeywords: shared
+                )
                 if score < config.minSerendipityScore { continue }
 
-                let connectionType = classifyConnection(a: a, b: b, shared: shared)
+                let connectionType = classifyConnection(
+                    a: a, b: b, shared: shared,
+                    aBodyWords: { bodyWords(forIndex: i) },
+                    bBodyWords: { bodyWords(forIndex: j) }
+                )
                 let explanation = generateExplanation(a: a, b: b, shared: shared, type: connectionType)
 
                 let pairKey = [a.link, b.link].sorted().joined(separator: "|")
@@ -259,9 +307,11 @@ public final class FeedSerendipityEngine: @unchecked Sendable {
     // MARK: - Scoring
 
     private func computeSerendipityScore(
-        a: SerendipityArticle, b: SerendipityArticle, sharedKeywords: Set<String>
+        a: SerendipityArticle, b: SerendipityArticle,
+        aKeywordSet: Set<String>, bKeywordSet: Set<String>,
+        sharedKeywords: Set<String>
     ) -> Double {
-        let allKeywords = Set(a.keywords).union(Set(b.keywords))
+        let allKeywords = aKeywordSet.union(bKeywordSet)
         let jaccard = allKeywords.isEmpty ? 0 : Double(sharedKeywords.count) / Double(allKeywords.count)
 
         // Surprise factor: connections with moderate overlap are most serendipitous
@@ -279,17 +329,30 @@ public final class FeedSerendipityEngine: @unchecked Sendable {
         return min(1.0, max(0.0, raw))
     }
 
+    /// Module-level Sets so they are constructed exactly once instead of
+    /// rebuilt on every `classifyConnection` call.
+    private static let contrastWords: Set<String> = [
+        "but", "however", "despite", "although", "versus", "against", "debate"
+    ]
+    private static let emergingWords: Set<String> = [
+        "new", "emerging", "rising", "growing", "breakthrough", "first"
+    ]
+
     private func classifyConnection(
-        a: SerendipityArticle, b: SerendipityArticle, shared: Set<String>
+        a: SerendipityArticle, b: SerendipityArticle, shared: Set<String>,
+        aBodyWords: () -> Set<String>,
+        bBodyWords: () -> Set<String>
     ) -> ConnectionType {
         if a.domain != b.domain && shared.count >= 3 {
             return .crossDomain
         }
 
-        // Check for contrasting sentiment signals
-        let contrastWords: Set<String> = ["but", "however", "despite", "although", "versus", "against", "debate"]
-        let aWords = Set(a.body.lowercased().components(separatedBy: .whitespaces))
-        let bWords = Set(b.body.lowercased().components(separatedBy: .whitespaces))
+        // Check for contrasting sentiment signals. The body-word sets come
+        // from the caller's per-article cache so we don't re-tokenize the
+        // same article body for every pair it appears in.
+        let aWords = aBodyWords()
+        let bWords = bBodyWords()
+        let contrastWords = FeedSerendipityEngine.contrastWords
         if !aWords.intersection(contrastWords).isEmpty && !bWords.intersection(contrastWords).isEmpty {
             return .contrastingView
         }
@@ -298,8 +361,7 @@ public final class FeedSerendipityEngine: @unchecked Sendable {
             return .hiddenThread
         }
 
-        let emergingWords: Set<String> = ["new", "emerging", "rising", "growing", "breakthrough", "first"]
-        if !shared.intersection(emergingWords).isEmpty {
+        if !shared.intersection(FeedSerendipityEngine.emergingWords).isEmpty {
             return .emergingNexus
         }
 
