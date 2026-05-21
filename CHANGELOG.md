@@ -9,6 +9,80 @@ links), see https://github.com/sauravbhattacharya001/FeedReader/releases.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.14.0] — 2026-05-20 — Reader-Fatigue Advisor & Performance Hygiene Wave
+
+Twelve commits since v1.13.0. This release adds a new agentic advisor that
+watches the *human reader* (not the feed) for burnout signals, tightens two
+O(N²) hot paths in the cross-reference and serendipity engines, fuses the
+word-frequency tokenization loop, hardens CI YAML and the coverage report,
+expands publishable XCTest coverage and modernizes the issue-template set.
+
+### Added
+
+- **FeedReadingFatigueAdvisor** — agentic advisor that watches the human
+  reader's cognitive load over recent reading sessions. 10 weighted
+  fatigue signals (volume, depth, diversity, sentiment, timing,
+  continuity), 0–100 composite fatigue score, A–F grade, 5-tier verdict
+  ladder (`fresh` → `engaged` → `mildFatigue` → `heavyFatigue` →
+  `burnout`), deduped P0-first playbook with blast-radius and
+  reversibility, cautious/balanced/aggressive risk-appetite knob,
+  deterministic given a fixed `now` closure, text / markdown /
+  byte-stable JSON renderers.
+- **FeedSerendipityEngine XCTest suite** — covers scoring, novelty decay
+  and JSON export.
+- **Issue templates** — accessibility, feed-compatibility, and
+  good-first-issue templates added; modernized `config.yml`.
+- **Pull-request runbook** — `PUBLISHING.md` expanded with checklists,
+  recovery procedures and per-job CI semantics.
+
+### Performance
+
+- **FeedSerendipityEngine** — hoisted `Set` construction out of the
+  O(N²) `discover` loop so the per-iteration overhead drops from
+  O(N) set-build to O(1) membership test.
+- **FeedCrossReferenceEngine** — precomputed keyword sets and negation
+  flags once per article in the O(N²) matcher / clusterer loops,
+  eliminating redundant tokenization on every pair.
+- **TextUtilities** — fused `computeWordFrequencies` tokenization and
+  counting into a single pass; removes one full string traversal per
+  call.
+
+### Fixed
+
+- **CI** — repaired a YAML parse error in the `List available simulators`
+  step that was failing the iOS pipeline.
+
+### Documentation
+
+- **FeedNarrativeArcTracker** — replaced sparse trailing comments on the
+  public surface with proper `///` doc comments so Xcode Quick Help,
+  DocC and SourceKit-LSP can surface them. Covers `NarrativePhase`,
+  `TurningPointType`, `NarrativeArticle`, `NarrativeThread`,
+  `NarrativeTurningPoint`, `NarrativeConvergence`, `NarrativeForecast`,
+  `NarrativeReport`, and the public `FeedNarrativeArcTracker` surface
+  (`followStory`, `unfollowStory`, `getStories(...)`, `analyze`,
+  `storyCount`, `articleCount`, `reset`).
+- **FeedPredictiveInterestEngine** — `///` doc comments added across the
+  public API.
+- **ArticleDigestComposer** — `///` doc comments expanded across the
+  public API.
+
+### CI / Tooling
+
+- **Coverage report** — extracted inline Python heredocs from the
+  coverage CI step into `scripts/coverage_report.py` so the script is
+  diff-reviewable, locally runnable, and lintable.
+
+### Notes for Adopters
+
+This release is **API-additive only**. The new
+`FeedReadingFatigueAdvisor` and its supporting `ReadingSession`,
+`FatigueVerdict`, `FatigueSignal`, `FatigueAction`, `FatiguePriority`,
+`FatigueRiskAppetite`, `FatigueFinding`, `FatiguePlaybookItem`, and
+`FatigueReport` types are net-new. No public signatures were renamed or
+removed; the SPM `from: "1.13.0"` floor is sufficient for adopters who
+don't need the new advisor.
+
 ## [v1.13.0] — 2026-05-17 — Cross-Reference, Predictive & Hygiene Wave
 
 Fifty-one commits since v1.12.0. This release adds 13 new autonomous reading
