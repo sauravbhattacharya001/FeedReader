@@ -34,13 +34,31 @@ extension Notification.Name {
 // MARK: - Narrative Phase
 
 /// The phase of a storyline's narrative arc.
+///
+/// Phases form an ordered ladder via ``Comparable`` — `emerging < rising <
+/// climax < falling < resolution < dormant` — so callers can do simple
+/// inequality checks (e.g. `phase >= .climax`) to gate UI affordances such
+/// as turning-point banners. Raw values are human-readable strings safe to
+/// surface directly in UI.
 public enum NarrativePhase: String, Codable, CaseIterable, Comparable {
-    case emerging = "Emerging"         // Few initial articles, story just appearing
-    case rising = "Rising"             // Growing coverage, building momentum
-    case climax = "Climax"             // Peak coverage, highest intensity
-    case falling = "Falling"           // Coverage declining, aftermath
-    case resolution = "Resolution"     // Story concluded or settled
-    case dormant = "Dormant"           // No activity for extended period
+    /// Few initial articles; the story has just been detected and is not
+    /// yet confirmed as a sustained narrative.
+    case emerging = "Emerging"
+    /// Coverage volume and source diversity are growing — momentum is
+    /// building toward a peak.
+    case rising = "Rising"
+    /// Story has reached peak coverage intensity and source breadth in
+    /// the recent window.
+    case climax = "Climax"
+    /// Post-peak: coverage volume is declining but the story is still
+    /// actively reported (aftermath / follow-ups).
+    case falling = "Falling"
+    /// Coverage has effectively wound down; the story is treated as
+    /// concluded but is not yet dormant.
+    case resolution = "Resolution"
+    /// No activity for at least ``FeedNarrativeArcTracker.dormantDays``;
+    /// the story is archived and excluded from active reports.
+    case dormant = "Dormant"
 
     private var ordinal: Int {
         switch self {
@@ -61,30 +79,60 @@ public enum NarrativePhase: String, Codable, CaseIterable, Comparable {
 // MARK: - Turning Point Type
 
 /// Types of turning points detected in narrative arcs.
+///
+/// Each case corresponds to a distinct heuristic in the tracker. UI layers
+/// can switch on the case to pick an icon, banner copy, or notification
+/// channel without re-deriving the reason from free text.
 public enum TurningPointType: String, Codable, CaseIterable {
-    case emergence           // First detection of a new story
-    case accelerating        // Sudden increase in coverage
-    case peakReached         // Coverage hits maximum
-    case sentimentShift      // Major change in tone/sentiment
-    case newActor            // New key entity enters the story
-    case convergence         // Two stories merging
-    case reversal            // Story direction reverses
-    case resolution          // Story reaches conclusion
+    /// First detection of a new story (mirrors ``Notification.Name/narrativeNewStoryEmerged``).
+    case emergence
+    /// Sudden jump in momentum since the previous ingest.
+    case accelerating
+    /// Story transitioned into the ``NarrativePhase/climax`` phase.
+    case peakReached
+    /// Rolling mean sentiment shifted significantly (positive or negative).
+    case sentimentShift
+    /// A previously unseen named entity entered an established story.
+    case newActor
+    /// Two distinct stories started overlapping on entities/keywords.
+    case convergence
+    /// Story direction reversed (reserved for future detectors).
+    case reversal
+    /// Story transitioned into the ``NarrativePhase/resolution`` phase.
+    case resolution
 }
 
 // MARK: - Models
 
 /// An article contributing to a narrative.
+///
+/// Articles are the atomic input to ``FeedNarrativeArcTracker``. Keywords
+/// and entities are lower-cased at construction time so callers don't have
+/// to normalize them, and `sentiment` is clamped into the documented range.
 public struct NarrativeArticle: Sendable {
+    /// Stable identifier (typically the article's GUID or canonical URL).
+    /// Used to dedupe and to back-reference articles from ``NarrativeThread/articleIds``.
     public let id: String
+    /// Human-readable headline; surfaced verbatim in reports.
     public let title: String
+    /// Lowercased topical keywords used for Jaccard-based clustering.
     public let keywords: [String]
-    public let entities: [String]        // Named entities (people, orgs, places)
+    /// Lowercased named entities (people, orgs, places). Weighted more
+    /// heavily than keywords in the clustering similarity score.
+    public let entities: [String]
+    /// Feed origin (URL or display name). Drives source-diversity scoring.
     public let feedSource: String
+    /// Publication date used for momentum, recency and dormancy windows.
     public let publishDate: Date
-    public let sentiment: Double         // -1.0 to 1.0
+    /// Article sentiment in `[-1.0, 1.0]`. Values outside the range are
+    /// clamped by the initializer.
+    public let sentiment: Double
+    /// Approximate word count. Negative values are coerced to `0`.
     public let wordCount: Int
 
+    /// Create a new article record. `keywords` and `entities` are
+    /// lower-cased, `sentiment` is clamped to `[-1.0, 1.0]`, and
+    /// `wordCount` is floored at `0`.
     public init(id: String, title: String, keywords: [String], entities: [String],
                 feedSource: String, publishDate: Date, sentiment: Double = 0.0,
                 wordCount: Int = 500) {
@@ -99,61 +147,131 @@ public struct NarrativeArticle: Sendable {
     }
 }
 
-/// A detected storyline/narrative thread.
+/// A detected storyline / narrative thread.
+///
+/// Threads are immutable, point-in-time snapshots derived from internal
+/// tracker state by ``FeedNarrativeArcTracker/analyze()`` and
+/// ``FeedNarrativeArcTracker/getStories()``. Re-running analysis produces
+/// fresh snapshots — do not cache long-term and expect them to mutate.
 public struct NarrativeThread: Sendable {
+    /// Tracker-assigned stable story identifier (e.g. `"story_42"`).
     public let id: String
-    public let label: String             // Human-readable story name
-    public let coreKeywords: [String]    // Defining keywords
-    public let coreEntities: [String]    // Key entities involved
-    public let articleIds: [String]      // Contributing articles
+    /// Human-readable story name auto-generated from top entity + keyword.
+    public let label: String
+    /// Up to ten defining keywords, snapshot at report time.
+    public let coreKeywords: [String]
+    /// Up to ten key entities involved, snapshot at report time.
+    public let coreEntities: [String]
+    /// IDs of every ``NarrativeArticle`` that has been clustered into this
+    /// story, in ingest order.
+    public let articleIds: [String]
+    /// Publish date of the earliest article in the cluster.
     public let firstSeen: Date
+    /// Publish date of the most recent article in the cluster.
     public let lastSeen: Date
+    /// Current narrative phase (see ``NarrativePhase``).
     public let phase: NarrativePhase
-    public let momentum: Double          // 0-100 current momentum
-    public let sentimentTrajectory: Double  // Sentiment change direction
-    public let sourceCount: Int          // Number of unique sources covering
-    public let isFollowed: Bool          // User is following this story
+    /// Composite momentum in `[0, 100]` combining publication frequency,
+    /// recency and source diversity. Higher = more active.
+    public let momentum: Double
+    /// Difference between the late-window and early-window mean sentiment.
+    /// Positive = trending positive, negative = trending negative, ~0 = flat.
+    public let sentimentTrajectory: Double
+    /// Number of unique feed sources covering this story.
+    public let sourceCount: Int
+    /// Whether the user has explicitly opted in to follow this story.
+    public let isFollowed: Bool
 }
 
 /// A detected turning point in a narrative.
+///
+/// Turning points are append-only events emitted as articles are ingested
+/// or phases recomputed. They are the primary signal surfaced to users
+/// following a story ("the story just hit climax", "sentiment flipped
+negative", etc.).
 public struct NarrativeTurningPoint: Sendable {
+    /// Story this turning point belongs to.
     public let storyId: String
+    /// Category of turning point (see ``TurningPointType``).
     public let type: TurningPointType
+    /// Wall-clock time the turning point was emitted (typically the
+    /// triggering article's `publishDate`).
     public let detectedAt: Date
+    /// Short human-readable description suitable for notification copy.
     public let description: String
-    public let significance: Double      // 0-100 how significant
+    /// Significance score in `[0, 100]`; higher = more newsworthy.
+    public let significance: Double
+    /// Phase the story was in immediately before this turning point.
     public let beforePhase: NarrativePhase
+    /// Phase the story moved into as a result of this turning point.
+    /// Equal to `beforePhase` when the event did not cause a phase change.
     public let afterPhase: NarrativePhase
 }
 
 /// Cross-story convergence detection result.
+///
+/// Emitted when two otherwise-separate stories start sharing enough
+/// entities (and, to a lesser degree, keywords) that they are likely
+/// describing the same evolving situation from different angles.
 public struct NarrativeConvergence: Sendable {
+    /// First story in the pair. Pairs are ordered so that `storyIdA <
+    /// storyIdB` is not guaranteed — treat as an unordered set.
     public let storyIdA: String
+    /// Second story in the pair.
     public let storyIdB: String
+    /// Entities present in the core sets of both stories.
     public let sharedEntities: [String]
+    /// Keywords present in the core sets of both stories.
     public let sharedKeywords: [String]
-    public let convergenceStrength: Double  // 0-1
+    /// Convergence strength in `[0, 1]`; entity overlap is weighted 60%,
+    /// keyword overlap 40%.
+    public let convergenceStrength: Double
+    /// `max(lastSeen)` of the two stories at the time of detection.
     public let detectedAt: Date
 }
 
 /// Forecast for a narrative's likely next phase.
+///
+/// Forecasts are produced only for non-dormant, non-resolved stories with
+/// at least three contributing articles — call ``FeedNarrativeArcTracker/analyze()``
+/// to refresh.
 public struct NarrativeForecast: Sendable {
+    /// Story this forecast applies to.
     public let storyId: String
+    /// Phase the story is currently in at forecast time.
     public let currentPhase: NarrativePhase
+    /// Phase the tracker expects the story to transition into next.
     public let predictedNextPhase: NarrativePhase
-    public let confidence: Double         // 0-1
+    /// Forecast confidence in `[0, 1]`; higher = stronger signal.
+    public let confidence: Double
+    /// Estimated days until the predicted phase transition occurs.
     public let estimatedDaysToTransition: Int
+    /// Short natural-language explanation of the heuristic used.
     public let reasoning: String
 }
 
 /// Overall narrative awareness report.
+///
+/// Produced by ``FeedNarrativeArcTracker/analyze()``. The report is a
+/// self-contained snapshot — it does not retain references to internal
+/// tracker state and can be serialized or passed across threads freely.
 public struct NarrativeReport: Sendable {
+    /// All non-dormant stories, sorted by descending momentum.
     public let activeStories: [NarrativeThread]
+    /// Up to twenty most recent turning points across all stories,
+    /// newest first.
     public let recentTurningPoints: [NarrativeTurningPoint]
+    /// Detected cross-story convergences, sorted by descending strength.
     public let convergences: [NarrativeConvergence]
+    /// Forecasts for active, non-resolved stories with sufficient history.
     public let forecasts: [NarrativeForecast]
+    /// User-followed stories, sorted by most recent activity.
     public let followedStoryUpdates: [NarrativeThread]
-    public let healthScore: Double        // 0-100 narrative awareness
+    /// Composite narrative-awareness score in `[0, 100]` combining phase
+    /// diversity, active count, source breadth and follow engagement.
+    public let healthScore: Double
+    /// Plain-text insights highlighting climax stories, busy news cycles,
+    /// convergences, multi-source confidence and followed turning points.
     public let insights: [String]
 }
 
@@ -229,6 +347,10 @@ public final class FeedNarrativeArcTracker: @unchecked Sendable {
     }
 
     /// Ingest multiple articles at once.
+    ///
+    /// Equivalent to calling ``ingest(_:)`` for each article in order.
+    /// Useful for backfilling a freshly-loaded feed without paying the
+    /// observer-notification overhead per call site.
     public func ingestBatch(_ articles: [NarrativeArticle]) {
         for article in articles {
             ingest(article)
@@ -236,36 +358,50 @@ public final class FeedNarrativeArcTracker: @unchecked Sendable {
     }
 
     /// Mark a story as followed by the user.
+    ///
+    /// Followed stories appear in ``NarrativeReport/followedStoryUpdates``
+    /// and contribute to the engagement component of the health score.
+    /// No-op if the story id is unknown.
     public func followStory(_ storyId: String) {
         stories[storyId]?.isFollowed = true
     }
 
-    /// Unfollow a story.
+    /// Stop following a previously-followed story. No-op if the id is
+    /// unknown or the story is already unfollowed.
     public func unfollowStory(_ storyId: String) {
         stories[storyId]?.isFollowed = false
     }
 
-    /// Get all currently tracked stories.
+    /// Snapshot of every story the tracker currently knows about,
+    /// including dormant ones, sorted by descending momentum.
     public func getStories() -> [NarrativeThread] {
         return stories.values.map { buildThread(from: $0) }
             .sorted { $0.momentum > $1.momentum }
     }
 
-    /// Get only followed stories.
+    /// Snapshot of stories the user is explicitly following, sorted by
+    /// descending momentum.
     public func getFollowedStories() -> [NarrativeThread] {
         return stories.values.filter { $0.isFollowed }
             .map { buildThread(from: $0) }
             .sorted { $0.momentum > $1.momentum }
     }
 
-    /// Get stories in a specific phase.
+    /// Snapshot of stories currently in the given phase, sorted by
+    /// descending momentum. Returns an empty array if no stories match.
     public func getStories(inPhase phase: NarrativePhase) -> [NarrativeThread] {
         return stories.values.filter { $0.phase == phase }
             .map { buildThread(from: $0) }
             .sorted { $0.momentum > $1.momentum }
     }
 
-    /// Run full analysis and produce a report.
+    /// Run full analysis and produce a fresh ``NarrativeReport``.
+    ///
+    /// Recomputes phase classifications for every story, regenerates
+    /// forecasts, detects cross-story convergences, derives the health
+    /// score and rolls up the latest twenty turning points. Safe to call
+    /// at any cadence — internal state is not mutated by inspection,
+    /// only by phase transitions discovered during this call.
     public func analyze() -> NarrativeReport {
         updateAllPhases()
         let convergences = detectConvergences()
@@ -291,13 +427,17 @@ public final class FeedNarrativeArcTracker: @unchecked Sendable {
         )
     }
 
-    /// Get the number of tracked stories.
+    /// Number of distinct stories the tracker currently holds, including
+    /// dormant and resolved ones.
     public var storyCount: Int { stories.count }
 
-    /// Get the number of ingested articles.
+    /// Total number of articles ingested across the tracker's lifetime,
+    /// minus any cleared by ``reset()``.
     public var articleCount: Int { articles.count }
 
-    /// Reset all state.
+    /// Discard every story, article and turning point and reset the
+    /// internal story-id counter to `1`. Used by tests and by callers
+    /// that want to rebuild the tracker from scratch.
     public func reset() {
         stories.removeAll()
         articles.removeAll()
