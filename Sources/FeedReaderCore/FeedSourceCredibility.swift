@@ -99,17 +99,29 @@ public struct CredibilitySignal: Codable {
 
 /// Result of analyzing a single article for credibility signals.
 public struct ArticleCredibilityAnalysis: Codable {
+    /// Title of the analyzed article.
     public let articleTitle: String
+    /// Canonical link to the analyzed article.
     public let articleLink: String
+    /// Name of the feed source that produced the article.
     public let sourceName: String
+    /// All signals detected in the article body (each with weight and confidence).
     public let signals: [CredibilitySignal]
+    /// Count of citation-style phrases (e.g. "according to", "study found").
     public let citationCount: Int
+    /// Count of hedging phrases (e.g. "allegedly", "reportedly").
     public let hedgingCount: Int
+    /// Specificity score in `0...100` — higher means more concrete facts.
     public let specificityScore: Double  // 0-100
+    /// Sensationalism score in `0...100` — lower is better.
     public let sensationalismScore: Double  // 0-100 (lower = better)
+    /// Overall per-article credibility in `0...100`.
     public let overallScore: Double  // 0-100
+    /// Wall-clock time at which the analysis was performed.
     public let analyzedAt: Date
 
+    /// Creates an analysis snapshot. All scores are stored as-is; the engine
+    /// is responsible for clamping inputs to `0...100`.
     public init(articleTitle: String, articleLink: String, sourceName: String,
                 signals: [CredibilitySignal], citationCount: Int, hedgingCount: Int,
                 specificityScore: Double, sensationalismScore: Double,
@@ -130,23 +142,47 @@ public struct ArticleCredibilityAnalysis: Codable {
 // MARK: - Source Trust Profile
 
 /// Persistent trust profile for a feed source built over time.
+///
+/// Values are updated incrementally as ``FeedSourceCredibility/analyzeArticles(_:from:)``
+/// is called with new content. A new profile starts with `tier = .silver` and
+/// neutral scores so that low-volume sources aren't penalised before evidence accumulates.
 public struct SourceTrustProfile: Codable {
+    /// Human-readable feed name (also the dictionary key inside the engine).
     public let sourceName: String
+    /// Origin URL of the feed.
     public let sourceURL: String
+    /// Current reliability tier derived from ``compositeScore``.
     public var tier: CredibilityTier
+    /// Composite credibility in `0...100`.
     public var compositeScore: Double  // 0-100
+    /// Number of articles analyzed for this source so far.
     public var articlesAnalyzed: Int
+    /// Average number of citation signals per article.
     public var citationRate: Double  // avg citations per article
+    /// Rolling correction rate, expressed as corrections per 100 articles.
     public var correctionRate: Double  // corrections per 100 articles
+    /// Total retraction events observed for this source.
     public var retractionCount: Int
+    /// Self-consistency score in `0...100` (higher = fewer contradictions).
     public var consistencyScore: Double  // 0-100
+    /// Average sensationalism in `0...100` (lower is better).
     public var sensationalismAvg: Double  // 0-100
+    /// Average specificity in `0...100`.
     public var specificityAvg: Double  // 0-100
+    /// Average hedging-signal count per article.
     public var hedgingRate: Double  // avg hedging signals per article
+    /// Rolling history of recent composite scores (used for trend analysis).
     public var scoreHistory: [Double]  // last N composite scores for trend
+    /// Last time `analyzeArticles` updated this profile.
     public var lastAnalyzed: Date
+    /// First time the profile was created.
     public var createdAt: Date
 
+    /// Creates a fresh profile with neutral starting scores.
+    ///
+    /// - Parameters:
+    ///   - sourceName: Human-readable feed name.
+    ///   - sourceURL: Origin URL.
     public init(sourceName: String, sourceURL: String) {
         self.sourceName = sourceName
         self.sourceURL = sourceURL
@@ -191,21 +227,34 @@ public enum CredibilityTrend: String, Codable {
 
 /// Proactive alert generated when credibility patterns warrant attention.
 public struct CredibilityAlert: Codable {
+    /// Kind of alert raised by the engine.
     public enum AlertType: String, Codable {
+        /// Source dropped to a lower ``CredibilityTier``.
         case tierDemotion = "Tier Demotion"
+        /// Unusually high recent retraction count.
         case retractionSpike = "Retraction Spike"
+        /// Self-consistency score fell sharply.
         case consistencyDrop = "Consistency Drop"
+        /// Sensationalism average climbed sharply.
         case sensationalismSpike = "Sensationalism Spike"
+        /// Source moved up a ``CredibilityTier``.
         case improvementNotice = "Improvement Notice"
+        /// A brand-new source was scored for the first time.
         case newSourceAssessed = "New Source Assessed"
     }
 
+    /// Category of the alert.
     public let type: AlertType
+    /// Name of the source the alert is about.
     public let sourceName: String
+    /// Human-readable message describing the change.
     public let message: String
+    /// Severity in `1...5` (clamped); `5` is critical.
     public let severity: Int  // 1 (low) to 5 (critical)
+    /// Wall-clock time at which the alert was raised.
     public let generatedAt: Date
 
+    /// Creates an alert. `severity` is clamped to `1...5`.
     public init(type: AlertType, sourceName: String, message: String, severity: Int, generatedAt: Date = Date()) {
         self.type = type
         self.sourceName = sourceName
@@ -217,14 +266,20 @@ public struct CredibilityAlert: Codable {
 
 // MARK: - Corroboration Result
 
-/// Result of cross-source corroboration analysis.
+/// Result of cross-source corroboration analysis for a single claim cluster.
 public struct CorroborationResult: Codable {
+    /// Short label describing the shared claim (typically the dominant cluster keywords).
     public let claim: String
+    /// Sources whose articles support the claim.
     public let supportingSources: [String]
+    /// Sources whose articles contradict the claim.
     public let contradictingSources: [String]
+    /// Corroboration in `0...100` (clamped); higher = more agreement.
     public let corroborationScore: Double  // 0-100
+    /// Confidence in `0...1` (clamped) based on cluster strength.
     public let confidence: Double  // 0-1
 
+    /// Creates a result; `corroborationScore` is clamped to `0...100` and `confidence` to `0...1`.
     public init(claim: String, supportingSources: [String], contradictingSources: [String],
                 corroborationScore: Double, confidence: Double) {
         self.claim = claim
@@ -341,6 +396,8 @@ public class FeedSourceCredibility {
 
     // MARK: - Initialization
 
+    /// Creates an engine with default configuration. State (profiles, alerts,
+    /// claim history) starts empty and grows as articles are analyzed.
     public init() {}
 
     // MARK: - Public API
