@@ -14,13 +14,22 @@ public class ArticleArchiveExporter {
     
     // MARK: - Types
     
-    /// Visual theme for the exported HTML.
+    /// Visual theme for the exported HTML archive.
+    ///
+    /// Each theme bundles a coordinated background / text / accent colour
+    /// triple plus a font family appropriate for the look (sans-serif for
+    /// `light`/`dark`, serif for `sepia`/`newspaper`).
     public enum Theme: String, CaseIterable {
+        /// Bright background, dark text — best for daytime reading.
         case light
+        /// Dark background, light text — best for low-light reading and OLED screens.
         case dark
+        /// Warm parchment-style palette inspired by e-ink readers.
         case sepia
+        /// High-contrast classic-newsprint palette with serif typography.
         case newspaper
         
+        /// CSS background colour for the document body in this theme.
         public var backgroundColor: String {
             switch self {
             case .light:     return "#ffffff"
@@ -30,6 +39,7 @@ public class ArticleArchiveExporter {
             }
         }
         
+        /// CSS foreground/text colour for body copy in this theme.
         public var textColor: String {
             switch self {
             case .light:     return "#333333"
@@ -39,6 +49,7 @@ public class ArticleArchiveExporter {
             }
         }
         
+        /// CSS accent colour used for links, dividers, and emphasis.
         public var accentColor: String {
             switch self {
             case .light:     return "#2563eb"
@@ -48,6 +59,7 @@ public class ArticleArchiveExporter {
             }
         }
         
+        /// CSS `font-family` stack used for body copy in this theme.
         public var fontFamily: String {
             switch self {
             case .light:     return "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -58,15 +70,33 @@ public class ArticleArchiveExporter {
         }
     }
     
-    /// Options controlling the export output.
+    /// Options controlling the export output (theme, metadata, custom CSS).
     public struct ExportOptions {
+        /// Visual theme applied to the rendered HTML.
         public var theme: Theme
+        /// When `true`, includes a `<div class="meta">` block with word count
+        /// and estimated reading time. Disable for a minimal layout.
         public var includeMetadata: Bool
+        /// When `true` (batch export only), renders an anchor-linked table
+        /// of contents at the top of the archive.
         public var includeTableOfContents: Bool
+        /// When `true` (and metadata is enabled), shows the article word count.
         public var includeWordCount: Bool
+        /// When `true` (and metadata is enabled), shows the estimated read time.
         public var includeEstimatedReadTime: Bool
+        /// Additional CSS appended after the built-in stylesheet. Use this
+        /// to override colours, fonts, or layout without forking the exporter.
         public var customCSS: String?
-        
+
+        /// Creates an `ExportOptions` value with sensible defaults.
+        ///
+        /// - Parameters:
+        ///   - theme: Visual theme; defaults to `.light`.
+        ///   - includeMetadata: Whether to render the metadata block.
+        ///   - includeTableOfContents: Whether batch exports get a TOC.
+        ///   - includeWordCount: Whether the metadata block shows word counts.
+        ///   - includeEstimatedReadTime: Whether the metadata block shows read times.
+        ///   - customCSS: Optional extra CSS appended to the stylesheet.
         public init(
             theme: Theme = .light,
             includeMetadata: Bool = true,
@@ -83,15 +113,22 @@ public class ArticleArchiveExporter {
             self.customCSS = customCSS
         }
         
+        /// The default options: light theme, metadata + word count + read time on, no TOC.
         public static let `default` = ExportOptions()
     }
     
-    /// Result of an export operation.
+    /// Result of an export operation. Holds the rendered HTML in memory;
+    /// pair with ``ArticleArchiveExporter/save(_:to:)`` to write to disk.
     public struct ExportResult {
+        /// Suggested filename (with `.html` extension) for the rendered archive.
         public let filename: String
+        /// The full, self-contained HTML document for this archive.
         public let htmlContent: String
+        /// Number of articles included in this export.
         public let articleCount: Int
+        /// Sum of word counts across all included articles.
         public let totalWordCount: Int
+        /// Wall-clock time at which the export was produced.
         public let exportDate: Date
     }
     
@@ -100,14 +137,23 @@ public class ArticleArchiveExporter {
     private let options: ExportOptions
     
     // MARK: - Initialization
-    
+
+    /// Creates an exporter configured with the given options.
+    ///
+    /// - Parameter options: Export configuration; defaults to `.default`.
     public init(options: ExportOptions = .default) {
         self.options = options
     }
     
     // MARK: - Single Article Export
     
-    /// Exports a single article as a standalone HTML file.
+    /// Exports a single article as a standalone, self-contained HTML file.
+    ///
+    /// The returned `ExportResult` carries the rendered HTML in memory.
+    /// Use ``save(_:to:)`` to persist it to disk.
+    ///
+    /// - Parameter story: The article to export.
+    /// - Returns: An `ExportResult` describing the rendered document.
     public func exportArticle(_ story: RSSStory) -> ExportResult {
         let wordCount = countWords(story.body)
         let readTime = estimateReadTime(wordCount: wordCount)
@@ -126,6 +172,12 @@ public class ArticleArchiveExporter {
     // MARK: - Batch Export
     
     /// Exports multiple articles into a single HTML archive with navigation.
+    ///
+    /// When ``ExportOptions/includeTableOfContents`` is enabled, the archive
+    /// includes an anchor-linked TOC and back-to-top links between articles.
+    ///
+    /// - Parameter stories: The articles to include. Order is preserved.
+    /// - Returns: An `ExportResult`, or `nil` if `stories` is empty.
     public func exportArticles(_ stories: [RSSStory]) -> ExportResult? {
         guard !stories.isEmpty else { return nil }
         
@@ -144,7 +196,16 @@ public class ArticleArchiveExporter {
     
     // MARK: - Save to Disk
     
-    /// Saves an export result to the specified directory.
+    /// Saves an export result to disk under an `Archives/` subdirectory of
+    /// the given base directory.
+    ///
+    /// The `Archives/` directory is created automatically if it does not
+    /// already exist. The file is written atomically as UTF-8.
+    ///
+    /// - Parameters:
+    ///   - result: The rendered export to persist.
+    ///   - directory: Base directory; the archive lands in `directory/Archives/`.
+    /// - Returns: The URL of the written file, or `nil` if the write failed.
     @discardableResult
     public func save(_ result: ExportResult, to directory: URL) -> URL? {
         let archiveDir = directory.appendingPathComponent("Archives")
@@ -162,6 +223,14 @@ public class ArticleArchiveExporter {
     // MARK: - List Archives
     
     /// Lists previously exported archive files in the given directory.
+    ///
+    /// Only `*.html` files inside `directory/Archives/` are returned.
+    /// Results are sorted newest-first by creation date.
+    ///
+    /// - Parameter directory: Base directory that contains an `Archives/`
+    ///   subdirectory created by a prior call to ``save(_:to:)``.
+    /// - Returns: Tuples of `(filename, creationDate, sizeInBytes)`.
+    ///   Empty if the directory is missing or unreadable.
     public func listArchives(in directory: URL) -> [(filename: String, date: Date, size: Int)] {
         let archiveDir = directory.appendingPathComponent("Archives")
         
@@ -188,7 +257,14 @@ public class ArticleArchiveExporter {
     
     // MARK: - Delete Archive
     
-    /// Deletes an archive file by filename.
+    /// Deletes a previously exported archive file by filename.
+    ///
+    /// - Parameters:
+    ///   - filename: Filename (including `.html` extension) as returned by
+    ///     ``listArchives(in:)``.
+    ///   - directory: Base directory that contains the `Archives/` folder.
+    /// - Returns: `true` on success, `false` if the file did not exist or
+    ///   could not be removed.
     public func deleteArchive(named filename: String, in directory: URL) -> Bool {
         let fileURL = directory.appendingPathComponent("Archives").appendingPathComponent(filename)
         do {
@@ -201,12 +277,21 @@ public class ArticleArchiveExporter {
     
     // MARK: - Utility
     
-    /// Counts words in a text string.
+    /// Counts whitespace-separated words in `text`. Thin wrapper over
+    /// ``TextUtilities/countWords(_:)`` so callers don't need to reach into
+    /// the utility namespace.
+    ///
+    /// - Parameter text: The body text to measure.
+    /// - Returns: Number of words detected (always `>= 0`).
     public func countWords(_ text: String) -> Int {
         return TextUtilities.countWords(text)
     }
-    
-    /// Estimates reading time in minutes (assumes 200 WPM).
+
+    /// Estimates reading time in minutes assuming 200 words-per-minute.
+    /// Thin wrapper over ``TextUtilities/estimateReadTime(wordCount:)``.
+    ///
+    /// - Parameter wordCount: The word count produced by ``countWords(_:)``.
+    /// - Returns: Estimated minutes, rounded up; always `>= 1` for non-empty input.
     public func estimateReadTime(wordCount: Int) -> Int {
         return TextUtilities.estimateReadTime(wordCount: wordCount)
     }

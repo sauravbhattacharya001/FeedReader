@@ -40,10 +40,17 @@ import Foundation
 // MARK: - Reading Session
 
 /// A single reading session captured by the host app.
+///
+/// All numeric fields are non-negative — the initializer clamps negatives
+/// to zero so detectors can rely on the invariant.
 public struct ReadingSession: Sendable, Equatable {
+    /// Stable identifier for the session (used for dedup and evidence lines).
     public let id: String
+    /// Local wall-clock time at which the session began.
     public let startedAt: Date
+    /// Number of distinct articles opened during the session.
     public let articleCount: Int
+    /// Total seconds the reader spent dwelling on articles in this session.
     public let totalDwellSeconds: TimeInterval
     /// Rapid-scroll events; high ratio vs `articleCount` is a skim signal.
     public let scrollEventCount: Int
@@ -56,6 +63,19 @@ public struct ReadingSession: Sendable, Equatable {
     /// App foreground/background or article-abandoned events during the session.
     public let interruptionCount: Int
 
+    /// Creates a `ReadingSession`. Negative counts are clamped to zero and
+    /// `topicsRead` is normalised to lowercase for consistent grouping.
+    ///
+    /// - Parameters:
+    ///   - id: Stable session identifier.
+    ///   - startedAt: Local wall-clock start time.
+    ///   - articleCount: Number of articles opened (clamped to `>= 0`).
+    ///   - totalDwellSeconds: Total dwell time in seconds (clamped to `>= 0`).
+    ///   - scrollEventCount: Number of rapid-scroll events (clamped to `>= 0`).
+    ///   - topicsRead: Topic tags read; lowercased on store.
+    ///   - feedsRead: Feed identifiers contributing to the session.
+    ///   - sentimentScore: Optional rolling sentiment in `[-1.0, 1.0]`.
+    ///   - interruptionCount: Backgrounding / abandonment events (clamped to `>= 0`).
     public init(
         id: String,
         startedAt: Date,
@@ -276,40 +296,62 @@ public enum FatigueRiskAppetite: String, CaseIterable, Sendable {
 
 /// A single fatigue signal observation with evidence and recommended actions.
 public struct FatigueFinding: Sendable {
+    /// The signal that was triggered.
     public let signal: FatigueSignal
+    /// Severity in `0...100` after risk-appetite scaling.
     public let severity: Double
+    /// Priority bucket derived from severity + signal class.
     public let priority: FatiguePriority
+    /// Human-readable evidence lines, suitable for display.
     public let evidence: [String]
+    /// Actions recommended for this finding (deduped into the playbook).
     public let recommendedActions: [FatigueAction]
 }
 
-/// A deduped, prioritised playbook entry.
+/// A deduped, prioritised playbook entry derived from one or more findings.
 public struct FatiguePlaybookItem: Sendable {
+    /// Stable identifier (`action_signal`) used for deduplication.
     public let id: String
+    /// Priority bucket inherited from the originating finding.
     public let priority: FatiguePriority
+    /// The action the reader is being asked to take.
     public let action: FatigueAction
+    /// Short, action-oriented summary fit for a list row.
     public let headline: String
+    /// One-line rationale referencing the triggering signal.
     public let reason: String
+    /// Blast-radius estimate (`1` = local, higher = more disruptive).
     public let blastRadius: Int
+    /// Reversibility tag (`"high"` / `"medium"` / `"low"`).
     public let reversibility: String
+    /// Estimated points the composite fatigue score would shift if applied.
     public let estFatigueDelta: Double
 }
 
 // MARK: - Report
 
-/// Complete fatigue analysis report.
+/// Complete fatigue analysis report produced by ``FeedReadingFatigueAdvisor/analyze(sessions:)``.
 public struct FatigueReport: Sendable {
+    /// Wall-clock time at which the report was generated (uses the advisor's `now` provider).
     public let generatedAt: Date
+    /// Overall verdict tier covering the lookback window.
     public let verdict: FatigueVerdict
+    /// Composite fatigue score in `0...100`.
     public let fatigueScore: Double
+    /// Letter grade `A`–`F` derived from the verdict.
     public let grade: String
+    /// All fatigue findings, sorted by priority then severity then signal name.
     public let findings: [FatigueFinding]
+    /// Deduped, prioritised playbook of recommended actions.
     public let playbook: [FatiguePlaybookItem]
+    /// Higher-level qualitative insights (e.g. `BURNOUT_COMBO`, `ECHO_CHAMBER`).
     public let insights: [String]
+    /// One-line headline summarising the verdict and counts.
     public let summaryHeadline: String
 
     // MARK: Renderers
 
+    /// Renders the report as a plain-text block suitable for logs or CLI output.
     public func renderText() -> String {
         var lines: [String] = []
         lines.append("VERDICT: \(verdict.emoji) \(verdict.rawValue) grade=\(grade) fatigue=\(Int(fatigueScore.rounded()))/100")
@@ -342,6 +384,7 @@ public struct FatigueReport: Sendable {
         return lines.joined(separator: "\n")
     }
 
+    /// Renders the report as a Markdown document with summary, findings, playbook, and insights sections.
     public func renderMarkdown() -> String {
         var lines: [String] = []
         lines.append("# Reading Fatigue Report")
@@ -464,18 +507,38 @@ private struct PlaybookJSON: Codable {
 // MARK: - Advisor
 
 /// Agentic reading-fatigue advisor.
+///
+/// `FeedReadingFatigueAdvisor` is deterministic given a fixed `now` provider:
+/// the same inputs always produce the same report. The advisor never mutates
+/// or persists the input sessions. Configure ``riskAppetite`` and
+/// ``lookbackDays`` before calling ``analyze(sessions:)``.
 public final class FeedReadingFatigueAdvisor {
+    /// Tunes detector thresholds and severity multipliers. Defaults to `.balanced`.
     public var riskAppetite: FatigueRiskAppetite = .balanced
+    /// Number of days back from `now` to include in analysis. Clamped to `>= 1` at use.
     public var lookbackDays: Int = 14
 
     private let nowProvider: () -> Date
 
+    /// Creates an advisor.
+    ///
+    /// - Parameter now: Closure returning the current time. Defaults to `Date.init`.
+    ///   Inject a fixed-time closure in tests to get reproducible reports.
     public init(now: @escaping () -> Date = Date.init) {
         self.nowProvider = now
     }
 
     // MARK: Public entry
 
+    /// Analyzes the supplied sessions and produces a complete fatigue report.
+    ///
+    /// Only sessions whose `startedAt` falls within the last ``lookbackDays``
+    /// (and not in the future relative to the advisor's `now`) are considered.
+    /// Sessions are processed in chronological order; the input array is not
+    /// mutated.
+    ///
+    /// - Parameter sessions: Sessions to analyze.
+    /// - Returns: A fully populated ``FatigueReport``.
     public func analyze(sessions: [ReadingSession]) -> FatigueReport {
         let now = nowProvider()
         let window: TimeInterval = TimeInterval(max(1, lookbackDays) * 86_400)
