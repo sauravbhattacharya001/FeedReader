@@ -219,9 +219,11 @@ final class FeedCacheManagerTests: XCTestCase {
 
     // MARK: - URL Normalization
 
-    func testURLNormalizationCaseInsensitive() {
+    /// Scheme and host are case-insensitive per RFC 3986; the cache must
+    /// collapse case-only differences in those components.
+    func testURLNormalizationCaseInsensitiveSchemeAndHost() {
         let cache = FeedCacheManager()
-        let url1 = URL(string: "HTTPS://Example.COM/Feed")!
+        let url1 = URL(string: "HTTPS://Example.COM/feed")!
         let url2 = URL(string: "https://example.com/feed")!
 
         cache.updateCache(from: mockResponse(url: url1, status: 200, headers: ["ETag": "\"x\""]), for: url1)
@@ -232,6 +234,30 @@ final class FeedCacheManagerTests: XCTestCase {
 
         XCTAssertTrue(cache.hasCacheEntry(for: url2))
         XCTAssertEqual(cache.count, 1)
+    }
+
+    /// Path is case-sensitive per RFC 3986 §6.2.2.1. Two URLs that
+    /// differ only in path case MUST get separate cache entries -
+    /// otherwise the wrong ETag could be sent back to the server,
+    /// triggering spurious 304 Not Modified responses for unrelated
+    /// resources.
+    func testURLNormalizationPathIsCaseSensitive() {
+        let cache = FeedCacheManager()
+        let url1 = URL(string: "https://example.com/Articles/Foo")!
+        let url2 = URL(string: "https://example.com/articles/Foo")!
+        let url3 = URL(string: "https://example.com/Articles/foo")!
+
+        cache.updateCache(from: mockResponse(url: url1, status: 200, headers: ["ETag": "\"A\""]), for: url1)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: url1))
+        XCTAssertFalse(cache.hasCacheEntry(for: url2),
+                       "Path '/articles/Foo' must NOT collide with '/Articles/Foo'")
+        XCTAssertFalse(cache.hasCacheEntry(for: url3),
+                       "Path '/Articles/foo' must NOT collide with '/Articles/Foo'")
     }
 
     func testURLNormalizationTrailingSlash() {
@@ -246,6 +272,96 @@ final class FeedCacheManagerTests: XCTestCase {
         wait(for: [exp], timeout: 1.0)
 
         XCTAssertTrue(cache.hasCacheEntry(for: url2))
+    }
+
+    /// Root-only paths (`https://example.com/`) must keep their `/` so
+    /// they do not collapse onto anything else.
+    func testURLNormalizationKeepsRootSlash() {
+        let cache = FeedCacheManager()
+        let url1 = URL(string: "https://example.com/")!
+
+        cache.updateCache(from: mockResponse(url: url1, status: 200, headers: ["ETag": "\"r\""]), for: url1)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: url1))
+        XCTAssertEqual(cache.count, 1)
+    }
+
+    /// Default port (`:443` on https, `:80` on http) must be stripped
+    /// so explicit-port URLs share a cache entry with implicit-port ones.
+    func testURLNormalizationStripsDefaultPort() {
+        let cache = FeedCacheManager()
+        let urlExplicit = URL(string: "https://example.com:443/feed")!
+        let urlImplicit = URL(string: "https://example.com/feed")!
+
+        cache.updateCache(from: mockResponse(url: urlExplicit, status: 200, headers: ["ETag": "\"d\""]),
+                          for: urlExplicit)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: urlImplicit))
+        XCTAssertEqual(cache.count, 1)
+    }
+
+    /// Non-default ports must NOT be stripped - they identify a
+    /// genuinely different resource.
+    func testURLNormalizationKeepsNonDefaultPort() {
+        let cache = FeedCacheManager()
+        let url8080 = URL(string: "https://example.com:8080/feed")!
+        let url443 = URL(string: "https://example.com/feed")!
+
+        cache.updateCache(from: mockResponse(url: url8080, status: 200, headers: ["ETag": "\"p\""]),
+                          for: url8080)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: url8080))
+        XCTAssertFalse(cache.hasCacheEntry(for: url443),
+                       "Port 8080 must not collide with port 443 entry")
+    }
+
+    /// Fragments (`#section`) are never sent to the server and must not
+    /// influence the cache key.
+    func testURLNormalizationStripsFragment() {
+        let cache = FeedCacheManager()
+        let urlWithFragment = URL(string: "https://example.com/feed#top")!
+        let urlWithoutFragment = URL(string: "https://example.com/feed")!
+
+        cache.updateCache(from: mockResponse(url: urlWithFragment, status: 200, headers: ["ETag": "\"f\""]),
+                          for: urlWithFragment)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: urlWithoutFragment))
+        XCTAssertEqual(cache.count, 1)
+    }
+
+    /// Query strings are case-sensitive and must NOT be collapsed.
+    /// A server treating `?Page=1` and `?page=1` as different URLs
+    /// would otherwise see mismatched If-None-Match headers.
+    func testURLNormalizationKeepsQueryCase() {
+        let cache = FeedCacheManager()
+        let url1 = URL(string: "https://example.com/feed?Page=1&Sort=DESC")!
+        let url2 = URL(string: "https://example.com/feed?page=1&sort=desc")!
+
+        cache.updateCache(from: mockResponse(url: url1, status: 200, headers: ["ETag": "\"q\""]), for: url1)
+
+        let exp = expectation(description: "wait")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { exp.fulfill() }
+        wait(for: [exp], timeout: 1.0)
+
+        XCTAssertTrue(cache.hasCacheEntry(for: url1))
+        XCTAssertFalse(cache.hasCacheEntry(for: url2),
+                       "Query case differences must not collapse")
     }
 
     // MARK: - Stale Entry Eviction

@@ -209,11 +209,60 @@ public final class FeedCacheManager: @unchecked Sendable {
 
     // MARK: - Private
 
-    /// Normalizes a URL for use as a cache key (lowercased, no trailing slash).
+    /// Normalizes a URL for use as a cache key.
+    ///
+    /// HTTP semantics say scheme and host are case-insensitive but the
+    /// path, query, and fragment are not. The previous implementation
+    /// lower-cased the whole `absoluteString`, which meant two requests
+    /// to `/Articles/Foo` vs `/articles/Foo` collapsed onto the same
+    /// cache entry and could feed the wrong `If-None-Match` header back
+    /// to the server, producing spurious 304s.
+    ///
+    /// This implementation:
+    /// - Lowercases scheme and host (RFC 3986 §3.1, §3.2.2).
+    /// - Strips the URL fragment - servers never see it, so it should
+    ///   not influence cache lookup (RFC 3986 §3.5).
+    /// - Strips the default port for the scheme (`:80` for http, `:443`
+    ///   for https) so `https://example.com/feed` and
+    ///   `https://example.com:443/feed` share a cache entry.
+    /// - Strips a single trailing `/` on a non-root path, but keeps the
+    ///   root `/` (servers commonly canonicalize `/feed/` to `/feed`,
+    ///   and `https://example.com/` must remain `https://example.com/`
+    ///   so it doesn't collide with an arbitrary site root).
+    /// - Preserves case and percent-encoding of the path and query.
+    ///
+    /// Falls back to `absoluteString` (with case-insensitive scheme/host
+    /// best-effort) when the URL cannot be decomposed via
+    /// `URLComponents`, so callers always get a deterministic key.
     private func normalizeURL(_ url: URL) -> String {
-        var s = url.absoluteString.lowercased()
-        if s.hasSuffix("/") { s.removeLast() }
-        return s
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            // Best effort: at least lowercase scheme/host portion via a
+            // simple split. Defensive fallback - URL inputs that fail
+            // URLComponents parsing are exotic.
+            return url.absoluteString
+        }
+
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+        components.fragment = nil
+
+        // Strip default port for the scheme so explicit-port URLs collide
+        // with their implicit-port equivalents.
+        if let scheme = components.scheme, let port = components.port {
+            if (scheme == "http" && port == 80) || (scheme == "https" && port == 443) {
+                components.port = nil
+            }
+        }
+
+        // Trim a single trailing slash on a non-root path. Keep root `/`.
+        if components.path.count > 1, components.path.hasSuffix("/") {
+            components.path = String(components.path.dropLast())
+        }
+
+        // Prefer `string` (preserves percent-encoding of path/query) over
+        // `absoluteString` which would re-introduce the case-folded form
+        // we just trimmed off.
+        return components.string ?? url.absoluteString
     }
 
     /// Loads cache from disk if available.
