@@ -8,8 +8,18 @@ FeedReader has a comprehensive test suite with 100+ test files covering all mana
 FeedReaderTests/          # Main XCTest suite (Xcode project)
 ├── *Tests.swift          # 107 test files covering FeedReader/ sources
 Tests/
-└── FeedReaderCoreTests/  # Swift Package Manager tests for FeedReaderCore library
+├── FeedReaderCoreTests/  # Swift Package Manager tests for FeedReaderCore library
+└── test_*.py             # Pytest suite for helper scripts under scripts/
 ```
+
+**Two parallel suites**:
+
+| Suite | Runner | What it covers |
+|-------|--------|---------------|
+| Swift / XCTest | `xcodebuild test` or `swift test` | App code under `FeedReader/` and the `FeedReaderCore` SPM library under `Sources/` |
+| Python / pytest | `pytest Tests/` | CI helper scripts under `scripts/` (e.g. `coverage_report.py`) |
+
+Both suites run on every push: the Swift suite on the `macos-*` CI runners and the Python suite on the cheap `ubuntu-*` runner. A docs-only PR will still run the Python suite, so script changes can't silently break CI.
 
 ## Running Tests
 
@@ -137,6 +147,34 @@ swift test
    ```
 4. **Test naming**: Use `test` prefix + descriptive name (`testEmptyFeedReturnsNoStories`)
 5. **For async operations**: Use `XCTestExpectation` with `waitForExpectations(timeout:)`
+
+## Python Helper Tests
+
+The `scripts/` directory contains small Python utilities that run inside CI
+(currently `coverage_report.py`, which normalizes `xcrun xccov` output). These
+are exercised by a stdlib-only pytest suite that runs on a Linux runner —
+they do **not** require Xcode, a simulator, or macOS.
+
+```bash
+# From the repo root
+python3 -m pip install pytest
+python3 -m pytest Tests/ -q
+
+# Run a single helper's tests
+python3 -m pytest Tests/test_coverage_report.py -q
+```
+
+Guidelines for adding a new helper script:
+
+1. Drop the script in `scripts/` and keep it dependency-free (stdlib only)
+   so the Python CI job stays a thin install.
+2. Add a sibling `Tests/test_<name>.py` that imports the script by absolute
+   path (see `test_coverage_report.py` for the `importlib.util` pattern —
+   `scripts/` is not a package).
+3. Cover at least: the happy path, missing/invalid input, and any CLI gate
+   that returns a non-zero exit code (CI relies on those exit codes).
+4. Use `pytest`'s `capsys` / `tmp_path` fixtures rather than touching the
+   real filesystem or `print` capture by hand.
 
 ## Code Coverage
 

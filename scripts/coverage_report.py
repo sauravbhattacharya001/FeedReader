@@ -29,7 +29,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Any, Iterable
+from typing import Any, Iterable, NamedTuple
 
 
 # --------------------------------------------------------------------------- #
@@ -49,12 +49,63 @@ def load_coverage(path: str) -> dict[str, Any] | None:
 
 
 def iter_source_files(data: dict[str, Any]) -> Iterable[dict[str, Any]]:
-    """Yield source-file entries, skipping anything in a test target."""
+    """Yield raw source-file entries, skipping anything in a test target.
+
+    Kept as a public API for callers that want the raw xccov dict (e.g.
+    custom reporting). Internal report helpers go through :func:`_iter_files`
+    so that JSON-shape quirks are normalized in exactly one place.
+    """
     for target in data.get("targets", []) or []:
         if "Test" in (target.get("name") or ""):
             continue
         for src in target.get("files", []) or []:
             yield src
+
+
+# --------------------------------------------------------------------------- #
+# Normalized per-file view                                                    #
+# --------------------------------------------------------------------------- #
+
+class _FileCoverage(NamedTuple):
+    """Cleaned, type-coerced view of one xccov source-file entry.
+
+    The raw JSON shape is forgiving — fields can be missing, ``None``, or
+    floats where ints are expected — so we normalize once here instead of
+    duplicating ``int(src.get(..., 0) or 0)`` boilerplate across every
+    report function.
+    """
+
+    name: str
+    executable: int
+    covered: int
+    ratio: float  # 0.0 .. 1.0
+
+    @classmethod
+    def from_raw(cls, src: dict[str, Any]) -> "_FileCoverage":
+        return cls(
+            name=src.get("name", "?") or "?",
+            executable=int(src.get("executableLines", 0) or 0),
+            covered=int(src.get("coveredLines", 0) or 0),
+            ratio=float(src.get("lineCoverage", 0) or 0),
+        )
+
+    @property
+    def percent(self) -> float:
+        """Coverage as 0..100, derived from covered/executable when possible.
+
+        Falling back to the xccov-reported ratio keeps results stable for
+        files that report a non-zero ratio with zero executable lines (a
+        quirk we've seen on header-only stubs).
+        """
+        if self.executable > 0:
+            return self.covered / self.executable * 100
+        return self.ratio * 100
+
+
+def _iter_files(data: dict[str, Any]) -> Iterable[_FileCoverage]:
+    """Internal: yield normalized per-file coverage entries."""
+    for src in iter_source_files(data):
+        yield _FileCoverage.from_raw(src)
 
 
 # --------------------------------------------------------------------------- #
@@ -67,14 +118,10 @@ def print_table(data: dict[str, Any]) -> tuple[int, int]:
     total_exe = 0
     print(f"{'File':<50} {'Lines':>8} {'Covered':>8} {'Coverage':>10}")
     print("-" * 80)
-    for src in iter_source_files(data):
-        name = src.get("name", "?")
-        exe = int(src.get("executableLines", 0) or 0)
-        cov = int(src.get("coveredLines", 0) or 0)
-        pct = float(src.get("lineCoverage", 0) or 0) * 100
-        total_exe += exe
-        total_cov += cov
-        print(f"{name:<50} {exe:>8} {cov:>8} {pct:>9.1f}%")
+    for f in _iter_files(data):
+        total_exe += f.executable
+        total_cov += f.covered
+        print(f"{f.name:<50} {f.executable:>8} {f.covered:>8} {f.percent:>9.1f}%")
     if total_exe > 0:
         overall = total_cov / total_exe * 100
         print("-" * 80)
@@ -94,13 +141,15 @@ def write_percent_file(total_cov: int, total_exe: int, path: str) -> float | Non
 
 
 def write_regression_report(data: dict[str, Any], threshold: float, min_lines: int) -> int:
-    """Print files whose coverage is below *threshold*. Returns the count."""
-    flagged: list[tuple[str, float, int]] = []
-    for src in iter_source_files(data):
-        exe = int(src.get("executableLines", 0) or 0)
-        cov = float(src.get("lineCoverage", 0) or 0)
-        if exe >= min_lines and cov < threshold:
-            flagged.append((src.get("name", "?"), cov * 100, exe))
+    """Print files whose coverage is below *threshold*. Returns the count.
+
+    *threshold* is a fraction in ``[0, 1]``; *min_lines* is inclusive.
+    """
+    flagged: list[tuple[str, float, int]] = [
+        (f.name, f.percent, f.executable)
+        for f in _iter_files(data)
+        if f.executable >= min_lines and f.ratio < threshold
+    ]
     if flagged:
         flagged.sort(key=lambda row: row[1])
         print(
@@ -119,19 +168,21 @@ def append_step_summary(data: dict[str, Any], summary_path: str | None) -> None:
     """Append a markdown summary table to $GITHUB_STEP_SUMMARY (if set)."""
     if not summary_path:
         return
-    rows: list[tuple[str, int, int, float, str]] = []
+
+    # Files with < 5 executable lines are excluded from the PR summary
+    # table to keep the markdown readable; they still contribute to totals.
+    SUMMARY_MIN_LINES = 5
+
     total_cov = 0
     total_exe = 0
-    for src in iter_source_files(data):
-        name = src.get("name", "?")
-        exe = int(src.get("executableLines", 0) or 0)
-        cov = int(src.get("coveredLines", 0) or 0)
-        pct = (cov / exe * 100) if exe > 0 else 0.0
-        total_cov += cov
-        total_exe += exe
-        if exe >= 5:
+    rows: list[tuple[str, int, int, float, str]] = []
+    for f in _iter_files(data):
+        total_cov += f.covered
+        total_exe += f.executable
+        if f.executable >= SUMMARY_MIN_LINES:
+            pct = f.percent
             icon = "🟢" if pct >= 60 else ("🟡" if pct >= 30 else "🔴")
-            rows.append((name, exe, cov, pct, icon))
+            rows.append((f.name, f.executable, f.covered, pct, icon))
     rows.sort(key=lambda r: r[3])
 
     lines = [
@@ -155,17 +206,17 @@ def write_lcov(data: dict[str, Any], path: str) -> None:
     so we emit one synthetic line record per file with a hit count that
     matches its coverage ratio. This is the same approximation Codecov's
     own xccov bridge uses for line-level summaries.
+
+    ``LF`` is clamped to ``>= 1`` because lcov parsers reject ``LF:0``;
+    xccov occasionally reports ``executableLines=0`` for header-only stubs.
     """
     with open(path, "w", encoding="utf-8") as fh:
-        for src in iter_source_files(data):
-            name = src.get("name", "?")
-            exe = int(src.get("executableLines", 0) or 0)
-            cov = int(src.get("coveredLines", 0) or 0)
-            fh.write(f"SF:{name}\n")
+        for f in _iter_files(data):
+            fh.write(f"SF:{f.name}\n")
             # Single synthetic record summarizing the file.
-            fh.write(f"DA:1,{1 if cov > 0 else 0}\n")
-            fh.write(f"LF:{max(exe, 1)}\n")
-            fh.write(f"LH:{cov}\n")
+            fh.write(f"DA:1,{1 if f.covered > 0 else 0}\n")
+            fh.write(f"LF:{max(f.executable, 1)}\n")
+            fh.write(f"LH:{f.covered}\n")
             fh.write("end_of_record\n")
 
 
