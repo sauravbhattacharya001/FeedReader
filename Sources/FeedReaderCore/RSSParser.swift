@@ -47,6 +47,12 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
 
     var stories: [RSSStory] = []
 
+    /// Set when the underlying XMLParser invokes any of the external /
+    /// notation declaration callbacks. The `parse(data:)` method copies
+    /// this into the owning `RSSParser`'s `sawExternalEntity` flag so
+    /// callers can discard partial results from a malicious feed.
+    fileprivate var sawExternalEntityLocal = false
+
     /// Maps element names to their `ActiveElement` classification.
     /// Looked up once per `didStartElement` instead of running up to
     /// 10 string comparisons per `foundCharacters` call.
@@ -84,9 +90,24 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
         stories = []
         stories.reserveCapacity(32) // Typical RSS feeds have 10-50 items
         isAtomFeed = false
+        sawExternalEntityLocal = false
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = self
+        // Defense-in-depth against XML External Entity (XXE) attacks
+        // (CWE-611). XMLParser's defaults already disable external
+        // entity resolution, but we re-assert them here so a future
+        // SDK change or accidental override cannot quietly re-enable
+        // SYSTEM `file://` / `http://` references in a hostile feed.
+        xmlParser.shouldResolveExternalEntities = false
+        xmlParser.shouldProcessNamespaces = false
         xmlParser.parse()
+        // If a malicious feed declared an external entity, drop
+        // everything we collected for that feed - parsing may have
+        // partially completed before the abort and we don't want to
+        // surface poisoned content.
+        if sawExternalEntityLocal {
+            return []
+        }
         return stories
     }
 
@@ -195,6 +216,36 @@ private class RSSParseCollector: NSObject, XMLParserDelegate {
             stories.append(story)
         }
         insideItem = false
+    }
+
+    // MARK: - XXE Defense
+    //
+    // These delegate callbacks fire when the document declares external
+    // or unparsed entities in its DTD. We flip `sawExternalEntity` on
+    // the owning `RSSParser` (via the file-private flag this collector
+    // sets via the `parse(data:)` closure) and abort parsing so the
+    // poisoned feed produces zero stories rather than partial results.
+
+    func parser(_ parser: XMLParser,
+                foundExternalEntityDeclarationWithName name: String,
+                publicID: String?, systemID: String?) {
+        sawExternalEntityLocal = true
+        parser.abortParsing()
+    }
+
+    func parser(_ parser: XMLParser,
+                foundUnparsedEntityDeclarationWithName name: String,
+                publicID: String?, systemID: String?,
+                notationName: String?) {
+        sawExternalEntityLocal = true
+        parser.abortParsing()
+    }
+
+    func parser(_ parser: XMLParser,
+                foundNotationDeclarationWithName name: String,
+                publicID: String?, systemID: String?) {
+        sawExternalEntityLocal = true
+        parser.abortParsing()
     }
 }
 

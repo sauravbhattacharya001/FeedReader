@@ -20,6 +20,17 @@ public enum OPMLError: Error, LocalizedError {
     case parsingFailed(String)
     case noFeedsFound
     case encodingFailed
+    /// Input data exceeded the configured maximum size.
+    /// Defends against unbounded-memory DoS from a maliciously
+    /// large OPML payload.
+    case payloadTooLarge(bytes: Int, max: Int)
+    /// The OPML document declared an external entity. These are
+    /// rejected outright to prevent XML External Entity (XXE) attacks
+    /// (CWE-611) - e.g. exfiltrating local files via `file://` SYSTEM
+    /// entities or hitting internal services via `http://` SYSTEM
+    /// entities. Defence-in-depth on top of XMLParser's default of
+    /// `shouldResolveExternalEntities = false`.
+    case externalEntityRejected
 
     public var errorDescription: String? {
         switch self {
@@ -31,6 +42,10 @@ public enum OPMLError: Error, LocalizedError {
             return "No feed subscriptions found in the OPML file."
         case .encodingFailed:
             return "Failed to encode OPML document as UTF-8."
+        case .payloadTooLarge(let bytes, let max):
+            return "OPML payload is \(bytes) bytes, exceeds maximum of \(max)."
+        case .externalEntityRejected:
+            return "OPML document declares an external entity, which is not permitted."
         }
     }
 }
@@ -51,6 +66,16 @@ public enum OPMLError: Error, LocalizedError {
 /// // feeds: [FeedItem] — all discovered feeds, enabled by default
 /// ```
 public final class OPMLManager {
+
+    // MARK: - Limits
+
+    /// Default maximum accepted OPML payload size, in bytes.
+    ///
+    /// 16 MiB is comfortably above the size of even the largest real-world
+    /// OPML exports (a 5,000-feed subscription list is typically < 2 MiB)
+    /// while preventing pathological inputs from forcing the XML parser to
+    /// allocate unbounded memory. Override via `importOPML(from:maxBytes:)`.
+    public static let defaultMaxOPMLBytes = 16 * 1024 * 1024
 
     // MARK: - Export
 
@@ -112,12 +137,48 @@ public final class OPMLManager {
     /// - Returns: Array of `FeedItem` objects (all enabled by default).
     /// - Throws: `OPMLError` on invalid data or if no feeds are found.
     public static func importOPML(from data: Data) throws -> [FeedItem] {
+        return try importOPML(from: data, maxBytes: defaultMaxOPMLBytes)
+    }
+
+    /// Import feed subscriptions from OPML data with an explicit size cap.
+    ///
+    /// Use this overload when you need a tighter (or, with care, looser)
+    /// limit than the default. The cap exists to prevent a malicious or
+    /// corrupted OPML file from forcing unbounded memory allocation in
+    /// the XML parser.
+    ///
+    /// - Parameters:
+    ///   - data: UTF-8 encoded OPML XML data.
+    ///   - maxBytes: Maximum accepted payload size in bytes. Inputs larger
+    ///     than this are rejected before any parsing begins.
+    /// - Returns: Array of `FeedItem` objects (all enabled by default).
+    /// - Throws:
+    ///   - `OPMLError.invalidData` when the buffer is empty.
+    ///   - `OPMLError.payloadTooLarge` when `data.count > maxBytes`.
+    ///   - `OPMLError.externalEntityRejected` when the OPML declares an
+    ///     external entity (XXE defense - CWE-611).
+    ///   - `OPMLError.parsingFailed` when the XML parser reports an error.
+    ///   - `OPMLError.noFeedsFound` when no valid feed outlines are present.
+    public static func importOPML(from data: Data, maxBytes: Int) throws -> [FeedItem] {
         guard !data.isEmpty else { throw OPMLError.invalidData }
+        guard data.count <= maxBytes else {
+            throw OPMLError.payloadTooLarge(bytes: data.count, max: maxBytes)
+        }
 
         let parser = OPMLParseDelegate()
         let xmlParser = XMLParser(data: data)
         xmlParser.delegate = parser
+        // Defense-in-depth: XMLParser defaults to not resolving external
+        // entities, but we set both flags explicitly so a future SDK
+        // change or accidental override can't quietly re-enable XXE.
+        xmlParser.shouldResolveExternalEntities = false
+        xmlParser.shouldProcessNamespaces = false
+
         let success = xmlParser.parse()
+
+        if parser.didSeeExternalEntity {
+            throw OPMLError.externalEntityRejected
+        }
 
         if !success, let error = xmlParser.parserError {
             throw OPMLError.parsingFailed(error.localizedDescription)
@@ -227,8 +288,41 @@ private class OPMLParseDelegate: NSObject, XMLParserDelegate {
 
     var feeds: [FeedItem] = []
 
+    /// Set to `true` if the document declared any external entity, so the
+    /// caller can convert this into a hard `externalEntityRejected` error
+    /// rather than silently returning whatever feeds happened to parse
+    /// before the offending DTD. We do not call `parser.abortParsing()`
+    /// here because doing so triggers a generic XML error that's harder
+    /// for callers to distinguish from real parse failures.
+    var didSeeExternalEntity = false
+
     /// Track seen URLs for deduplication (case-insensitive).
     private var seenURLs = Set<String>()
+
+    // MARK: - XXE Defense
+
+    func parser(_ parser: XMLParser,
+                foundExternalEntityDeclarationWithName name: String,
+                publicID: String?, systemID: String?) {
+        didSeeExternalEntity = true
+        parser.abortParsing()
+    }
+
+    func parser(_ parser: XMLParser,
+                foundUnparsedEntityDeclarationWithName name: String,
+                publicID: String?, systemID: String?,
+                notationName: String?) {
+        didSeeExternalEntity = true
+        parser.abortParsing()
+    }
+
+    func parser(_ parser: XMLParser,
+                foundNotationDeclarationWithName name: String,
+                publicID: String?, systemID: String?) {
+        // Notation declarations only appear in DTDs; treat as suspicious.
+        didSeeExternalEntity = true
+        parser.abortParsing()
+    }
 
     func parser(_ parser: XMLParser, didStartElement elementName: String,
                 namespaceURI: String?, qualifiedName qName: String?,

@@ -265,4 +265,93 @@ final class OPMLManagerTests: XCTestCase {
         XCTAssertFalse(OPMLManager.isSafeFeedURL("http://169.254.169.254/meta"))
         XCTAssertFalse(OPMLManager.isSafeFeedURL("http://localhost/feed"))
     }
+
+    // MARK: - XXE / DoS Hardening
+
+    /// An OPML payload that declares a SYSTEM entity pointing at a
+    /// local file must be rejected with `externalEntityRejected`,
+    /// never silently expanded. Validates CWE-611 defense.
+    func testImportRejectsExternalEntityFileSystemRef() {
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE opml [
+          <!ENTITY xxe SYSTEM "file:///etc/passwd">
+        ]>
+        <opml version="2.0">
+          <head><title>Pwned &xxe;</title></head>
+          <body>
+            <outline xmlUrl="https://example.com/feed" text="Decoy"/>
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard case OPMLError.externalEntityRejected = error else {
+                XCTFail("Expected externalEntityRejected, got \(error)")
+                return
+            }
+        }
+    }
+
+    /// An OPML payload that declares an external entity referencing
+    /// the cloud metadata endpoint must also be rejected. This guards
+    /// against an XXE-driven SSRF where the resolver would issue an
+    /// outbound HTTP request from the app's network context.
+    func testImportRejectsExternalEntityHTTPRef() {
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE opml [
+          <!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/">
+        ]>
+        <opml version="2.0">
+          <body>
+            <outline xmlUrl="https://example.com/feed" text="Decoy"/>
+          </body>
+        </opml>
+        """
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: opml)) { error in
+            guard case OPMLError.externalEntityRejected = error else {
+                XCTFail("Expected externalEntityRejected, got \(error)")
+                return
+            }
+        }
+    }
+
+    /// Inputs larger than the configured cap must throw
+    /// `payloadTooLarge` before any parsing work happens.
+    func testImportRejectsOversizedPayload() {
+        // 32 bytes of arbitrary content, with a 16-byte cap.
+        let payload = Data(repeating: 0x20, count: 32)
+        XCTAssertThrowsError(try OPMLManager.importOPML(from: payload, maxBytes: 16)) { error in
+            guard case OPMLError.payloadTooLarge(let bytes, let max) = error else {
+                XCTFail("Expected payloadTooLarge, got \(error)")
+                return
+            }
+            XCTAssertEqual(bytes, 32)
+            XCTAssertEqual(max, 16)
+        }
+    }
+
+    /// The default cap should be high enough to accept any realistic
+    /// OPML export. This regression-locks the constant so we don't
+    /// accidentally tighten it to a value that breaks normal users.
+    func testDefaultMaxOPMLBytesIsReasonable() {
+        XCTAssertGreaterThanOrEqual(OPMLManager.defaultMaxOPMLBytes, 1 * 1024 * 1024,
+                                    "Default OPML size cap should be at least 1 MiB")
+    }
+
+    /// A normal OPML file (no DTD, no entities) must still parse fine
+    /// after the XXE callbacks were added.
+    func testImportSucceedsForBenignDocumentAfterHardening() throws {
+        let opml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <opml version="2.0">
+          <body>
+            <outline xmlUrl="https://example.com/a" text="A"/>
+            <outline xmlUrl="https://example.com/b" text="B"/>
+          </body>
+        </opml>
+        """
+        let feeds = try OPMLManager.importOPML(from: opml)
+        XCTAssertEqual(feeds.count, 2)
+    }
 }
