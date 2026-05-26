@@ -277,6 +277,57 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  duplicate-sources:
+    name: Reject duplicate sources between app and Core
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Guards against the divergent-forks problem documented in #110:
+      # a file with the same basename in both FeedReader/ and
+      # Sources/FeedReaderCore/ silently drifts and ships subtly
+      # different behavior to the two targets.
+      #
+      # The allowlist below is for files whose app-target copy is still
+      # referenced by FeedReader.xcodeproj and consumed by the UIKit
+      # layer; consolidating them is tracked in #110.
+      - name: Reject duplicated source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          allow_file="$(mktemp)"
+          cat > "$allow_file" <<'EOF'
+          OPMLManager.swift
+          EOF
+
+          comm -12 \
+            <(cd FeedReader && ls *.swift 2>/dev/null | sort) \
+            <(cd Sources/FeedReaderCore && ls *.swift 2>/dev/null | sort) \
+            > dupes-all.txt
+
+          # Subtract allowlist.
+          grep -vxF -f "$allow_file" dupes-all.txt > dupes.txt || true
+
+          if [ -s dupes.txt ]; then
+            echo "::error::Duplicated sources between app and Core target:"
+            sed 's/^/  - /' dupes.txt
+            echo
+            echo "Each duplicate eventually drifts. Move the canonical"
+            echo "copy into Sources/FeedReaderCore/ and delete the app-side"
+            echo "copy, or add the basename to the allowlist in"
+            echo ".github/workflows/ci.yml with a tracking issue link."
+            exit 1
+          fi
+
+          echo "No disallowed duplicate sources."
+          if [ -s dupes-all.txt ]; then
+            echo
+            echo "Allowlisted duplicates still present (tracked in #110):"
+            sed 's/^/  - /' dupes-all.txt
+          fi
   lint:
     name: SwiftLint
     runs-on: ubuntu-latest

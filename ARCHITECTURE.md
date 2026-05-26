@@ -156,6 +156,15 @@ Feed source configuration (`Feed.swift`, 100 lines):
 | **BookmarksViewController** | 159 | Bookmarked articles list with swipe-to-remove. |
 | **NoInternetFoundViewController** | 20 | Offline error state. |
 
+## Module Layout: App Target vs. Core Library
+
+FeedReader ships as two products:
+
+- **`FeedReader/`** — UIKit app target. View controllers, storyboards, and any UI-only glue that depends on `UIKit`. Built by `FeedReader.xcodeproj`.
+- **`Sources/FeedReaderCore/`** — Swift Package (`Package.swift`) exposing the `FeedReaderCore` library. All reusable models, parsers, managers, and content-analysis logic with no `UIKit` dependency live here, with `public` access where consumers need them.
+
+**Rule:** any `.swift` file should live in exactly one of those two directories. A file with the same basename in both is forbidden — the CI job `duplicate-sources` (`.github/workflows/ci.yml`) fails the build if it detects one outside the small allowlist. Logic that needs to be shared belongs in `Sources/FeedReaderCore/`; the app target imports `FeedReaderCore` instead of copy-pasting the file. See #110 for the historical drift this guard protects against.
+
 ## Persistence Strategy
 
 The app uses three persistence mechanisms:
