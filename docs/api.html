@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>API Reference — FeedReader Documentation</title>
-    <meta name="description" content="Complete API reference for FeedReaderCore Swift Package: RSSParser, RSSStory, FeedItem, NetworkReachability, ArticleArchiveExporter, FeedHealthMonitor, and KeywordExtractor.">
+    <meta name="description" content="Complete API reference for the FeedReaderCore Swift Package — 34 public modules covering RSS parsing, feed intelligence, reader analytics, content management, and autonomous reading agents.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📰</text></svg>">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -36,8 +36,24 @@
 
 <header class="page-header page-content">
     <h1>📖 API Reference</h1>
-    <p>Complete reference for the FeedReaderCore Swift Package — RSS parsing, models, and utilities.</p>
+    <p>Complete reference for the FeedReaderCore Swift Package — 34 public modules covering RSS parsing, feed intelligence, reader analytics, content management, and autonomous agents.</p>
 </header>
+
+<section class="page-content" style="padding: 0 24px 24px;">
+    <div class="container">
+        <h2 style="margin-bottom: 12px;">Module Index</h2>
+        <p style="color: var(--gray); margin-bottom: 16px;">Jump to a section:</p>
+        <ul style="columns: 2; column-gap: 32px; list-style: none; padding: 0;">
+            <li><strong>Core:</strong> <a href="#rssparser">RSSParser</a> · <a href="#rssstory">RSSStory</a> · <a href="#feeditem">FeedItem</a> · <a href="#networkreachability">NetworkReachability</a> · <a href="#textutilities">TextUtilities</a> · <a href="#opmlmanager">OPMLManager</a> · <a href="#feedcachemanager">FeedCacheManager</a></li>
+            <li><strong>Content:</strong> <a href="#archive-exporter">ArticleArchiveExporter</a> · <a href="#article-digest-composer">ArticleDigestComposer</a> · <a href="#article-quiz-generator">ArticleQuizGenerator</a> · <a href="#keyword-extractor">KeywordExtractor</a></li>
+            <li><strong>Feed Intelligence:</strong> <a href="#feed-health-monitor">FeedHealthMonitor</a> · <a href="#feed-content-calendar">FeedContentCalendar</a> · <a href="#feed-topic-radar">FeedTopicRadar</a> · <a href="#feed-trend-forecaster">FeedTrendForecaster</a> · <a href="#feed-sentiment-radar">FeedSentimentRadar</a> · <a href="#feed-intelligence-brief">FeedIntelligenceBrief</a> · <a href="#feed-editorial-drift">FeedEditorialDriftCompass</a> · <a href="#feed-narrative-arc">FeedNarrativeArcTracker</a></li>
+            <li><strong>Source Trust:</strong> <a href="#feed-source-credibility">FeedSourceCredibility</a> · <a href="#feed-cross-reference">FeedCrossReferenceEngine</a> · <a href="#feed-debate-arena">FeedDebateArena</a></li>
+            <li><strong>Reader Intelligence:</strong> <a href="#feed-attention-allocator">FeedAttentionAllocator</a> · <a href="#feed-blind-spot">FeedBlindSpotDetector</a> · <a href="#feed-contextual-primer">FeedContextualPrimer</a> · <a href="#feed-interest-evolver">FeedInterestEvolver</a> · <a href="#feed-predictive-interest">FeedPredictiveInterestEngine</a> · <a href="#feed-knowledge-graph">FeedKnowledgeGraph</a></li>
+            <li><strong>Reading Management:</strong> <a href="#feed-reading-autopilot">FeedReadingAutopilot</a> · <a href="#feed-reading-fatigue">FeedReadingFatigueAdvisor</a> · <a href="#feed-reading-goal">FeedReadingGoalTracker</a></li>
+            <li><strong>Portfolio Health:</strong> <a href="#feed-subscription-roi">FeedSubscriptionROI</a> · <a href="#feed-source-diversity">FeedSourceDiversityGuardian</a> · <a href="#feed-serendipity">FeedSerendipityEngine</a></li>
+        </ul>
+    </div>
+</section>
 
 <section>
     <div class="container">
@@ -387,6 +403,449 @@
 <span class="keyword">let</span> themes = extractor.<span class="func">extractThemes</span>(from: allStories)
 <span class="comment">// ["programming", "apple", "ios", "development", "swift"]</span>
         </div>
+    </div>
+</section>
+
+<!-- TextUtilities -->
+<section id="textutilities">
+    <div class="container">
+        <h2>TextUtilities</h2>
+        <p class="api-desc">Shared text processing utilities. Centralises stop words, HTML entity escaping, and word counting to eliminate duplication across modules.</p>
+        <h4>Key Members</h4>
+        <table class="doc-table">
+            <thead><tr><th>Member</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>stopWords: Set&lt;String&gt;</code></td><td>~100 common English stop words used by KeywordExtractor and ArticleQuizGenerator.</td></tr>
+                <tr><td><code>wordCount(_ text: String) → Int</code></td><td>Unicode-aware word count using <code>enumerateSubstrings</code>.</td></tr>
+                <tr><td><code>decodeHTMLEntities(_ html: String) → String</code></td><td>Decodes named and numeric HTML entities.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- OPMLManager -->
+<section id="opmlmanager">
+    <div class="container">
+        <h2>OPMLManager</h2>
+        <p class="api-desc">Import and export feed subscriptions in OPML 2.0 format — the industry-standard interchange format for RSS readers. Includes XXE attack prevention and payload size limiting.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>importFeeds(from data: Data) → [FeedItem]</code></td><td>Parse an OPML document and return feed items. Throws <code>OPMLError</code> on invalid input.</td></tr>
+                <tr><td><code>exportFeeds(_ feeds: [FeedItem]) → Data</code></td><td>Generate a well-formed OPML 2.0 XML document from feed items.</td></tr>
+            </tbody>
+        </table>
+        <h4>Error Handling</h4>
+        <p style="color: var(--gray);"><code>OPMLError</code> cases: <code>invalidData</code>, <code>parsingFailed</code>, <code>noFeedsFound</code>, <code>encodingFailed</code>, <code>payloadTooLarge</code> (DoS defense), and <code>externalEntityDetected</code> (XXE prevention).</p>
+    </div>
+</section>
+
+<!-- FeedCacheManager -->
+<section id="feedcachemanager">
+    <div class="container">
+        <h2>FeedCacheManager</h2>
+        <p class="api-desc">HTTP conditional GET caching for RSS feeds using ETag and Last-Modified headers. Avoids re-downloading unchanged content, reducing bandwidth significantly for feeds that update infrequently.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>applyCacheHeaders(to request: inout URLRequest, for url: URL)</code></td><td>Attaches stored ETag / If-Modified-Since headers to the request.</td></tr>
+                <tr><td><code>isNotModified(_ response: HTTPURLResponse) → Bool</code></td><td>Returns <code>true</code> if the server responded with 304 Not Modified.</td></tr>
+                <tr><td><code>storeCacheMetadata(from response: HTTPURLResponse, for url: URL)</code></td><td>Persist caching headers after a successful 200 response.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ArticleDigestComposer -->
+<section id="article-digest-composer">
+    <div class="container">
+        <h2>ArticleDigestComposer</h2>
+        <p class="api-desc">Newsletter-style digest composer. Generates formatted digests from articles on daily, weekly, or monthly cadence. Produces both plain-text and HTML output.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>DigestPeriodCore</code></td><td>Cadence enum: <code>.daily</code> (1 day), <code>.weekly</code> (7 days), <code>.monthly</code> (30 days). Each has a <code>days</code> lookback property.</td></tr>
+                <tr><td><code>DigestResult</code></td><td>Contains <code>title</code>, <code>htmlContent</code>, <code>plainTextContent</code>, <code>articleCount</code>, and <code>period</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- ArticleQuizGenerator -->
+<section id="article-quiz-generator">
+    <div class="container">
+        <h2>ArticleQuizGenerator</h2>
+        <p class="api-desc">Generates comprehension quiz questions from article content using extractive NLP — entirely offline, no API needed. Supports factual, vocabulary, and inference question categories.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>QuizQuestion</code></td><td>A multiple-choice question with <code>question</code>, <code>choices</code>, <code>correctIndex</code>, <code>sourceExcerpt</code>, and <code>category</code>.</td></tr>
+                <tr><td><code>QuizCategory</code></td><td>Enum: <code>.factual</code>, <code>.vocabulary</code>, <code>.inference</code>.</td></tr>
+            </tbody>
+        </table>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>generateQuiz(from text: String, count: Int) → [QuizQuestion]</code></td><td>Generate quiz questions from article text. Returns up to <code>count</code> questions.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedContentCalendar -->
+<section id="feed-content-calendar">
+    <div class="container">
+        <h2>FeedContentCalendar</h2>
+        <p class="api-desc">Publication pattern detection and schedule forecasting. Analyses when feeds publish, detects regular schedules, predicts upcoming publications, and alerts when expected content is late.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>DayProfile</code></td><td>Per-weekday stats: <code>weekday</code>, <code>totalArticles</code>, <code>averageArticles</code>, <code>peakHour</code>, <code>isRegularDay</code>.</td></tr>
+                <tr><td><code>PublicationSchedule</code></td><td>Detected schedule pattern with predicted next publication dates.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedTopicRadar -->
+<section id="feed-topic-radar">
+    <div class="container">
+        <h2>FeedTopicRadar</h2>
+        <p class="api-desc">Emerging topic detection via z-score burst analysis. Tracks topic frequency across time windows, classifies lifecycle phases (Emerging → Trending → Saturated → Declining → Dormant), and generates early-warning alerts.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>recordObservation(topic:feedURL:feedName:articleId:timestamp:confidence:)</code></td><td>Record a topic mention from an article.</td></tr>
+                <tr><td><code>scan() → TopicRadarReport</code></td><td>Produce a full scan: bursts, phase classifications, cross-feed correlations, and portfolio health score (0–100).</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedTrendForecaster -->
+<section id="feed-trend-forecaster">
+    <div class="container">
+        <h2>FeedTrendForecaster</h2>
+        <p class="api-desc">Predicts which topics are about to peak by analysing keyword momentum. Computes breakout probabilities and classifies trends into phases: emerging, accelerating, peaking, declining.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>TrendPhase</code></td><td>Enum with emoji: <code>.emerging</code> 🌱, <code>.accelerating</code> 🚀, <code>.peaking</code> ⚡, <code>.declining</code> 📉.</td></tr>
+                <tr><td><code>TrendForecast</code></td><td>Per-topic forecast with <code>phase</code>, <code>momentum</code>, <code>breakoutProbability</code>, and <code>predictedPeakDate</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedSentimentRadar -->
+<section id="feed-sentiment-radar">
+    <div class="container">
+        <h2>FeedSentimentRadar</h2>
+        <p class="api-desc">Lexicon-based sentiment tracking across feeds. Scores article tone on a 5-point scale, detects mood shifts over time, and generates proactive alerts on significant sentiment changes.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>SentimentPolarity</code></td><td>5-level enum from <code>.veryNegative</code> (−1.0) to <code>.veryPositive</code> (+1.0).</td></tr>
+                <tr><td><code>SentimentReport</code></td><td>Aggregate sentiment analysis with per-feed breakdown, trending direction, and shift alerts.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedIntelligenceBrief -->
+<section id="feed-intelligence-brief">
+    <div class="container">
+        <h2>FeedIntelligenceBrief</h2>
+        <p class="api-desc">Autonomous daily intelligence briefing generator. Correlates articles across feeds to produce structured, prioritised briefs with narrative threads, emerging signals, cross-feed correlations, and actionable insights.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>generateBrief(articles:feedMap:previousKeywords:) → IntelligenceBrief?</code></td><td>Produce a brief with <code>executiveSummary</code>, <code>narrativeThreads</code>, <code>emergingSignals</code>, <code>blindSpots</code>, and <code>actionableInsights</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedEditorialDriftCompass -->
+<section id="feed-editorial-drift">
+    <div class="container">
+        <h2>FeedEditorialDriftCompass</h2>
+        <p class="api-desc">Monitors feed sources for silent editorial drift — when a feed's content diverges from its established identity (e.g., a tech blog starts covering politics). Classifies drift types and predicts future identity state.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>ingestArticle(feedURL:title:topics:)</code></td><td>Record an article's topics for a feed.</td></tr>
+                <tr><td><code>analyzeDrift(feedURL:) → DriftReport</code></td><td>Returns <code>driftScore</code> (0–100), <code>driftType</code> (topicInvasion / identityErosion / pivot / dilution), <code>velocity</code>, and <code>prediction</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedNarrativeArcTracker -->
+<section id="feed-narrative-arc">
+    <div class="container">
+        <h2>FeedNarrativeArcTracker</h2>
+        <p class="api-desc">Tracks developing storylines across articles over time. Detects narrative phases (Emerging → Rising → Climax → Falling → Resolution → Dormant), alerts on turning points, and forecasts story resolution timelines.</p>
+        <h4>Notifications</h4>
+        <table class="doc-table">
+            <thead><tr><th>Notification</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>.narrativeTurningPointDetected</code></td><td>A followed story hit an inflection point.</td></tr>
+                <tr><td><code>.narrativePhaseChanged</code></td><td>A story moved to a new narrative phase.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedSourceCredibility -->
+<section id="feed-source-credibility">
+    <div class="container">
+        <h2>FeedSourceCredibility</h2>
+        <p class="api-desc">Builds trust profiles for RSS sources based on observable content signals: claim consistency, correction/retraction patterns, citation density, hedging language, and temporal reliability. Assigns 5-tier credibility ratings (Platinum → Untrusted).</p>
+        <h4>Notifications</h4>
+        <table class="doc-table">
+            <thead><tr><th>Notification</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>.credibilityAlertGenerated</code></td><td>A source's credibility changed significantly.</td></tr>
+                <tr><td><code>.credibilityTierChanged</code></td><td>A source moved up or down a reliability tier.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedCrossReferenceEngine -->
+<section id="feed-cross-reference">
+    <div class="container">
+        <h2>FeedCrossReferenceEngine</h2>
+        <p class="api-desc">Cross-article fact corroboration and contradiction detection. Extracts factual claims (numbers, dates, statistics), cross-references across sources, and scores reliability with full provenance audit trails.</p>
+        <h4>Capabilities</h4>
+        <ul style="color: var(--gray); margin-left: 24px;">
+            <li>Claim extraction from article text (numbers, dates, entities)</li>
+            <li>Cross-reference matching via topic similarity</li>
+            <li>Corroboration scoring and contradiction flagging</li>
+            <li>Composite confidence scores based on source count and agreement</li>
+            <li>Fleet health scoring 0–100</li>
+        </ul>
+    </div>
+</section>
+
+<!-- FeedDebateArena -->
+<section id="feed-debate-arena">
+    <div class="container">
+        <h2>FeedDebateArena</h2>
+        <p class="api-desc">Argument extraction engine that identifies opposing viewpoints on the same topic across feeds. Classifies stances (for/against/mixed/neutral), calculates balance scores, and detects echo chambers.</p>
+        <h4>Notifications</h4>
+        <table class="doc-table">
+            <thead><tr><th>Notification</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>.debateTopicCreated</code></td><td>A new debate topic was identified.</td></tr>
+                <tr><td><code>.debateEchoChamberDetected</code></td><td>One-sided coverage detected across sources.</td></tr>
+                <tr><td><code>.debateConsensusForming</code></td><td>Multiple sources converging on a shared position.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedAttentionAllocator -->
+<section id="feed-attention-allocator">
+    <div class="container">
+        <h2>FeedAttentionAllocator</h2>
+        <p class="api-desc">Autonomous attention budget manager. Tracks how reading attention is distributed across topics, detects 5 types of attention sinks (rabbit holes, doom scrolling, echo chambers, novelty traps, obligation reads), and suggests reallocation.</p>
+        <h4>Key Output</h4>
+        <table class="doc-table">
+            <thead><tr><th>Field</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>diversityScore</code></td><td>Shannon entropy-based diversity score 0–100.</td></tr>
+                <tr><td><code>attentionEfficiency</code></td><td>How well attention aligns with stated priorities (0–100).</td></tr>
+                <tr><td><code>sinks</code></td><td>Detected attention traps with type classification.</td></tr>
+                <tr><td><code>reallocations</code></td><td>Suggested attention shifts with rationale.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedBlindSpotDetector -->
+<section id="feed-blind-spot">
+    <div class="container">
+        <h2>FeedBlindSpotDetector</h2>
+        <p class="api-desc">Identifies systematic gaps in reading habits — topics adjacent to interests but consistently missing from feeds. Uses keyword co-occurrence, Shannon entropy, and temporal analysis to score blind spots 0–100 with portfolio health grades.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>ingest(_ article: BlindSpotArticle)</code></td><td>Add an article to the analysis corpus.</td></tr>
+                <tr><td><code>detect() → BlindSpotReport</code></td><td>Returns blind spots with severity scores, coverage map, and portfolio health grade (A–F).</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedContextualPrimer -->
+<section id="feed-contextual-primer">
+    <div class="container">
+        <h2>FeedContextualPrimer</h2>
+        <p class="api-desc">Reading preparation engine that primes the reader before an article. Analyses target content against reading history to produce background refreshers, concept familiarity maps, knowledge readiness scores, and optimal reading order suggestions.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>recordReading(story:)</code></td><td>Register a story as read to build the reader's concept history.</td></tr>
+                <tr><td><code>preparePrimer(for story:) → ContextualPrimer</code></td><td>Returns <code>readinessScore</code> (0–100), <code>backgroundRefreshers</code>, <code>conceptFamiliarity</code>, and <code>blindSpots</code>.</td></tr>
+                <tr><td><code>suggestReadingOrder(_ stories:) → [RSSStory]</code></td><td>Orders articles for progressive concept scaffolding.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedInterestEvolver -->
+<section id="feed-interest-evolver">
+    <div class="container">
+        <h2>FeedInterestEvolver</h2>
+        <p class="api-desc">Tracks how reading interests change over time. Creates periodic snapshots and analyses them to detect emerging interests, fading topics, cyclical patterns, stable passions, and predicted future interests.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>recordSnapshot(articles:)</code></td><td>Record a reading snapshot from recent articles.</td></tr>
+                <tr><td><code>analyzeEvolution() → EvolutionReport</code></td><td>Returns <code>biography</code> (narrative timeline), <code>emergingTopics</code>, <code>fadingTopics</code>, <code>predictions</code>, and <code>diversityMetrics</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedPredictiveInterestEngine -->
+<section id="feed-predictive-interest">
+    <div class="container">
+        <h2>FeedPredictiveInterestEngine</h2>
+        <p class="api-desc">Forecasts future reading interests before the user searches for them. Analyses interest trajectory vectors, curiosity signals, and co-occurrence patterns. Self-tracks prediction accuracy and adapts.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>recordInteraction(topic:feedURL:articleId:interactionType:dwellSeconds:timestamp:)</code></td><td>Record a reading interaction with dwell time and type.</td></tr>
+                <tr><td><code>predict() → [InterestPrediction]</code></td><td>Returns predicted interests ranked by confidence with momentum vectors.</td></tr>
+                <tr><td><code>surfaceArticles(from candidates:) → [RankedArticle]</code></td><td>Proactively rank articles by predicted relevance.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedKnowledgeGraph -->
+<section id="feed-knowledge-graph">
+    <div class="container">
+        <h2>FeedKnowledgeGraph</h2>
+        <p class="api-desc">Personal knowledge graph builder. Extracts concepts from reading history, maps relationships, detects knowledge gaps, suggests learning paths, tracks concept decay, and scores expertise depth across topics.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>ingest(_ article: KGArticle)</code></td><td>Add article concepts to the knowledge graph.</td></tr>
+                <tr><td><code>analyze() → KnowledgeReport</code></td><td>Returns <code>clusters</code> (topic groups), <code>gaps</code>, <code>learningPaths</code>, <code>decayingConcepts</code>, and <code>expertiseProfile</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedReadingAutopilot -->
+<section id="feed-reading-autopilot">
+    <div class="container">
+        <h2>FeedReadingAutopilot</h2>
+        <p class="api-desc">Autonomous session planner that curates optimal article sequences for a given time budget. Considers priority scoring, reading time estimates, topic diversity, cognitive load balancing, and reading momentum curves.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>planSession(articles:timeBudgetMinutes:preferences:) → ReadingSession</code></td><td>Returns an ordered <code>playlist</code>, <code>totalMinutes</code>, <code>diversityScore</code> (0–100), <code>cognitiveProfile</code>, and a human-readable <code>sessionBrief</code>.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedReadingFatigueAdvisor -->
+<section id="feed-reading-fatigue">
+    <div class="container">
+        <h2>FeedReadingFatigueAdvisor</h2>
+        <p class="api-desc">Watches cognitive load across reading sessions. Analyses 10 weighted fatigue signals (volume, depth, diversity, sentiment, timing, continuity) to produce a 0–100 fatigue score with A–F grade and 5-tier verdict (fresh → burnout).</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>analyze(sessions:) → FatigueReport</code></td><td>Returns <code>fatigueScore</code> (0–100), <code>grade</code> (A–F), <code>verdict</code> (fresh/engaged/mildFatigue/heavyFatigue/burnout), and a prioritised playbook of recommendations.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedReadingGoalTracker -->
+<section id="feed-reading-goal">
+    <div class="container">
+        <h2>FeedReadingGoalTracker</h2>
+        <p class="api-desc">Tracks daily/weekly reading goals (article count, topic diversity, minutes read). Manages streaks, progress reporting, and adaptive goal suggestions based on reading patterns.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>ReadingGoal</code></td><td>Goal config with <code>type</code> (.articleCount/.topicDiversity/.minutesRead), <code>period</code> (.daily/.weekly), and <code>target</code> value.</td></tr>
+                <tr><td><code>GoalProgress</code></td><td>Current progress with <code>current</code>, <code>target</code>, <code>percentage</code>, and <code>streak</code> count.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedSubscriptionROI -->
+<section id="feed-subscription-roi">
+    <div class="container">
+        <h2>FeedSubscriptionROI</h2>
+        <p class="api-desc">Measures per-feed return on investment based on engagement vs. volume. Classifies feeds into 5 ROI tiers (Platinum/Gold/Silver/Bronze/Deficit), detects 6 subscription anti-patterns, and generates prune/promote recommendations.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>recordArticle(feedURL:feedName:wasRead:dwellSeconds:wasSaved:wasShared:)</code></td><td>Record engagement for an article.</td></tr>
+                <tr><td><code>analyzePortfolio() → ROIReport</code></td><td>Returns <code>portfolioHealth</code> (0–100), per-feed reports with tier classification, detected anti-patterns, and recommendations.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedSourceDiversityGuardian -->
+<section id="feed-source-diversity">
+    <div class="container">
+        <h2>FeedSourceDiversityGuardian</h2>
+        <p class="api-desc">Echo-chamber detection and diversity advisor. Monitors reading across 5 axes: topic concentration, source concentration, geographic diversity, publication type balance, and recency bias. Flags drops below healthy thresholds with corrective recommendations.</p>
+        <h4>Methods</h4>
+        <table class="doc-table">
+            <thead><tr><th>Method</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>analyze(readingHistory:subscriptions:config:) → DiversityReport</code></td><td>Returns <code>overallScore</code> (0–100), <code>grade</code> (A–F), per-axis breakdown, and actionable recommendations.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- FeedSerendipityEngine -->
+<section id="feed-serendipity">
+    <div class="container">
+        <h2>FeedSerendipityEngine</h2>
+        <p class="api-desc">Discovers unexpected connections between articles from different feeds using keyword co-occurrence and topic bridging. Surfaces surprising cross-topic reads the user wouldn't normally find.</p>
+        <h4>Key Types</h4>
+        <table class="doc-table">
+            <thead><tr><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+                <tr><td><code>SerendipityConnection</code></td><td>A discovered link between two articles with <code>bridgeKeywords</code>, <code>serendipityScore</code> (0–1), <code>explanation</code>, and <code>connectionType</code>.</td></tr>
+            </tbody>
+        </table>
     </div>
 </section>
 
