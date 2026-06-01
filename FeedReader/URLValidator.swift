@@ -37,6 +37,10 @@ enum URLValidator {
     /// Validate a URL string for feed addition — ensures it is a valid,
     /// publicly-routable HTTP(S) URL suitable for RSS/Atom fetching.
     ///
+    /// Performs both hostname pattern matching AND DNS resolution to
+    /// defend against DNS rebinding attacks (CWE-350) where an attacker-
+    /// controlled domain resolves to a private/loopback address.
+    ///
     /// - Parameter urlString: The feed URL to validate.
     /// - Returns: The parsed `URL` if valid, or `nil` if it fails validation.
     static func validateFeedURL(_ urlString: String) -> URL? {
@@ -47,6 +51,10 @@ enum URLValidator {
             return nil
         }
         guard !isPrivateOrReserved(host: host) else {
+            return nil
+        }
+        // DNS rebinding defense: verify resolved IPs are public
+        guard dnsResolvesToPublicAddress(host: host) else {
             return nil
         }
         return url
@@ -113,6 +121,79 @@ enum URLValidator {
         }
 
         return false
+    }
+
+    // MARK: - DNS Resolution Check
+
+    /// Resolve a hostname via DNS and verify that none of the resolved
+    /// addresses fall into private/reserved ranges (DNS rebinding defense).
+    ///
+    /// An attacker-controlled domain can return loopback or private IPs,
+    /// bypassing hostname-only SSRF filters. This performs a synchronous
+    /// DNS lookup and rejects the host if any resolved address is private.
+    ///
+    /// - Parameter host: The hostname to resolve.
+    /// - Returns: `true` if all resolved addresses are publicly routable,
+    ///   `false` if any address is private/reserved or resolution fails.
+    static func dnsResolvesToPublicAddress(host: String) -> Bool {
+        // Skip resolution for IP literals — already checked by isPrivateOrReserved
+        if parseIPv4(host) != nil { return !isPrivateIPv4(host) }
+        if host.contains(":") { return true } // IPv6 literals handled above
+
+        var hints = addrinfo(
+            ai_flags: AI_NUMERICSERV,
+            ai_family: AF_UNSPEC,
+            ai_socktype: SOCK_STREAM,
+            ai_protocol: 0,
+            ai_addrlen: 0,
+            ai_canonname: nil,
+            ai_addr: nil,
+            ai_next: nil
+        )
+
+        var result: UnsafeMutablePointer<addrinfo>?
+        let status = getaddrinfo(host, "443", &hints, &result)
+        guard status == 0, let firstResult = result else { return false }
+        defer { freeaddrinfo(firstResult) }
+
+        var current: UnsafeMutablePointer<addrinfo>? = firstResult
+        while let info = current {
+            if let addr = info.pointee.ai_addr {
+                switch Int32(info.pointee.ai_family) {
+                case AF_INET:
+                    let ipv4 = addr.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { $0.pointee }
+                    let ip = ipv4.sin_addr
+                    let a = UInt8((ip.s_addr >> 0) & 0xFF)
+                    let b = UInt8((ip.s_addr >> 8) & 0xFF)
+                    let c = UInt8((ip.s_addr >> 16) & 0xFF)
+                    let d = UInt8((ip.s_addr >> 24) & 0xFF)
+                    let ipStr = "\(a).\(b).\(c).\(d)"
+                    if isPrivateIPv4(ipStr) { return false }
+                case AF_INET6:
+                    let ipv6 = addr.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) { $0.pointee }
+                    var sin6Addr = ipv6.sin6_addr
+                    let isUnsafe = withUnsafeBytes(of: &sin6Addr) { buf -> Bool in
+                        // Loopback ::1
+                        if buf[0..<15].allSatisfy({ $0 == 0 }) && buf[15] == 1 { return true }
+                        // Link-local fe80::/10
+                        if buf[0] == 0xFE && (buf[1] & 0xC0) == 0x80 { return true }
+                        // Unique-local fc00::/7
+                        if (buf[0] & 0xFE) == 0xFC { return true }
+                        // IPv4-mapped ::ffff:x.x.x.x
+                        if buf[0..<10].allSatisfy({ $0 == 0 }) && buf[10] == 0xFF && buf[11] == 0xFF {
+                            let ipStr = "\(buf[12]).\(buf[13]).\(buf[14]).\(buf[15])"
+                            if isPrivateIPv4(ipStr) { return true }
+                        }
+                        return false
+                    }
+                    if isUnsafe { return false }
+                default:
+                    break
+                }
+            }
+            current = info.pointee.ai_next
+        }
+        return true
     }
 
     // MARK: - IPv4 Helpers

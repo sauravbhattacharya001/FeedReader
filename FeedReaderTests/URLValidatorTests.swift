@@ -270,4 +270,33 @@ final class URLValidatorTests: XCTestCase {
     func testStoryIsSafeURLRejectsNil() {
         XCTAssertFalse(Story.isSafeURL(nil))
     }
+
+    // MARK: - DNS Rebinding Defense
+
+    func testDNSResolutionRejectsLocalhostResolvingDomain() {
+        // localhost resolves to 127.0.0.1 — must be rejected
+        XCTAssertFalse(URLValidator.dnsResolvesToPublicAddress(host: "localhost"))
+    }
+
+    func testDNSResolutionAcceptsPublicDomain() {
+        // example.com resolves to public IPs (93.184.216.34)
+        XCTAssertTrue(URLValidator.dnsResolvesToPublicAddress(host: "example.com"))
+    }
+
+    func testDNSResolutionRejectsPrivateIPLiteral() {
+        XCTAssertFalse(URLValidator.dnsResolvesToPublicAddress(host: "127.0.0.1"))
+        XCTAssertFalse(URLValidator.dnsResolvesToPublicAddress(host: "10.0.0.1"))
+        XCTAssertFalse(URLValidator.dnsResolvesToPublicAddress(host: "192.168.1.1"))
+    }
+
+    func testDNSResolutionAcceptsPublicIPLiteral() {
+        XCTAssertTrue(URLValidator.dnsResolvesToPublicAddress(host: "93.184.216.34"))
+    }
+
+    func testValidateFeedURLRejectsAfterDNSCheck() {
+        // Even if hostname looks fine, validateFeedURL now does DNS check
+        // We can only test with known-resolvable hosts
+        XCTAssertNil(URLValidator.validateFeedURL("http://localhost/feed.xml"))
+        XCTAssertNotNil(URLValidator.validateFeedURL("https://example.com/feed.xml"))
+    }
 }
