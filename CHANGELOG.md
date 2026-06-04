@@ -9,6 +9,20 @@ links), see https://github.com/sauravbhattacharya001/FeedReader/releases.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **FeedReadingStreakEngine** — gamification engine for reading habits:
+  reading streaks (current/longest/active detection), 30+ unlockable
+  achievements across 6 categories (streak, volume, diversity, speed,
+  dedication, exploration), tiered progression (bronze→diamond),
+  XP system, milestone tracking with next-milestone projection,
+  motivational nudges (streak-at-risk, milestone-close, celebrate,
+  come-back, challenge), special badges (Night Owl, Early Bird,
+  Weekend Warrior), new-unlock detection API for real-time toast
+  notifications, injectable clock for testability. 28 XCTest cases.
+
 ## [v1.14.0] — 2026-05-20 — Reader-Fatigue Advisor & Performance Hygiene Wave
 
 Twelve commits since v1.13.0. This release adds a new agentic advisor that
