@@ -13,6 +13,18 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ### Added
 
+- **FeedReadingPaceAnalyzer** — on-device reading pace analytics engine.
+  Tracks words-per-minute across sessions, classifies pace (skimming/fast/
+  normal/slow/deep-reading), detects 6 anomaly types (rushing long content,
+  dwelling on short content, pace spikes, pace drops, fatigue patterns,
+  topic struggles), builds per-topic and per-feed pace profiles with
+  median/average/fastest/slowest WPM, generates time-window trends
+  (7-day/30-day with direction detection), provides personalized reading
+  time estimates for unseen articles (topic > feed > global > default
+  fallback chain), emits P0-P3 prioritized recommendations, A-F grading,
+  and structured insights. Injectable clock for deterministic testing.
+  31 XCTest cases.
+
 - **FeedReadingStreakEngine** — gamification engine for reading habits:
   reading streaks (current/longest/active detection), 30+ unlockable
   achievements across 6 categories (streak, volume, diversity, speed,
