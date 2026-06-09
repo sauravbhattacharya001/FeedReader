@@ -90,6 +90,7 @@ Currently configured to read **BBC World News** RSS feeds, but can be pointed at
 - 🔒 **Security Hardening** — RSS parser security: XXE prevention, URL validation (blocks javascript:/data:/file: schemes), HTML sanitization, and protocol enforcement
 - 📓 **Reading Journal** — Auto-generated daily reading journal combining articles read, highlights, and notes into rich entries. Features reflection prompts, mood tagging, journaling streaks, weekly/monthly digests, full-text search across entries, and Markdown/JSON export
 - 📚 **Vocabulary Builder** — Automatically extracts uncommon words from articles you read, building a personal vocabulary list. Features mastery levels (New → Learning → Familiar → Mastered) with spaced review scheduling, context sentences from source articles, filtering by feed/mastery/date, search, and JSON/CSV export/import
+- 🧠 **Reading Recall Scheduler** — Spaced-recall advisor for already-read articles. Estimates per-article retention via an Ebbinghaus-inspired forgetting curve, recommends what to revisit and when, surfaces high-decay backlog risk on bookmarks/notes/vocabulary anchors, and produces deterministic text/markdown/byte-stable JSON reports with a P0–P3 playbook
 
 ## Quick Start
 
